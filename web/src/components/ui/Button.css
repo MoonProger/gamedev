@@ -1,0 +1,88 @@
+/* components/ui/Button.css */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Variants */
+.button-primary {
+  background-color: #10b981;
+  color: white;
+}
+
+.button-primary:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.button-secondary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.button-outline {
+  background-color: transparent;
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.button-outline:hover:not(:disabled) {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.button-danger {
+  background-color: #ef4444;
+  color: white;
+}
+
+.button-danger:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+/* Sizes */
+.button-small {
+  padding: 6px 12px;
+  font-size: 0.875rem;
+}
+
+.button-medium {
+  padding: 10px 20px;
+  font-size: 1rem;
+}
+
+.button-large {
+  padding: 14px 28px;
+  font-size: 1.125rem;
+}
+
+.button-full {
+  width: 100%;
+}
+
+/* Loading state */
+.button-loading {
+  opacity: 0.8;
+}
+
+.button-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
