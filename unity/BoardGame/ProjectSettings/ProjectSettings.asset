@@ -4,7 +4,7 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 26
-  productGUID: 7cb771261abc1a746b980972228df46d
+  productGUID: f1ac501ab181bca428afe98235aa320b
   AndroidProfiler: 0
   AndroidFilterTouchesWhenObscured: 0
   AndroidEnableSustainedPerformanceMode: 0
@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: BoardGame
+  productName: abobos
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -682,14 +682,14 @@ PlayerSettings:
   apiCompatibilityLevelPerPlatform: {}
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: BoardGame
+  metroPackageName: abobos
   metroPackageVersion: 
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
   metroCertificateIssuer: 
   metroCertificateNotAfter: 0000000000000000
-  metroApplicationDescription: BoardGame
+  metroApplicationDescription: abobos
   wsaImages: {}
   metroTileShortName: 
   metroTileShowName: 0
@@ -759,11 +759,11 @@ PlayerSettings:
   apiCompatibilityLevel: 6
   activeInputHandler: 0
   windowsGamepadBackendHint: 0
-  cloudProjectId: 60c1b6fb-7c14-481d-ab11-540746ab5c79
+  cloudProjectId: 15c2952c-c84d-4ee5-8252-4108c55e4e93
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: BoardGame 2026-02-04_22-36-55
-  organizationId: unity_8c32aa6ee7c936b46798
+  projectName: abobos
+  organizationId: catman675to
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
