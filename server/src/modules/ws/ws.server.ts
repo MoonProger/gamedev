@@ -2,6 +2,8 @@
 import { WebSocketServer, WebSocket } from "ws";
 import jwt from "jsonwebtoken";
 import { WsIn, WsOut } from "./ws.types";
+import { handleGameMessage } from "../game/game.handlers";
+import { roomToDto } from "../rooms/rooms.dto";
 import { joinRoom, leaveRoom, setReady, getRoom } from "../rooms/rooms.service";
 
 type JwtPayload = { userId: string; email: string };
@@ -27,7 +29,7 @@ function broadcast(roomId: string, msg: WsOut) {
 async function pushRoomState(roomId: string) {
   const room = await getRoom(roomId);
   if (!room) return;
-  broadcast(roomId, { type: "room.state", payload: room });
+  broadcast(roomId, { type: "room.state", payload: roomToDto(room) });
 }
 
 function extractToken(reqUrl?: string): string | null {
@@ -128,9 +130,13 @@ export function attachWs(server: HttpServer) {
         return;
       }
 
-      // game.* пока заглушка
-      safeSend(ws, { type: "error", payload: { message: "game.* not implemented yet" } });
-    });
+      // game message handler 
+      await handleGameMessage({
+                  roomId: meta.roomId,
+                  userId: meta.userId,
+                  msg,
+                  broadcast,
+                });
 
     ws.on("close", async () => {
       const meta = clients.get(ws);
@@ -142,4 +148,5 @@ export function attachWs(server: HttpServer) {
       await pushRoomState(meta.roomId);
     });
   });
-}
+});
+} 

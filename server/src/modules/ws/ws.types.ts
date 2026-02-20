@@ -13,4 +13,9 @@ export type WsOut =
   | { type: "room.player_joined"; payload: { userId: string } }
   | { type: "room.player_left"; payload: { userId: string } }
   | { type: "pong"; payload?: any }
+  | { type: "game.started"; payload: any }
+  | { type: "game.dice_rolled"; payload: { value: number } }
+  | { type: "game.token_moved"; payload: any }
+  | { type: "game.turn_changed"; payload: { activePlayerId: string } }
+  | { type: "game.state"; payload: any }
   | { type: "error"; payload: { message: string } };
