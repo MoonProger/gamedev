@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import './Auth.css';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import { api } from '../services/api';
 
 const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -19,27 +21,62 @@ const Auth: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    setTimeout(() => {
+    if (!isLogin && formData.password !== formData.confirmPassword){
+      setError('Пароли не совпадают');
+      return;
+    }
+
+    if (formData.password.length < 6){
+      setError('Пароль должен быть не менее 6 символов');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try{
+      //проверка на логин
+      if (isLogin){
+        const data = await api.login(formData.email, formData.password);
+        console.log('Успешный вход:', data);
+        navigate('/rooms');
+      // если регистрация
+      } else {
+        const data = await api.register(formData.email, formData.username, formData.password);
+        console.log('Успешная регистрация', data);
+        alert('Регистрация успешна! Теперь вы можете войти');
+        setIsLogin(true);
+        setFormData({
+          email: formData.email,
+          password: '',
+          username: '',
+          confirmPassword: '',
+        });
+      }
+    } catch(err) {
+      console.error('Ошибка:', err);
+      if (err instanceof Error) {
+        if (err.message == 'EMAIL_TAKEN' || err.message.includes('Email already used')){
+          setError('Этот email уже зарегистрирован');
+        } else if (err.message == 'INVALID_CREDENTIALS' || err.message.includes('Invalid credentials')){
+          setError('Неверный email или пароль');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Ошибка при подключении к серверу');
+      }
+    } finally {
       setIsLoading(false);
-      navigate('/game');
-    }, 1500);
+    }
   };
 
-  const handleDemoLogin = () => {
-    setFormData({
-      email: 'demo@example.com',
-      password: 'demopassword',
-      username: 'Демо-пользователь',
-      confirmPassword: 'demopassword',
-    });
-    setIsLogin(true);
-  };
 
   return (
     <div className="auth">
@@ -58,17 +95,39 @@ const Auth: React.FC = () => {
         <div className="auth-tabs">
           <button 
             className={`auth-tab ${isLogin ? 'active' : ''}`}
-            onClick={() => setIsLogin(true)}
+            onClick={() => {
+              setIsLogin(true);
+              setError(null);
+            }}
+            type="button"
           >
             Вход
           </button>
           <button 
             className={`auth-tab ${!isLogin ? 'active' : ''}`}
-            onClick={() => setIsLogin(false)}
+            onClick={() => {
+              setIsLogin(false);
+              setError(null);
+            }}
+            type="button"
           >
             Регистрация
           </button>
         </div>
+
+        {error && (
+          <div className="error-message" style={{
+            backgroundColor: '#fee',
+            color: '#c00',
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            textAlign: 'center',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           {!isLogin && (
@@ -76,10 +135,11 @@ const Auth: React.FC = () => {
               label="Имя пользователя"
               name="username"
               type="text"
-              placeholder="Придумайте никнейм"
+              placeholder="Придумайте никнейм (минимум 2 слова)"
               value={formData.username}
               onChange={handleInputChange}
               required
+              disabled = {isLoading}
             />
           )}
 
@@ -91,16 +151,18 @@ const Auth: React.FC = () => {
             value={formData.email}
             onChange={handleInputChange}
             required
+            disabled={isLoading}
           />
 
           <Input
             label="Пароль"
             name="password"
             type="password"
-            placeholder="Введите пароль"
+            placeholder="Введите пароль ( минимум 6 символов)"
             value={formData.password}
             onChange={handleInputChange}
             required
+            disabled={isLoading}
           />
 
           {!isLogin && (
@@ -112,6 +174,7 @@ const Auth: React.FC = () => {
               value={formData.confirmPassword}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
             />
           )}
 
@@ -136,18 +199,6 @@ const Auth: React.FC = () => {
           >
             {isLogin ? 'Войти' : 'Создать аккаунт'}
           </Button>
-
-          <div className="demo-login">
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="medium" 
-              fullWidth
-              onClick={handleDemoLogin}
-            >
-              Попробовать демо-режим
-            </Button>
-          </div>
         </form>
 
         <div className="auth-footer">
@@ -156,7 +207,11 @@ const Auth: React.FC = () => {
             <button 
               type="button" 
               className="switch-mode"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                setIsLogin(!isLogin)
+                setError(null);
+              }}
+              disabled={isLoading}
             >
               {isLogin ? ' Зарегистрироваться' : ' Войти'}
             </button>

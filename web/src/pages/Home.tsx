@@ -1,9 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../services/api';
 import './Home.css';
 import Button from '../components/ui/Button';
 
 const Home: React.FC = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = () => {
+    const token = api.getToken();
+    setIsLoggedIn(!!token);
+  };
+
   const features = [
     { title: 'Реальные проекты', desc: 'Все карточки основаны на реально существующих федеральных и региональных молодежных инициативах' },
     { title: '8 сфер развития', desc: 'IT, предпринимательство, наука, творчество, волонтерство, медиа, спорт, туризм' },
@@ -25,16 +37,26 @@ const Home: React.FC = () => {
             Онлайн-симулятор жизни активного молодого человека, который через игру знакомит с реальными возможностями самореализации
           </p>
           <div className="hero-buttons">
-            <Link to="/auth">
-              <Button variant="primary" size="large">
-                Начать играть
-              </Button>
-            </Link>
-            <Link to="/game">
-              <Button variant="outline" size="large">
-                Демо-режим
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <Link to="/rooms">
+                <Button variant="primary" size="large">
+                  Найти игру
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="primary" size="large">
+                    Начать играть
+                  </Button>
+                </Link>
+                <Link to="/about">
+                  <Button variant="outline" size="large">
+                    О проекте
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
         <div className="hero-image">
@@ -72,29 +94,34 @@ const Home: React.FC = () => {
         <h2 className="section-title">Для кого эта игра?</h2>
         <div className="audience-list">
           <div className="audience-item">
-            <h3>Молодежь 16-23 лет</h3>
-            <p>Старшеклассники, студенты СПО и вузов</p>
+            <h3>Молодежь 14-35 лет</h3>
+            <p>Школьники, студенты, молодые специалисты</p>
           </div>
           <div className="audience-item">
             <h3>Педагоги и наставники</h3>
-            <p>Организаторы молодежных мероприятий</p>
+            <p>Для организации образовательного процесса</p>
           </div>
           <div className="audience-item">
-            <h3>Все интересующиеся</h3>
-            <p>Кто хочет узнать о возможностях молодежной политики</p>
+            <h3>Активная молодежь</h3>
+            <p>Участники молодежных проектов и движений</p>
           </div>
         </div>
       </section>
 
       {/* CTA */}
       <section className="cta">
-        <h2 className="cta-title">Готовы начать свой путь к успеху?</h2>
+        <h2 className="cta-title">
+          {isLoggedIn ? 'Продолжим игру?' : 'Готовы начать?'}
+        </h2>
         <p className="cta-subtitle">
-          Присоединяйтесь к сотням молодых людей, которые уже открыли для себя новые возможности через игру
+          {isLoggedIn 
+            ? 'Присоединяйтесь к комнате или создайте свою'
+            : 'Присоединяйтесь к сотням молодых людей, которые уже открыли для себя новые возможности через игру'
+          }
         </p>
-        <Link to="/auth">
+        <Link to={isLoggedIn ? '/rooms' : '/auth'}>
           <Button variant="primary" size="large">
-            Начать сейчас
+            {isLoggedIn ? 'Найти игру' : 'Начать сейчас'}
           </Button>
         </Link>
       </section>

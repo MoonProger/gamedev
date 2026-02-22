@@ -1,11 +1,18 @@
 ﻿import "dotenv/config";
 import http from "http";
 import express from "express";
+import cors from "cors";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { roomsRoutes } from "./modules/rooms/rooms.routes";
 import { attachWs } from "./modules/ws/ws.server";
 
 const app = express();
+
+app.use(cors({
+  origin: '*',  
+  credentials: true
+}));
+
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));

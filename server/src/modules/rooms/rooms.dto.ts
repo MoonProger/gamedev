@@ -3,7 +3,7 @@
     id: room.id,
     title: room.title,
     status: room.status,
-    settings: room.settings,
+    settings:  typeof room.settings === 'string' ? JSON.parse(room.settings) : room.settings,
     createdAt: room.createdAt,
     creator: room.creator ? { id: room.creator.id, username: room.creator.username } : null,
     players: (room.players ?? []).map((p: any) => ({

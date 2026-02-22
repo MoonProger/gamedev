@@ -7,8 +7,8 @@ export async function createRoom(creatorId: string, title: string, settings: any
     data: {
       title,
       creatorId,
-      status: RoomStatus.WAITING,
-      settings,
+      status: "WAITING",
+      settings: JSON.stringify(settings || { maxPlayers: 5 }),
       players: { create: { userId: creatorId } },
     },
     include: {
@@ -20,7 +20,7 @@ export async function createRoom(creatorId: string, title: string, settings: any
 
 export async function listRooms() {
   return prisma.room.findMany({
-    where: { status: RoomStatus.WAITING },
+    where: { status: "WAITING" },
     orderBy: { createdAt: "desc" },
     include: {
       players: { include: { user: { select: { id: true, username: true } } } },
@@ -42,7 +42,7 @@ export async function getRoom(roomId: string) {
 export async function joinRoom(roomId: string, userId: string) {
   const room = await prisma.room.findUnique({ where: { id: roomId } });
   if (!room) throw new Error("ROOM_NOT_FOUND");
-  if (room.status !== RoomStatus.WAITING) throw new Error("ROOM_NOT_JOINABLE");
+  if (room.status !== "WAITING") throw new Error("ROOM_NOT_JOINABLE");
 
   const count = await prisma.roomPlayer.count({ where: { roomId } });
   const maxPlayers = (room.settings as any)?.maxPlayers ?? 5;

@@ -3,47 +3,41 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-}
-
-enum RoomStatus {
-  WAITING
-  IN_GAME
-  FINISHED
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   username     String
   passwordHash String
-  createdAt    DateTime     @default(now())
+  createdAt    DateTime @default(now())
 
-  roomsCreated Room[]       @relation("RoomCreator")
-  roomPlayers  RoomPlayer[]
+  roomsCreated Room[]   @relation("creator")
+  players      RoomPlayer[]
 }
 
 model Room {
-  id        String      @id @default(cuid())
+  id        String   @id @default(cuid())
   title     String
-  status    RoomStatus  @default(WAITING)
-  settings  Json
-  createdAt DateTime    @default(now())
-
+  status    String   @default("WAITING")  // Вместо enum используем String
+  settings  String   @default("{}")       // Вместо Json используем String (храним JSON как текст)
+  createdAt DateTime @default(now())
   creatorId String
-  creator   User        @relation("RoomCreator", fields: [creatorId], references: [id])
 
-  players   RoomPlayer[]
+  creator User     @relation("creator", fields: [creatorId], references: [id])
+  players RoomPlayer[]
 }
 
 model RoomPlayer {
   roomId   String
   userId   String
-  joinedAt DateTime  @default(now())
-  isReady  Boolean   @default(false)
+  isReady  Boolean  @default(false)
+  joinedAt DateTime @default(now())
 
-  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@id([roomId, userId])
 }

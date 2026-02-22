@@ -1,0 +1,221 @@
+.rooms-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.rooms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.rooms-header h1 {
+  color: #10b981;
+  font-size: 2rem;
+  margin: 0;
+}
+
+.error-message {
+  background-color: #fee;
+  color: #c00;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.retry-btn {
+  background: none;
+  border: 1px solid #c00;
+  color: #c00;
+  padding: 0.25rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.retry-btn:hover {
+  background: #c00;
+  color: white;
+}
+
+.rooms-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
+.loader {
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.no-rooms {
+  text-align: center;
+  padding: 4rem;
+  background: white;
+  border-radius: 12px;
+  border: 2px dashed #d1fae5;
+}
+
+.no-rooms p {
+  color: #666;
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+}
+
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.room-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 2px solid #d1fae5;
+  transition: all 0.2s;
+}
+
+.room-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.1);
+}
+
+.room-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.room-card-header h3 {
+  margin: 0;
+  color: #111;
+  font-size: 1.2rem;
+}
+
+.room-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status-waiting {
+  background: #d1fae5;
+  color: #10b981;
+}
+
+.status-ingame {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-finished {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.room-info {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.room-info p {
+  margin: 0.5rem 0;
+}
+
+.room-players {
+  margin-bottom: 1.5rem;
+}
+
+.room-players h4 {
+  margin: 0 0 0.5rem 0;
+  color: #111;
+  font-size: 1rem;
+}
+
+.room-players ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.room-players li {
+  padding: 0.25rem 0;
+  font-size: 0.95rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+}
+
+.ready-badge {
+  margin-left: 0.5rem;
+  color: #10b981;
+  font-size: 0.85rem;
+}
+
+.no-players {
+  color: #999;
+  font-style: italic;
+  margin: 0.5rem 0;
+}
+
+.room-actions {
+  margin-top: 1rem;
+}
+
+/* Модальное окно */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal-content h2 {
+  color: #10b981;
+  margin-bottom: 1.5rem;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #d1fae5;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: #10b981;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
