@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-public class GameController : MonoBehaviour
+public class GameManager : MonoBehaviour
 {
     [Header("Setup")]
     public List<PlayerController> players;
@@ -20,6 +20,11 @@ public class GameController : MonoBehaviour
     private int lastRoll;
     private bool isMoving = false;
 
+    // 👇 НОВОЕ: для получения данных из React
+    private int expectedPlayerCount = 0;
+    private List<string> playerNames = new List<string>();
+    private List<string> playerIds = new List<string>();
+
     #region LifeCycle
 
     private void Awake()
@@ -29,7 +34,8 @@ public class GameController : MonoBehaviour
 
     private void Start()
     {
-        InitializePlayers();
+        // Убираем InitializePlayers() отсюда - теперь будем ждать данные из React
+        // InitializePlayers();
     }
 
     private void OnDestroy()
@@ -44,25 +50,85 @@ public class GameController : MonoBehaviour
 
     #endregion
 
+    #region React Communication Methods 👈 НОВЫЕ МЕТОДЫ
+
+    // Эти методы будут вызываться из React
+    public void SetPlayerCount(int count)
+    {
+        expectedPlayerCount = count;
+        Debug.Log($"🎮 React: ожидаем игроков: {count}");
+    }
+
+    public void SetPlayerName(string name)
+    {
+        playerNames.Add(name);
+        Debug.Log($"👤 React: получен игрок: {name}");
+        
+        // Когда все игроки получены - инициализируем игру
+        if (playerNames.Count == expectedPlayerCount)
+        {
+            InitializeGameFromReact();
+        }
+    }
+
+    public void SetPlayerId(string id)
+    {
+        playerIds.Add(id);
+        Debug.Log($"🆔 React: получен ID: {id}");
+    }
+
+    private void InitializeGameFromReact()
+    {
+        Debug.Log($"🎲 Инициализация игры с {expectedPlayerCount} игроками");
+        
+        // Активируем только нужное количество игроков
+        for (int i = 0; i < players.Count; i++)
+        {
+            if (i < expectedPlayerCount)
+            {
+                // Включаем фишку и даём ей имя
+                players[i].gameObject.SetActive(true);
+                
+                // Если у PlayerController есть поле для имени, можно его заполнить
+                // players[i].playerName = playerNames[i];
+                
+                Debug.Log($"✅ Активирован игрок {i+1}: {playerNames[i]}");
+            }
+            else
+            {
+                // Отключаем лишние фишки
+                players[i].gameObject.SetActive(false);
+                Debug.Log($"⭕ Отключена лишняя фишка {i+1}");
+            }
+        }
+        
+        // Теперь инициализируем активных игроков
+        InitializePlayers();
+    }
+
+    #endregion
+
     #region Initialization
 
     private void InitializePlayers()
-{
-    for (int i = 0; i < players.Count; i++)
     {
-        int previousIndex = currentPlayerIndex;
-        currentPlayerIndex = i;
+        for (int i = 0; i < expectedPlayerCount; i++)
+        {
+            int previousIndex = currentPlayerIndex;
+            currentPlayerIndex = i;
 
-        players[i].RandomizeStats();
+            players[i].RandomizeStats();
 
-        Vector3 spawnPos = GetOffsetPosition(startNode);
-        players[i].TeleportToNode(startNode);
-        players[i].transform.position = spawnPos;
+            Vector3 spawnPos = GetOffsetPosition(startNode);
+            players[i].TeleportToNode(startNode);
+            players[i].transform.position = spawnPos;
 
-        currentPlayerIndex = previousIndex;
+            currentPlayerIndex = previousIndex;
+        }
+        UpdatePlayersVisuals();
+        
+        Debug.Log("🎯 Игра готова к началу!");
     }
-    UpdatePlayersVisuals();
-}
 
     #endregion
 
@@ -130,32 +196,32 @@ public class GameController : MonoBehaviour
         }
 
         isMoving = false;
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.Count;
+        currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount; // Используем expectedPlayerCount вместо players.Count
         UpdatePlayersVisuals();
     }
 
    private IEnumerator JumpToNode(PlayerController p, Vector3 targetPos)
-{
-    float elapsed = 0;
-    Vector3 startPos = p.transform.position; 
-
-    while (elapsed < jumpDuration)
     {
-        elapsed += Time.deltaTime;
-        float percent = elapsed / jumpDuration;
+        float elapsed = 0;
+        Vector3 startPos = p.transform.position; 
 
-        Vector3 currentPos = Vector3.Lerp(startPos, targetPos, percent);
+        while (elapsed < jumpDuration)
+        {
+            elapsed += Time.deltaTime;
+            float percent = elapsed / jumpDuration;
 
-        float heightOffset = jumpHeight * 4f * percent * (1f - percent);
+            Vector3 currentPos = Vector3.Lerp(startPos, targetPos, percent);
 
-        p.transform.position = new Vector3(currentPos.x, currentPos.y + heightOffset, currentPos.z);
-        
-        yield return null;
+            float heightOffset = jumpHeight * 4f * percent * (1f - percent);
+
+            p.transform.position = new Vector3(currentPos.x, currentPos.y + heightOffset, currentPos.z);
+            
+            yield return null;
+        }
+
+        p.PlayJumpSound();
+        p.transform.position = targetPos;
     }
-
-    p.PlayJumpSound();
-    p.transform.position = targetPos;
-}
 
     #endregion
 
@@ -231,7 +297,7 @@ public class GameController : MonoBehaviour
 
     private void UpdatePlayersVisuals()
     {
-        for (int i = 0; i < players.Count; i++)
+        for (int i = 0; i < expectedPlayerCount; i++) // Используем expectedPlayerCount
         {
             players[i].SetTransparency(i != currentPlayerIndex);
         }
@@ -244,9 +310,9 @@ public class GameController : MonoBehaviour
     private Vector3 GetOffsetPosition(BoardNode node)
     {
         int playersOnNode = 0;
-        foreach (var p in players)
+        for (int i = 0; i < expectedPlayerCount; i++) // Используем expectedPlayerCount
         {
-            if (p.currentNode == node && p != players[currentPlayerIndex])
+            if (players[i].currentNode == node && i != currentPlayerIndex)
                 playersOnNode++;
         }
 
