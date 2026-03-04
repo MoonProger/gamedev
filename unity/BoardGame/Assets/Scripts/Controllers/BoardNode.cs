@@ -7,6 +7,10 @@ public class BoardNode : MonoBehaviour
     public List<BoardNode> neighbors; 
     private Renderer rend;
     private Color originalColor;
+    public enum NodeType { Media, Business, Sport, IT, Art, Science, Volounteer, Tourism, None }
+    
+    [Header("Reward Settings")]
+    public NodeType nodeStat = NodeType.None; 
 
     void Awake() {
         rend = GetComponent<Renderer>();

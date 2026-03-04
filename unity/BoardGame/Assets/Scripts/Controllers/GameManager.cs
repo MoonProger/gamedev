@@ -2,6 +2,13 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+public class CardResult
+{
+    public string title;
+    public string description;
+    public bool isSuccess;
+}
+
 public class GameManager : MonoBehaviour
 {
     [Header("Setup")]
@@ -235,11 +242,47 @@ private void RegisterRoll(int result)
         currentPlayer.ChangeStat("money", 1);
         Debug.Log($"💰 {currentPlayer.playerName} получил +1 за остановку на поле денег");
     }
-        isMoving = false;
-        hasRolledThisTurn = false; // РАЗБЛОКИРУЕМ кубик для следующего игрока
-        currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount; // Используем expectedPlayerCount вместо players.Count
-        UpdatePlayersVisuals();
+
+      yield return new WaitForSeconds(0.5f); // Небольшая пауза перед карточкой
+    PullCard(currentPlayer);
+
+    isMoving = false;
+    hasRolledThisTurn = false;
+    currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
+    UpdatePlayersVisuals();
+}
+
+private void PullCard(PlayerController player)
+{
+    BoardNode currentNode = player.currentNode;
+    
+    // Если поле "пустое" (None) и это не поле с деньгами, ничего не делаем
+    if (currentNode.nodeStat == BoardNode.NodeType.None) return;
+
+    int randomChance = UnityEngine.Random.Range(0, 4); 
+    CardResult result = new CardResult();
+
+    if (randomChance < 3) // 75% шанс успеха
+    {
+        // Получаем название стата из настроек поля
+        string statName = currentNode.nodeStat.ToString().ToLower();
+        
+        // Применяем бонус
+        player.ChangeStat(statName, 1);
+        
+        result.title = "train";
+        result.description = $"lucky! {currentNode.nodeStat} +1";
+        result.isSuccess = true;
     }
+    else
+    {
+        result.title = "unluck";
+        result.description = "meh.";
+        result.isSuccess = false;
+    }
+
+    if (uiManager != null) uiManager.ShowCard(result);
+}
 
    private IEnumerator JumpToNode(PlayerController p, Vector3 targetPos)
     {

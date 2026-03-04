@@ -1,5 +1,7 @@
 using UnityEngine;
 using TMPro; 
+using System.Collections;
+using System.Collections.Generic;
 
 public class UIManager : MonoBehaviour
 {
@@ -17,6 +19,27 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI sportText;
     public TextMeshProUGUI tourismText;
     public TextMeshProUGUI itText;
+
+    [Header("Card UI")]
+    public GameObject cardPanel;      // Само окно карточки
+    public TMPro.TextMeshProUGUI cardTitle;
+    public TMPro.TextMeshProUGUI cardDesc;
+
+    public void ShowCard(CardResult result)
+{
+    cardPanel.SetActive(true);
+    cardTitle.text = result.title;
+    cardDesc.text = result.description;
+    
+    // Окно можно закрыть через пару секунд или по кнопке
+    StartCoroutine(HideCardAfterDelay(1f));
+}
+
+    private IEnumerator HideCardAfterDelay(float delay)
+{
+    yield return new WaitForSeconds(delay);
+    cardPanel.SetActive(false);
+}
 
     public void UpdateAllStats(PlayerController player)
     {
