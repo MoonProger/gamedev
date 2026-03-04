@@ -7,6 +7,7 @@ public class GameManager : MonoBehaviour
     [Header("Setup")]
     public List<PlayerController> players;
     public BoardNode startNode;
+    public BoardNode moneyNode;
     public DiceController dice;
     public UIManager uiManager;
 
@@ -25,6 +26,9 @@ public class GameManager : MonoBehaviour
     private List<string> playerNames = new List<string>();
     private List<string> playerIds = new List<string>();
 
+    [Header("Turn State")]
+    private bool hasRolledThisTurn = false; // Флаг: бросал ли текущий игрок кубик в этом ходу
+
     #region LifeCycle
 
     private void Awake()
@@ -36,6 +40,15 @@ public class GameManager : MonoBehaviour
     {
         // Убираем InitializePlayers() отсюда - теперь будем ждать данные из React
         // InitializePlayers();
+        if (expectedPlayerCount == 0) 
+    {
+        Debug.Log("⚠️ Тестовый запуск: имитируем данные из React");
+        SetPlayerCount(3); // Ставим 4 игрока для теста
+        SetPlayerName("Игрок 1");
+        SetPlayerName("Игрок 2");
+        SetPlayerName("Игрок 3");
+        SetPlayerName("Игрок 4");
+    }
     }
 
     private void OnDestroy()
@@ -134,12 +147,34 @@ public class GameManager : MonoBehaviour
 
     #region Turn Logic
 
-    private void RegisterRoll(int result)
+// Метод, который нужно вызывать при нажатии на кубик/кнопку
+public void TryRollDice()
+{
+    // 1. Если фишка уже движется — игнорируем
+    if (isMoving) 
     {
-        lastRoll = result;
-        Debug.Log($"🎲 Dice Result: {lastRoll}");
-        ShowPossibleMoves(lastRoll);
+        Debug.Log("🚫 Нельзя бросать кубик во время движения!");
+        return;
     }
+
+    // 2. Если в этом ходу кубик уже был брошен — игнорируем
+    if (hasRolledThisTurn)
+    {
+        Debug.Log("🚫 Вы уже бросили кубик в этом ходу! Выберите клетку для хода.");
+        return;
+    }
+
+    // 3. Если всё ок — запускаем физический бросок в DiceController
+    dice.RollDice();
+}
+
+private void RegisterRoll(int result)
+{
+    lastRoll = result;
+    hasRolledThisTurn = true; // Блокируем повторный бросок
+    Debug.Log($"🎲 Dice Result: {lastRoll}. Бросок заблокирован до конца хода.");
+    ShowPossibleMoves(lastRoll);
+}
 
     public void ShowPossibleMoves(int rollResult)
     {
@@ -195,7 +230,13 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        if (currentPlayer.currentNode == moneyNode)
+    {
+        currentPlayer.ChangeStat("money", 1);
+        Debug.Log($"💰 {currentPlayer.playerName} получил +1 за остановку на поле денег");
+    }
         isMoving = false;
+        hasRolledThisTurn = false; // РАЗБЛОКИРУЕМ кубик для следующего игрока
         currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount; // Используем expectedPlayerCount вместо players.Count
         UpdatePlayersVisuals();
     }
@@ -228,68 +269,88 @@ public class GameManager : MonoBehaviour
     #region Pathfinding
 
     private List<BoardNode> GetPossibleDestinations(BoardNode start, int moves)
+{
+    List<BoardNode> result = new List<BoardNode>();
+    // Передаем стартовый узел в список посещенных, чтобы нельзя было на него вернуться
+    List<BoardNode> visitedNodes = new List<BoardNode> { start };
+    
+    // ИСКЛЮЧЕНИЕ: Если мы стоим на поле с деньгами, мы можем никуда не идти (пропустить ход)
+    if (start == moneyNode)
     {
-        List<BoardNode> result = new List<BoardNode>();
-        FindPathsRecursive(start, moves, new List<string>(), result);
-        return result;
+        result.Add(start);
     }
 
-    private void FindPathsRecursive(BoardNode current, int movesLeft, List<string> visitedEdges, List<BoardNode> result)
-    {
-        if (movesLeft == 0)
-        {
-            if (!result.Contains(current)) result.Add(current);
-            return;
-        }
+    FindPathsRecursive(start, moves, new List<string>(), visitedNodes, result);
+    return result;
+}
 
-        foreach (var next in current.neighbors)
-        {
-            string edgeId = GetEdgeId(current, next);
-            if (!visitedEdges.Contains(edgeId))
-            {
-                List<string> nextVisited = new List<string>(visitedEdges) { edgeId };
-                FindPathsRecursive(next, movesLeft - 1, nextVisited, result);
-            }
-        }
+private void FindPathsRecursive(BoardNode current, int movesLeft, List<string> visitedEdges, List<BoardNode> visitedNodes, List<BoardNode> result)
+{
+    if (movesLeft == 0)
+    {
+        if (!result.Contains(current)) result.Add(current);
+        return;
     }
 
-    private List<BoardNode> GetPathToTarget(BoardNode start, BoardNode target, int maxSteps)
+    foreach (var next in current.neighbors)
     {
-        var queue = new Queue<(List<BoardNode> nodes, List<string> edges)>();
-        queue.Enqueue((new List<BoardNode> { start }, new List<string>()));
-
-        while (queue.Count > 0)
+        string edgeId = GetEdgeId(current, next);
+        
+        // Условие: линия еще не пройдена И узел еще не посещен
+        // (Либо этот узел - поле с деньгами, тогда правила мягче, но по твоей логике 
+        // запрет обычно касается всех узлов, чтобы не было "петель")
+        if (!visitedEdges.Contains(edgeId) && !visitedNodes.Contains(next))
         {
-            var (path, visitedEdges) = queue.Dequeue();
-            BoardNode lastNode = path[path.Count - 1];
+            List<string> nextVisitedEdges = new List<string>(visitedEdges) { edgeId };
+            List<BoardNode> nextVisitedNodes = new List<BoardNode>(visitedNodes) { next };
+            
+            FindPathsRecursive(next, movesLeft - 1, nextVisitedEdges, nextVisitedNodes, result);
+        }
+    }
+}
 
-            if (lastNode == target && path.Count - 1 == maxSteps)
-            {
-                path.RemoveAt(0);
-                return path;
-            }
+private List<BoardNode> GetPathToTarget(BoardNode start, BoardNode target, int maxSteps)
+{
+    // Если игрок решил остаться на поле с деньгами (0 шагов)
+    if (start == target && start == moneyNode) return new List<BoardNode>();
 
-            if (path.Count - 1 < maxSteps)
+    var queue = new Queue<(List<BoardNode> nodes, List<string> edges)>();
+    queue.Enqueue((new List<BoardNode> { start }, new List<string>()));
+
+    while (queue.Count > 0)
+    {
+        var (path, visitedEdges) = queue.Dequeue();
+        BoardNode lastNode = path[path.Count - 1];
+
+        if (lastNode == target && path.Count - 1 == maxSteps)
+        {
+            path.RemoveAt(0);
+            return path;
+        }
+
+        if (path.Count - 1 < maxSteps)
+        {
+            foreach (BoardNode neighbor in lastNode.neighbors)
             {
-                foreach (BoardNode neighbor in lastNode.neighbors)
+                string edgeId = GetEdgeId(lastNode, neighbor);
+                // Проверяем, что не идем по той же линии и не заходим в уже посещенный узел
+                if (!visitedEdges.Contains(edgeId) && !path.Contains(neighbor))
                 {
-                    string edgeId = GetEdgeId(lastNode, neighbor);
-                    if (!visitedEdges.Contains(edgeId))
-                    {
-                        var newPath = new List<BoardNode>(path) { neighbor };
-                        var newVisitedEdges = new List<string>(visitedEdges) { edgeId };
-                        queue.Enqueue((newPath, newVisitedEdges));
-                    }
+                    var newPath = new List<BoardNode>(path) { neighbor };
+                    var newVisitedEdges = new List<string>(visitedEdges) { edgeId };
+                    queue.Enqueue((newPath, newVisitedEdges));
                 }
             }
         }
-        return null;
     }
+    return null;
+}
 
-    private string GetEdgeId(BoardNode a, BoardNode b)
-    {
-        return string.Compare(a.name, b.name) < 0 ? a.name + b.name : b.name + a.name;
-    }
+private string GetEdgeId(BoardNode a, BoardNode b)
+{
+    // Генерирует уникальную строку для пары узлов, чтобы путь A->B и B->A считался одной и той же линией
+    return string.Compare(a.name, b.name) < 0 ? a.name + b.name : b.name + a.name;
+}
 
     #endregion
 

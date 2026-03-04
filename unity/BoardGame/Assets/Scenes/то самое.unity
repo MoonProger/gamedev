@@ -7240,7 +7240,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3494842423371251762, guid: d1bac5103178d6743a93b86d11c753f9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2015055621}
   m_SourcePrefab: {fileID: 100100000, guid: d1bac5103178d6743a93b86d11c753f9, type: 3}
 --- !u!224 &1061076361 stripped
 RectTransform:
@@ -9989,6 +9992,7 @@ MonoBehaviour:
   - {fileID: 44430653}
   - {fileID: 647778488}
   startNode: {fileID: 1816691552}
+  moneyNode: {fileID: 1306620655}
   dice: {fileID: 1514331007}
   uiManager: {fileID: 206523208}
   jumpHeight: 5
@@ -10341,7 +10345,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6748767491694020293, guid: d1bac5103178d6743a93b86d11c753f9, type: 3}
   m_PrefabInstance: {fileID: 1058598734}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 2015055616}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 69b4f5ebb4a94ee4e9609b675262e971, type: 3}
@@ -12796,6 +12800,23 @@ MonoBehaviour:
   - {fileID: 1381107707}
   - {fileID: 908164819}
   - {fileID: 1306620655}
+--- !u!1 &2015055616 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3494842423371251762, guid: d1bac5103178d6743a93b86d11c753f9, type: 3}
+  m_PrefabInstance: {fileID: 1058598734}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2015055621
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2015055616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e65290d9beb6b648a04e966da0290a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2028450857
 GameObject:
   m_ObjectHideFlags: 0

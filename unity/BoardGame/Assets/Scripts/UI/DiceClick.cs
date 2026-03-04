@@ -2,15 +2,20 @@ using UnityEngine;
 
 public class DiceClick : MonoBehaviour
 {
-    private DiceController dice;
+    private GameManager gameManager;
 
     void Start()
     {
-        dice = GetComponent<DiceController>();
+        // Ищем GameManager на сцене
+        gameManager = Object.FindFirstObjectByType<GameManager>();
     }
 
     void OnMouseDown()
     {
-        dice.RollDice();
+        if (gameManager != null)
+        {
+            // Вызываем проверку в менеджере, а не бросок напрямую
+            gameManager.TryRollDice();
+        }
     }
 }

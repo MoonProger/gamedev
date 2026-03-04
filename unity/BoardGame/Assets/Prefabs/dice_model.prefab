@@ -75,9 +75,6 @@ PrefabInstance:
       addedObject: {fileID: 6748767491694020293}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a2fd512b91210144298644282bbce748, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 929385809460024729}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a2fd512b91210144298644282bbce748, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 2779627634771973346}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a2fd512b91210144298644282bbce748, type: 3}
       insertIndex: -1
@@ -101,18 +98,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rollSound: {fileID: 8300000, guid: 2035555bb6dd19046aa1471599325a1d, type: 3}
---- !u!114 &929385809460024729
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3494842423371251762}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e65290d9beb6b648a04e966da0290a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!65 &2779627634771973346
 BoxCollider:
   m_ObjectHideFlags: 0
