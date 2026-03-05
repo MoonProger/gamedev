@@ -29,7 +29,7 @@ public class GameManager : MonoBehaviour
     private bool isMoving = false;
 
     // 👇 НОВОЕ: для получения данных из React
-    private int expectedPlayerCount = 0;
+    public int expectedPlayerCount = 0;
     private List<string> playerNames = new List<string>();
     private List<string> playerIds = new List<string>();
 
@@ -50,11 +50,10 @@ public class GameManager : MonoBehaviour
         if (expectedPlayerCount == 0) 
     {
         Debug.Log("⚠️ Тестовый запуск: имитируем данные из React");
-        SetPlayerCount(3); // Ставим 4 игрока для теста
+        SetPlayerCount(3); // Ставим 3 игрока для теста
         SetPlayerName("Игрок 1");
         SetPlayerName("Игрок 2");
         SetPlayerName("Игрок 3");
-        SetPlayerName("Игрок 4");
     }
     }
 
@@ -122,6 +121,12 @@ public class GameManager : MonoBehaviour
             }
         }
         
+        TableManager tm = Object.FindFirstObjectByType<TableManager>();
+    if (tm != null)
+    {
+        tm.InitializeTable();
+    }
+
         // Теперь инициализируем активных игроков
         InitializePlayers();
     }
