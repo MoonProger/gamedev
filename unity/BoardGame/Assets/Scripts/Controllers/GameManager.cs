@@ -50,10 +50,11 @@ public class GameManager : MonoBehaviour
         if (expectedPlayerCount == 0) 
     {
         Debug.Log("⚠️ Тестовый запуск: имитируем данные из React");
-        SetPlayerCount(3); // Ставим 3 игрока для теста
+        SetPlayerCount(4); // Ставим 3 игрока для теста
         SetPlayerName("Игрок 1");
         SetPlayerName("Игрок 2");
         SetPlayerName("Игрок 3");
+        SetPlayerName("Игрок 4");
     }
     }
 
