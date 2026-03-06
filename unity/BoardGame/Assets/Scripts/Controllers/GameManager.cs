@@ -249,8 +249,11 @@ private void RegisterRoll(int result)
         Debug.Log($"💰 {currentPlayer.playerName} получил +1 за остановку на поле денег");
     }
 
-      yield return new WaitForSeconds(0.5f); // Небольшая пауза перед карточкой
+    TableManager table = FindObjectOfType<TableManager>();
+    yield return new WaitForSeconds(0.5f); // Небольшая пауза перед карточкой
     PullCard(currentPlayer);
+    table.UpdateTablePositions();
+    
 
     isMoving = false;
     hasRolledThisTurn = false;

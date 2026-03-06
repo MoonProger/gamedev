@@ -46,7 +46,7 @@ public class TableManager : MonoBehaviour
                 string statName = GetStatNameByIndex(s);
                 int level = gm.players[p].GetStatValue(statName);
 
-                Transform row = verticalGroup.GetChild(level);
+                Transform row = verticalGroup.GetChild(11-level);
                 
                 // 2. Находим ячейку (Cell) внутри этой строки по индексу сферы
                 // +1 если у тебя в строке первая ячейка — это заголовок с цифрой
