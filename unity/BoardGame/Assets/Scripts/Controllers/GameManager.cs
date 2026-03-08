@@ -6,8 +6,9 @@ public class CardResult
 {
     public string title;
     public string description;
-    public bool isSuccess;
 }
+
+public enum CardType { Surprise, Yellow, Blue, Red, Green }
 
 public class GameManager : MonoBehaviour
 {
@@ -28,15 +29,12 @@ public class GameManager : MonoBehaviour
     private int lastRoll;
     private bool isMoving = false;
 
-    // 👇 НОВОЕ: для получения данных из React
     public int expectedPlayerCount = 0;
     private List<string> playerNames = new List<string>();
     private List<string> playerIds = new List<string>();
 
     [Header("Turn State")]
-    private bool hasRolledThisTurn = false; // Флаг: бросал ли текущий игрок кубик в этом ходу
-
-    #region LifeCycle
+    private bool hasRolledThisTurn = false;
 
     private void Awake()
     {
@@ -45,17 +43,15 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        // Убираем InitializePlayers() отсюда - теперь будем ждать данные из React
-        // InitializePlayers();
-        if (expectedPlayerCount == 0) 
-    {
-        Debug.Log("⚠️ Тестовый запуск: имитируем данные из React");
-        SetPlayerCount(4); // Ставим 3 игрока для теста
-        SetPlayerName("Игрок 1");
-        SetPlayerName("Игрок 2");
-        SetPlayerName("Игрок 3");
-        SetPlayerName("Игрок 4");
-    }
+        if (expectedPlayerCount == 0)
+        {
+            Debug.Log("⚠️ Test mode: simulating React data");
+            SetPlayerCount(4);
+            SetPlayerName("Player 1");
+            SetPlayerName("Player 2");
+            SetPlayerName("Player 3");
+            SetPlayerName("Player 4");
+        }
     }
 
     private void OnDestroy()
@@ -68,23 +64,17 @@ public class GameManager : MonoBehaviour
         HandleSelectionInput();
     }
 
-    #endregion
-
-    #region React Communication Methods 👈 НОВЫЕ МЕТОДЫ
-
-    // Эти методы будут вызываться из React
     public void SetPlayerCount(int count)
     {
         expectedPlayerCount = count;
-        Debug.Log($"🎮 React: ожидаем игроков: {count}");
+        Debug.Log($"🎮 React: expecting players: {count}");
     }
 
     public void SetPlayerName(string name)
     {
         playerNames.Add(name);
-        Debug.Log($"👤 React: получен игрок: {name}");
-        
-        // Когда все игроки получены - инициализируем игру
+        Debug.Log($"👤 React: received player: {name}");
+
         if (playerNames.Count == expectedPlayerCount)
         {
             InitializeGameFromReact();
@@ -94,47 +84,35 @@ public class GameManager : MonoBehaviour
     public void SetPlayerId(string id)
     {
         playerIds.Add(id);
-        Debug.Log($"🆔 React: получен ID: {id}");
+        Debug.Log($"🆔 React: received ID: {id}");
     }
 
     private void InitializeGameFromReact()
     {
-        Debug.Log($"🎲 Инициализация игры с {expectedPlayerCount} игроками");
-        
-        // Активируем только нужное количество игроков
+        Debug.Log($"🎲 Initializing game with {expectedPlayerCount} players");
+
         for (int i = 0; i < players.Count; i++)
         {
             if (i < expectedPlayerCount)
             {
-                // Включаем фишку и даём ей имя
                 players[i].gameObject.SetActive(true);
-                
-                // Если у PlayerController есть поле для имени, можно его заполнить
-                // players[i].playerName = playerNames[i];
-                
-                Debug.Log($"✅ Активирован игрок {i+1}: {playerNames[i]}");
+                Debug.Log($"✅ Activated player {i + 1}: {playerNames[i]}");
             }
             else
             {
-                // Отключаем лишние фишки
                 players[i].gameObject.SetActive(false);
-                Debug.Log($"⭕ Отключена лишняя фишка {i+1}");
+                Debug.Log($"⭕ Disabled extra token {i + 1}");
             }
         }
-        
-        TableManager tm = Object.FindFirstObjectByType<TableManager>();
-    if (tm != null)
-    {
-        tm.InitializeTable();
-    }
 
-        // Теперь инициализируем активных игроков
+        TableManager tm = Object.FindFirstObjectByType<TableManager>();
+        if (tm != null)
+        {
+            tm.InitializeTable();
+        }
+
         InitializePlayers();
     }
-
-    #endregion
-
-    #region Initialization
 
     private void InitializePlayers()
     {
@@ -151,43 +129,35 @@ public class GameManager : MonoBehaviour
 
             currentPlayerIndex = previousIndex;
         }
+
         UpdatePlayersVisuals();
-        
-        Debug.Log("🎯 Игра готова к началу!");
+        Debug.Log("🎯 Game is ready to start");
     }
 
-    #endregion
-
-    #region Turn Logic
-
-// Метод, который нужно вызывать при нажатии на кубик/кнопку
-public void TryRollDice()
-{
-    // 1. Если фишка уже движется — игнорируем
-    if (isMoving) 
+    public void TryRollDice()
     {
-        Debug.Log("🚫 Нельзя бросать кубик во время движения!");
-        return;
+        if (isMoving)
+        {
+            Debug.Log("🚫 Cannot roll dice while a token is moving");
+            return;
+        }
+
+        if (hasRolledThisTurn)
+        {
+            Debug.Log("🚫 Dice already rolled this turn. Choose a destination.");
+            return;
+        }
+
+        dice.RollDice();
     }
 
-    // 2. Если в этом ходу кубик уже был брошен — игнорируем
-    if (hasRolledThisTurn)
+    private void RegisterRoll(int result)
     {
-        Debug.Log("🚫 Вы уже бросили кубик в этом ходу! Выберите клетку для хода.");
-        return;
+        lastRoll = result;
+        hasRolledThisTurn = true;
+        Debug.Log($"🎲 Dice result: {lastRoll}. Rolling locked until turn ends.");
+        ShowPossibleMoves(lastRoll);
     }
-
-    // 3. Если всё ок — запускаем физический бросок в DiceController
-    dice.RollDice();
-}
-
-private void RegisterRoll(int result)
-{
-    lastRoll = result;
-    hasRolledThisTurn = true; // Блокируем повторный бросок
-    Debug.Log($"🎲 Dice Result: {lastRoll}. Бросок заблокирован до конца хода.");
-    ShowPossibleMoves(lastRoll);
-}
 
     public void ShowPossibleMoves(int rollResult)
     {
@@ -215,10 +185,6 @@ private void RegisterRoll(int result)
         }
     }
 
-    #endregion
-
-    #region Movement
-
     private IEnumerator MoveSequence(BoardNode target, int totalRoll)
     {
         isMoving = true;
@@ -244,59 +210,88 @@ private void RegisterRoll(int result)
         }
 
         if (currentPlayer.currentNode == moneyNode)
-    {
-        currentPlayer.ChangeStat("money", 1);
-        Debug.Log($"💰 {currentPlayer.playerName} получил +1 за остановку на поле денег");
+        {
+            currentPlayer.ChangeStat("money", 1);
+            Debug.Log($"💰 {currentPlayer.playerName} gained +1 money for stopping on the money tile");
+        }
+
+        TableManager table = FindObjectOfType<TableManager>();
+
+        yield return new WaitForSeconds(0.5f);
+
+        PullCard(currentPlayer);
+
+        table.UpdateTablePositions();
+
+        isMoving = false;
+        hasRolledThisTurn = false;
+        currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
+
+        UpdatePlayersVisuals();
     }
 
-    TableManager table = FindObjectOfType<TableManager>();
-    yield return new WaitForSeconds(0.5f); // Небольшая пауза перед карточкой
-    PullCard(currentPlayer);
-    table.UpdateTablePositions();
-    
-
-    isMoving = false;
-    hasRolledThisTurn = false;
-    currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
-    UpdatePlayersVisuals();
-}
-
-private void PullCard(PlayerController player)
-{
-    BoardNode currentNode = player.currentNode;
-    
-    // Если поле "пустое" (None) и это не поле с деньгами, ничего не делаем
-    if (currentNode.nodeStat == BoardNode.NodeType.None) return;
-
-    int randomChance = UnityEngine.Random.Range(0, 4); 
-    CardResult result = new CardResult();
-
-    if (randomChance < 3) // 75% шанс успеха
+    private void PullCard(PlayerController player)
     {
-        // Получаем название стата из настроек поля
+        BoardNode currentNode = player.currentNode;
+
+        if (currentNode.nodeStat == BoardNode.NodeType.None) return;
+
+        CardType cardType = CardType.Blue;
+
+        CardResult result = new CardResult();
+
         string statName = currentNode.nodeStat.ToString().ToLower();
-        
-        // Применяем бонус
-        player.ChangeStat(statName, 1);
-        
-        result.title = "train";
-        result.description = $"lucky! {currentNode.nodeStat} +1";
-        result.isSuccess = true;
-    }
-    else
-    {
-        result.title = "unluck";
-        result.description = "meh.";
-        result.isSuccess = false;
+        int currentStatLevel = player.GetStatValue(statName);
+        int expLevel = player.GetStatValue("experience");
+
+        switch (cardType)
+        {
+            case CardType.Surprise:
+                result.title = "SURPRISE";
+                result.description = "Something unusual happened...";
+                break;
+
+            case CardType.Yellow:
+                player.ChangeStat(statName, 1);
+                result.title = "YELLOW CARD";
+                result.description = $"Regular training! {currentNode.nodeStat} +1";
+                break;
+
+            case CardType.Blue:
+                int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
+
+                if (expLevel > diceSum)
+                {
+                    player.ChangeStat(statName, 1);
+                    result.title = "BLUE CARD (SUCCESS)";
+                    result.description = $"Roll: {diceSum} > Your level: {expLevel}\n{currentNode.nodeStat} +1";
+                }
+                else
+                {
+                    result.title = "BLUE CARD (EXPERIENCE)";
+                    result.description = $"Roll: {diceSum} <= Your level: {currentStatLevel}\nYou gain experience!";
+                    player.ChangeStat("experience", 1);
+                }
+                break;
+
+            case CardType.Red:
+                result.title = "RED CARD";
+                result.description = "Coming soon...";
+                break;
+
+            case CardType.Green:
+                result.title = "GREEN CARD";
+                result.description = "Coming soon...";
+                break;
+        }
+
+        if (uiManager != null) uiManager.ShowCard(result);
     }
 
-    if (uiManager != null) uiManager.ShowCard(result);
-}
-
-   private IEnumerator JumpToNode(PlayerController p, Vector3 targetPos)
+    private IEnumerator JumpToNode(PlayerController p, Vector3 targetPos)
     {
         float elapsed = 0;
-        Vector3 startPos = p.transform.position; 
+        Vector3 startPos = p.transform.position;
 
         while (elapsed < jumpDuration)
         {
@@ -308,7 +303,7 @@ private void PullCard(PlayerController player)
             float heightOffset = jumpHeight * 4f * percent * (1f - percent);
 
             p.transform.position = new Vector3(currentPos.x, currentPos.y + heightOffset, currentPos.z);
-            
+
             yield return null;
         }
 
@@ -316,104 +311,93 @@ private void PullCard(PlayerController player)
         p.transform.position = targetPos;
     }
 
-    #endregion
-
-    #region Pathfinding
-
     private List<BoardNode> GetPossibleDestinations(BoardNode start, int moves)
-{
-    List<BoardNode> result = new List<BoardNode>();
-    // Передаем стартовый узел в список посещенных, чтобы нельзя было на него вернуться
-    List<BoardNode> visitedNodes = new List<BoardNode> { start };
-    
-    // ИСКЛЮЧЕНИЕ: Если мы стоим на поле с деньгами, мы можем никуда не идти (пропустить ход)
-    if (start == moneyNode)
     {
-        result.Add(start);
-    }
+        List<BoardNode> result = new List<BoardNode>();
+        List<BoardNode> visitedNodes = new List<BoardNode> { start };
 
-    FindPathsRecursive(start, moves, new List<string>(), visitedNodes, result);
-    return result;
-}
-
-private void FindPathsRecursive(BoardNode current, int movesLeft, List<string> visitedEdges, List<BoardNode> visitedNodes, List<BoardNode> result)
-{
-    if (movesLeft == 0)
-    {
-        if (!result.Contains(current)) result.Add(current);
-        return;
-    }
-
-    foreach (var next in current.neighbors)
-    {
-        string edgeId = GetEdgeId(current, next);
-        
-        // Условие: линия еще не пройдена И узел еще не посещен
-        // (Либо этот узел - поле с деньгами, тогда правила мягче, но по твоей логике 
-        // запрет обычно касается всех узлов, чтобы не было "петель")
-        if (!visitedEdges.Contains(edgeId) && !visitedNodes.Contains(next))
+        if (start == moneyNode)
         {
-            List<string> nextVisitedEdges = new List<string>(visitedEdges) { edgeId };
-            List<BoardNode> nextVisitedNodes = new List<BoardNode>(visitedNodes) { next };
-            
-            FindPathsRecursive(next, movesLeft - 1, nextVisitedEdges, nextVisitedNodes, result);
-        }
-    }
-}
-
-private List<BoardNode> GetPathToTarget(BoardNode start, BoardNode target, int maxSteps)
-{
-    // Если игрок решил остаться на поле с деньгами (0 шагов)
-    if (start == target && start == moneyNode) return new List<BoardNode>();
-
-    var queue = new Queue<(List<BoardNode> nodes, List<string> edges)>();
-    queue.Enqueue((new List<BoardNode> { start }, new List<string>()));
-
-    while (queue.Count > 0)
-    {
-        var (path, visitedEdges) = queue.Dequeue();
-        BoardNode lastNode = path[path.Count - 1];
-
-        if (lastNode == target && path.Count - 1 == maxSteps)
-        {
-            path.RemoveAt(0);
-            return path;
+            result.Add(start);
         }
 
-        if (path.Count - 1 < maxSteps)
+        FindPathsRecursive(start, moves, new List<string>(), visitedNodes, result);
+
+        return result;
+    }
+
+    private void FindPathsRecursive(BoardNode current, int movesLeft, List<string> visitedEdges, List<BoardNode> visitedNodes, List<BoardNode> result)
+    {
+        if (movesLeft == 0)
         {
-            foreach (BoardNode neighbor in lastNode.neighbors)
+            if (!result.Contains(current)) result.Add(current);
+            return;
+        }
+
+        foreach (var next in current.neighbors)
+        {
+            string edgeId = GetEdgeId(current, next);
+
+            if (!visitedEdges.Contains(edgeId) && !visitedNodes.Contains(next))
             {
-                string edgeId = GetEdgeId(lastNode, neighbor);
-                // Проверяем, что не идем по той же линии и не заходим в уже посещенный узел
-                if (!visitedEdges.Contains(edgeId) && !path.Contains(neighbor))
-                {
-                    var newPath = new List<BoardNode>(path) { neighbor };
-                    var newVisitedEdges = new List<string>(visitedEdges) { edgeId };
-                    queue.Enqueue((newPath, newVisitedEdges));
-                }
+                List<string> nextVisitedEdges = new List<string>(visitedEdges) { edgeId };
+                List<BoardNode> nextVisitedNodes = new List<BoardNode>(visitedNodes) { next };
+
+                FindPathsRecursive(next, movesLeft - 1, nextVisitedEdges, nextVisitedNodes, result);
             }
         }
     }
-    return null;
-}
 
-private string GetEdgeId(BoardNode a, BoardNode b)
-{
-    // Генерирует уникальную строку для пары узлов, чтобы путь A->B и B->A считался одной и той же линией
-    return string.Compare(a.name, b.name) < 0 ? a.name + b.name : b.name + a.name;
-}
+    private List<BoardNode> GetPathToTarget(BoardNode start, BoardNode target, int maxSteps)
+    {
+        if (start == target && start == moneyNode) return new List<BoardNode>();
 
-    #endregion
+        var queue = new Queue<(List<BoardNode> nodes, List<string> edges)>();
+        queue.Enqueue((new List<BoardNode> { start }, new List<string>()));
 
-    #region Visuals & Offsets
+        while (queue.Count > 0)
+        {
+            var (path, visitedEdges) = queue.Dequeue();
+            BoardNode lastNode = path[path.Count - 1];
+
+            if (lastNode == target && path.Count - 1 == maxSteps)
+            {
+                path.RemoveAt(0);
+                return path;
+            }
+
+            if (path.Count - 1 < maxSteps)
+            {
+                foreach (BoardNode neighbor in lastNode.neighbors)
+                {
+                    string edgeId = GetEdgeId(lastNode, neighbor);
+
+                    if (!visitedEdges.Contains(edgeId) && !path.Contains(neighbor))
+                    {
+                        var newPath = new List<BoardNode>(path) { neighbor };
+                        var newVisitedEdges = new List<string>(visitedEdges) { edgeId };
+
+                        queue.Enqueue((newPath, newVisitedEdges));
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private string GetEdgeId(BoardNode a, BoardNode b)
+    {
+        return string.Compare(a.name, b.name) < 0 ? a.name + b.name : b.name + a.name;
+    }
 
     private void UpdatePlayersVisuals()
     {
-        for (int i = 0; i < expectedPlayerCount; i++) // Используем expectedPlayerCount
+        for (int i = 0; i < expectedPlayerCount; i++)
         {
             players[i].SetTransparency(i != currentPlayerIndex);
         }
+
         if (uiManager != null)
         {
             uiManager.UpdateAllStats(players[currentPlayerIndex]);
@@ -423,7 +407,8 @@ private string GetEdgeId(BoardNode a, BoardNode b)
     private Vector3 GetOffsetPosition(BoardNode node)
     {
         int playersOnNode = 0;
-        for (int i = 0; i < expectedPlayerCount; i++) // Используем expectedPlayerCount
+
+        for (int i = 0; i < expectedPlayerCount; i++)
         {
             if (players[i].currentNode == node && i != currentPlayerIndex)
                 playersOnNode++;
@@ -432,11 +417,10 @@ private string GetEdgeId(BoardNode a, BoardNode b)
         if (playersOnNode == 0) return node.transform.position;
 
         float angle = playersOnNode * 90f * Mathf.Deg2Rad;
-        float radius = 5f; 
+        float radius = 5f;
+
         Vector3 offset = new Vector3(Mathf.Cos(angle) * radius, 0, Mathf.Sin(angle) * radius);
 
         return node.transform.position + offset;
     }
-
-    #endregion
 }

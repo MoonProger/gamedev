@@ -71,8 +71,8 @@ public class PlayerController : MonoBehaviour
         switch (statName.ToLower())
         {
             case "money": money += amount; break;
-            case "experience": case "exp": experience += amount; break;
-            case "success": success += amount; break;
+            case "experience": experience += Mathf.Clamp(experience + amount, 0, 10); break;
+            case "success": success += Mathf.Clamp(success + amount, 0, 15); break;
 
             case "volounteer": volounteer = Mathf.Clamp(volounteer + amount, 0, 10); break;
             case "science":    science    = Mathf.Clamp(science + amount, 0, 10); break;
@@ -111,14 +111,14 @@ public class PlayerController : MonoBehaviour
 
     public void RandomizeStats()
 {
-    volounteer = Random.Range(1, 11);
-    science = Random.Range(1, 11);
-    art = Random.Range(1, 11);
-    media = Random.Range(1, 11);
-    business = Random.Range(1, 11);
-    sport = Random.Range(1, 11);
-    tourism = Random.Range(1, 11);
-    IT = Random.Range(1, 11);
+    volounteer = Random.Range(0, 7);
+    science = Random.Range(0, 7);
+    art = Random.Range(0, 7);
+    media = Random.Range(0, 7);
+    business = Random.Range(0, 7);
+    sport = Random.Range(0, 7);
+    tourism = Random.Range(0, 7);
+    IT = Random.Range(0, 7);
     
     Debug.Log($"{playerName}: Сферы рандомизированы.");
 }
