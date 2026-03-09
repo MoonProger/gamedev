@@ -9154,7 +9154,7 @@ MonoBehaviour:
   - {fileID: 1381107707}
   - {fileID: 2014260887}
   - {fileID: 908164819}
-  nodeStat: 8
+  nodeStat: 9
 --- !u!224 &1307739025 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1032126729532547655, guid: 38b411e446a05a741aa1f6de2653c3f8, type: 3}
