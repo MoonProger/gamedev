@@ -236,7 +236,7 @@ public class GameManager : MonoBehaviour
 
         if (currentNode.nodeStat == BoardNode.NodeType.None) return;
 
-        CardType cardType = CardType.Blue;
+        CardType cardType = CardType.Red;
 
         CardResult result = new CardResult();
 
@@ -275,9 +275,30 @@ public class GameManager : MonoBehaviour
                 break;
 
             case CardType.Red:
-                result.title = "RED CARD";
-                result.description = "Coming soon...";
-                break;
+    result.title = "RED CARD";
+    
+    Debug.Log($"{player.playerName} draws RED CARD on {currentNode.nodeStat}. Current level: {currentStatLevel}");
+    
+    if (currentStatLevel >= 5)
+    {
+        int bonusPoints = UnityEngine.Random.Range(1, 4); // Points on card (1-3)
+        player.ChangeStat(statName, bonusPoints);
+        player.ChangeStat("success", 1);
+        
+        result.description = $"Your {currentNode.nodeStat} level: {currentStatLevel} ≥ 5\n" +
+                           $"Gain {bonusPoints} {currentNode.nodeStat} points +1 Success!";
+        
+        Debug.Log($"{player.playerName} SUCCESS: +{bonusPoints} {statName}, +1 success. Total success: {player.GetStatValue("success")}");
+    }
+    else
+    {
+        player.ChangeStat("experience", 1);
+        result.description = $"Your {currentNode.nodeStat} level: {currentStatLevel} < 5\n" +
+                           $"Gain +1 Experience (need to level up past 5)";
+        
+        Debug.Log($"{player.playerName} NEEDS LEVEL: +1 experience. Total exp: {player.GetStatValue("experience")}");
+    }
+    break;
 
             case CardType.Green:
                 result.title = "GREEN CARD";
