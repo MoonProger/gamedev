@@ -32,7 +32,7 @@ public class UIManager : MonoBehaviour
     cardDesc.text = result.description;
     
     // Окно можно закрыть через пару секунд или по кнопке
-    StartCoroutine(HideCardAfterDelay(1f));
+    StartCoroutine(HideCardAfterDelay(3f));
 }
 
     private IEnumerator HideCardAfterDelay(float delay)

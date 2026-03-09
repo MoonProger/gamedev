@@ -236,7 +236,7 @@ public class GameManager : MonoBehaviour
 
         if (currentNode.nodeStat == BoardNode.NodeType.None) return;
 
-        CardType cardType = CardType.Red;
+        CardType cardType = CardType.Green;
 
         CardResult result = new CardResult();
 
@@ -300,14 +300,111 @@ public class GameManager : MonoBehaviour
     }
     break;
 
-            case CardType.Green:
-                result.title = "GREEN CARD";
-                result.description = "Coming soon...";
-                break;
+           case CardType.Green:
+    result.title = "GREEN CARD - JOINT PROJECT";
+    
+    string mainStatName = currentNode.nodeStat.ToString().ToLower(); // Сфера, на которой стоим
+    string partnerStatName = GetRandomOtherStat(mainStatName); // Случайная другая сфера
+    PlayerController mainPlayer = player;
+    
+    Debug.Log($"{mainPlayer.playerName} draws GREEN CARD: {mainStatName} + {partnerStatName}");
+    
+    // Считаем уровни всех игроков в mainStatName
+    int mainPlayerLevel = mainPlayer.GetStatValue(mainStatName);
+    List<(PlayerController p, int level)> otherPlayersLevels = new List<(PlayerController, int)>();
+    
+    for (int i = 0; i < expectedPlayerCount; i++)
+    {
+        if (players[i] != mainPlayer)
+        {
+            int otherLevel = players[i].GetStatValue(mainStatName);
+            otherPlayersLevels.Add((players[i], otherLevel));
+            Debug.Log($"  {players[i].playerName} {mainStatName}: {otherLevel}");
+        }
+    }
+    
+    // Сортируем по убыванию уровня
+    otherPlayersLevels.Sort((a, b) => b.level.CompareTo(a.level));
+    
+    // Находим максимальный уровень среди других
+    int maxOtherLevel = otherPlayersLevels.Count > 0 ? otherPlayersLevels[0].level : 0;
+    
+    if (mainPlayerLevel > maxOtherLevel)
+    {
+        // 3) Делаем сами, забираем ВСЕ бонусы
+        int mainBonus = UnityEngine.Random.Range(2, 5); // Больше бонусов за лидерство
+        int partnerBonus = UnityEngine.Random.Range(1, 3);
+        
+        mainPlayer.ChangeStat(mainStatName, mainBonus);
+        mainPlayer.ChangeStat(partnerStatName, partnerBonus);
+        
+        result.description = $"YOUR {mainStatName.ToUpper()} level {mainPlayerLevel} > others!\n" +
+                           $"Solo project: +{mainBonus} {mainStatName}, +{partnerBonus} {partnerStatName}";
+        
+        Debug.Log($"{mainPlayer.playerName} SOLO WIN: +{mainBonus} {mainStatName}, +{partnerBonus} {partnerStatName}");
+    }
+    else if (mainPlayerLevel == maxOtherLevel && otherPlayersLevels.Count > 0)
+    {
+        // 4) Равенство с лидерами - выбор (пока автоматизируем: выбираем самого сильного)
+        var leader = otherPlayersLevels[0].p;
+        int leaderBonus = UnityEngine.Random.Range(1, 3);
+        int partnerBonus = UnityEngine.Random.Range(1, 3);
+        
+        // Автоматический выбор: делаем с лидером (можно потом UI)
+        mainPlayer.ChangeStat(partnerStatName, partnerBonus);
+        leader.ChangeStat(mainStatName, leaderBonus);
+        
+        result.description = $"TIE with {leader.playerName}! Joint project.\n" +
+                           $"You get +{partnerBonus} {partnerStatName}\n" +
+                           $"{leader.playerName} gets +{leaderBonus} {mainStatName}";
+        
+        Debug.Log($"{mainPlayer.playerName} & {leader.playerName} TIE PROJECT: You +{partnerBonus} {partnerStatName}, They +{leaderBonus} {mainStatName}");
+    }
+    else
+    {
+        // 5) Наш уровень меньше - ищем лидера и делимся
+        if (otherPlayersLevels.Count > 0)
+        {
+            var leader = otherPlayersLevels[0].p; // Самый сильный
+            int leaderBonus = UnityEngine.Random.Range(2, 4);
+            int partnerBonus = UnityEngine.Random.Range(1, 2);
+            
+            mainPlayer.ChangeStat(partnerStatName, partnerBonus);
+            leader.ChangeStat(mainStatName, leaderBonus);
+            
+            result.description = $"Need partner! With {leader.playerName}.\n" +
+                               $"You get +{partnerBonus} {partnerStatName}\n" +
+                               $"{leader.playerName} gets +{leaderBonus} {mainStatName}";
+            
+            Debug.Log($"{mainPlayer.playerName} NEEDS HELP from {leader.playerName}: You +{partnerBonus} {partnerStatName}, They +{leaderBonus} {mainStatName}");
+        }
+        else
+        {
+            // Никого нет - просто бонус партнёра
+            int partnerBonus = UnityEngine.Random.Range(1, 3);
+            mainPlayer.ChangeStat(partnerStatName, partnerBonus);
+            result.description = $"Solo +{partnerBonus} {partnerStatName} (no competition)";
+        }
+    }
+    break;
         }
 
         if (uiManager != null) uiManager.ShowCard(result);
     }
+
+
+    private string GetRandomOtherStat(string excludeStat)
+{
+    string[] allStats = { "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
+    List<string> available = new List<string>();
+    
+    foreach (string stat in allStats)
+    {
+        if (stat != excludeStat) available.Add(stat);
+    }
+    
+    return available[UnityEngine.Random.Range(0, available.Count)];
+}
 
     private IEnumerator JumpToNode(PlayerController p, Vector3 targetPos)
     {
