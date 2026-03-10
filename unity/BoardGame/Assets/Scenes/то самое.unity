@@ -445,6 +445,8 @@ MonoBehaviour:
   sport: 5
   tourism: 5
   IT: 5
+  appliedGrants: []
+  earnedGrants: []
 --- !u!82 &44430654
 AudioSource:
   m_ObjectHideFlags: 0
@@ -1261,6 +1263,8 @@ MonoBehaviour:
   sport: 5
   tourism: 5
   IT: 5
+  appliedGrants: []
+  earnedGrants: []
 --- !u!82 &143500296
 AudioSource:
   m_ObjectHideFlags: 0
@@ -4622,6 +4626,8 @@ MonoBehaviour:
   sport: 5
   tourism: 5
   IT: 5
+  appliedGrants: []
+  earnedGrants: []
 --- !u!82 &647778489
 AudioSource:
   m_ObjectHideFlags: 0
@@ -7607,6 +7613,8 @@ MonoBehaviour:
   sport: 5
   tourism: 5
   IT: 5
+  appliedGrants: []
+  earnedGrants: []
 --- !u!82 &1009758943
 AudioSource:
   m_ObjectHideFlags: 0
@@ -9154,7 +9162,7 @@ MonoBehaviour:
   - {fileID: 1381107707}
   - {fileID: 2014260887}
   - {fileID: 908164819}
-  nodeStat: 9
+  nodeStat: 8
 --- !u!224 &1307739025 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1032126729532547655, guid: 38b411e446a05a741aa1f6de2653c3f8, type: 3}
@@ -10596,7 +10604,6 @@ MonoBehaviour:
   - {fileID: 44430653}
   - {fileID: 647778488}
   startNode: {fileID: 1816691552}
-  moneyNode: {fileID: 1306620655}
   dice: {fileID: 1514331007}
   uiManager: {fileID: 206523208}
   jumpHeight: 5
@@ -11401,7 +11408,7 @@ MonoBehaviour:
   - {fileID: 1310525199}
   - {fileID: 505559824}
   - {fileID: 1523124202}
-  nodeStat: 8
+  nodeStat: 9
 --- !u!1 &1594412407
 GameObject:
   m_ObjectHideFlags: 0
@@ -12724,7 +12731,7 @@ MonoBehaviour:
   - {fileID: 1775953208}
   - {fileID: 1706295862}
   - {fileID: 909475688}
-  nodeStat: 8
+  nodeStat: 10
 --- !u!1 &1843941728
 GameObject:
   m_ObjectHideFlags: 0
@@ -13544,7 +13551,7 @@ MonoBehaviour:
   - {fileID: 1381107707}
   - {fileID: 908164819}
   - {fileID: 1306620655}
-  nodeStat: 8
+  nodeStat: 11
 --- !u!1 &2015055616 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3494842423371251762, guid: d1bac5103178d6743a93b86d11c753f9, type: 3}

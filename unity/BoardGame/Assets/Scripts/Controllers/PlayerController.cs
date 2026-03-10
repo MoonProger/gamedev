@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class PlayerController : MonoBehaviour
 {
@@ -21,6 +22,10 @@ public class PlayerController : MonoBehaviour
     public int sport = 5;
     public int tourism = 5;
     public int IT = 5;
+
+    [Header("Grants")]
+    public List<string> appliedGrants = new List<string>();  // сферы, на которые уже подавал
+    public List<string> earnedGrants = new List<string>();   // полученные гранты
 
     private Renderer[] renderers;
     private AudioSource audioSource;

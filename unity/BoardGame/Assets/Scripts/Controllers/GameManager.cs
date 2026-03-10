@@ -173,11 +173,42 @@ public class GameManager : MonoBehaviour
                 Debug.Log($"{currentPlayer.playerName} gained +1 money");
                 break;
             case BoardNode.NodeType.Travel:
-                Debug.Log($"{currentPlayer.playerName} is travelling!");
-                break;
+    if (currentPlayer.GetStatValue("money") > 0)
+    {
+        currentPlayer.ChangeStat("money", -1);
+        Debug.Log($"{currentPlayer.playerName} paid 1 money for travel");
+        yield return StartCoroutine(ChooseTravelDestination(currentPlayer));
+    }
+    else
+    {
+        Debug.Log($"{currentPlayer.playerName} has no money, staying on travel node");
+        CardResult noMoneyResult = new CardResult
+        {
+            title = "TRAVEL — NO FUNDS",
+            description = "Not enough money to travel. Stay here."
+        };
+        uiManager?.ShowCard(noMoneyResult);
+    }
+    break;
             case BoardNode.NodeType.Grant:
-                Debug.Log($"{currentPlayer.playerName} got a grant!");
-                break;
+    // Находим сферы где у игрока 10, и он ещё не подавал
+    List<string> availableGrants = new List<string>();
+    foreach (string stat in allStats)
+        if (currentPlayer.GetStatValue(stat) >= 10 && !currentPlayer.appliedGrants.Contains(stat))
+            availableGrants.Add(stat);
+
+    if (availableGrants.Count == 0)
+    {
+        uiManager?.ShowCard(new CardResult
+        {
+            title = "GRANT — NOT AVAILABLE",
+            description = "You need level 10 in at least one sphere\nto apply for a grant."
+        });
+        break;
+    }
+
+    yield return StartCoroutine(TryApplyGrant(currentPlayer, availableGrants));
+    break;
             case BoardNode.NodeType.Project:
                 Debug.Log($"{currentPlayer.playerName} started a project!");
                 break;
@@ -407,4 +438,116 @@ public class GameManager : MonoBehaviour
         float angle = count * 90f * Mathf.Deg2Rad;
         return node.transform.position + new Vector3(Mathf.Cos(angle) * 5f, 0, Mathf.Sin(angle) * 5f);
     }
+    private IEnumerator ChooseTravelDestination(PlayerController player)
+{
+    Debug.Log("Choose any node to travel to...");
+
+    // Подсвечиваем все ноды кроме текущей
+    List<BoardNode> allNodes = new List<BoardNode>(FindObjectsOfType<BoardNode>());
+    allNodes.Remove(player.currentNode);
+    foreach (var node in allNodes) node.SetHighlight(true);
+
+    // Ждём клика игрока
+    BoardNode chosen = null;
+    while (chosen == null)
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out RaycastHit hit))
+            {
+                BoardNode target = hit.collider.GetComponent<BoardNode>();
+                if (target != null && allNodes.Contains(target))
+                    chosen = target;
+            }
+        }
+        yield return null;
+    }
+
+    foreach (var node in allNodes) node.SetHighlight(false);
+
+    // Прыгаем напрямую
+    yield return StartCoroutine(JumpToNode(player, GetOffsetPosition(chosen)));
+    player.currentNode = chosen;
+    Debug.Log($"{player.playerName} travelled to {chosen.nodeName}");
+
+    PullTravelCard(player);
+}
+
+private void PullTravelCard(PlayerController player)
+{
+    CardResult result = new CardResult
+    {
+        title = "✈️ TRAVEL CARD"
+    };
+
+    string[] possibleStats = { "money", "experience", "success", "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
+
+    // Перемешиваем и берём 2-3 случайных стата
+    int bonusCount = UnityEngine.Random.Range(2, 4);
+    List<string> pool = new List<string>(possibleStats);
+    List<string> chosen = new List<string>();
+
+    while (chosen.Count < bonusCount)
+    {
+        int idx = UnityEngine.Random.Range(0, pool.Count);
+        chosen.Add(pool[idx]);
+        pool.RemoveAt(idx);
+    }
+
+    System.Text.StringBuilder desc = new System.Text.StringBuilder();
+    foreach (string stat in chosen)
+    {
+        int amount = UnityEngine.Random.Range(1, 3);
+        player.ChangeStat(stat, amount);
+        desc.AppendLine($"+{amount} {stat}");
+    }
+
+    result.description = desc.ToString().Trim();
+    Debug.Log($"{player.playerName} travel bonuses: {result.description}");
+
+    uiManager?.ShowCard(result);
+}
+private IEnumerator TryApplyGrant(PlayerController player, List<string> availableStats)
+{
+    // TODO: заменить на UI-выбор сферы
+    string chosenStat = availableStats[0];
+
+    player.appliedGrants.Add(chosenStat);
+
+    int roll = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
+    int expLevel = player.GetStatValue("experience");
+
+    Debug.Log($"{player.playerName} applies for grant in {chosenStat}. Roll: {roll}, Exp: {expLevel}");
+
+    yield return new WaitForSeconds(0.3f);
+
+    if (expLevel > roll)
+    {
+        player.earnedGrants.Add(chosenStat);
+        player.ChangeStat("success", 1);
+
+        uiManager?.ShowCard(new CardResult
+        {
+            title = "GRANT APPROVED! 🎉",
+            description = $"Sphere: {chosenStat}\n" +
+                          $"Roll: {roll} < Your exp: {expLevel}\n" +
+                          $"Grant added to your profile! +1 Success"
+        });
+
+        Debug.Log($"{player.playerName} earned grant in {chosenStat}. Total grants: {player.earnedGrants.Count}");
+    }
+    else
+    {
+        uiManager?.ShowCard(new CardResult
+        {
+            title = "GRANT REJECTED",
+            description = $"Sphere: {chosenStat}\n" +
+                          $"Roll: {roll} >= Your exp: {expLevel}\n" +
+                          $"Not enough experience."
+        });
+
+        Debug.Log($"{player.playerName} grant rejected. Roll {roll} >= exp {expLevel}");
+    }
+}
 }
