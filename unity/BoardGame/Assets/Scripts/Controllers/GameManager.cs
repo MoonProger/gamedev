@@ -11,7 +11,10 @@ public class CardResult
 public enum CardType { Surprise, Yellow, Blue, Red, Green }
 
 public class GameManager : MonoBehaviour
-{
+{   
+    [Header("UI")]
+    public GreenCardUI greenCardUI;
+
     [Header("Setup")]
     public List<PlayerController> players;
     public BoardNode startNode;
@@ -215,7 +218,7 @@ public class GameManager : MonoBehaviour
             case BoardNode.NodeType.None:
                 break;
             default:
-                PullCard(currentPlayer);
+                yield return StartCoroutine(PullCardCoroutine(currentPlayer));
                 break;
         }
 
@@ -226,12 +229,13 @@ public class GameManager : MonoBehaviour
         UpdatePlayersVisuals();
     }
 
-    private void PullCard(PlayerController player)
+    private IEnumerator PullCardCoroutine(PlayerController player)
     {
         BoardNode node = player.currentNode;
-        if (node.nodeStat == BoardNode.NodeType.None) return;
+        if (node.nodeStat == BoardNode.NodeType.None) yield break;
 
-        CardType cardType = (CardType)UnityEngine.Random.Range(0, System.Enum.GetValues(typeof(CardType)).Length);
+        // CardType cardType = (CardType)UnityEngine.Random.Range(0, System.Enum.GetValues(typeof(CardType)).Length);
+        CardType cardType = CardType.Green;
         CardResult result = new CardResult();
 
         string statName = node.nodeStat.ToString().ToLower();
@@ -284,49 +288,53 @@ public class GameManager : MonoBehaviour
                 break;
 
             case CardType.Green:
-                result.title = "GREEN CARD — JOINT PROJECT";
-                string mainStat = statName;
-                string partnerStat = GetRandomOtherStat(mainStat);
-                int myLevel = player.GetStatValue(mainStat);
+    result.title = "GREEN CARD — JOINT PROJECT";
+    string mainStat = statName;
+    int myLevel = player.GetStatValue(mainStat);
 
-                var others = new List<(PlayerController p, int level)>();
-                for (int i = 0; i < expectedPlayerCount; i++)
-                    if (players[i] != player)
-                        others.Add((players[i], players[i].GetStatValue(mainStat)));
+    var others = new List<(PlayerController p, int level)>();
+    for (int i = 0; i < expectedPlayerCount; i++)
+        if (players[i] != player)
+            others.Add((players[i], players[i].GetStatValue(mainStat)));
+    others.Sort((a, b) => b.level.CompareTo(a.level));
 
-                others.Sort((a, b) => b.level.CompareTo(a.level));
-                int maxLevel = others.Count > 0 ? others[0].level : 0;
+    int maxLevel = others.Count > 0 ? others[0].level : 0;
 
-                if (myLevel > maxLevel)
-                {
-                    int mb = UnityEngine.Random.Range(2, 5), pb = UnityEngine.Random.Range(1, 3);
-                    player.ChangeStat(mainStat, mb);
-                    player.ChangeStat(partnerStat, pb);
-                    result.description = $"Solo project! +{mb} {mainStat}, +{pb} {partnerStat}";
-                }
-                else if (myLevel == maxLevel && others.Count > 0)
-                {
-                    var leader = others[0].p;
-                    int lb = UnityEngine.Random.Range(1, 3), pb = UnityEngine.Random.Range(1, 3);
-                    player.ChangeStat(partnerStat, pb);
-                    leader.ChangeStat(mainStat, lb);
-                    result.description = $"Tie with {leader.playerName}!\nYou +{pb} {partnerStat}, {leader.playerName} +{lb} {mainStat}";
-                }
-                else if (others.Count > 0)
-                {
-                    var leader = others[0].p;
-                    int lb = UnityEngine.Random.Range(2, 4), pb = UnityEngine.Random.Range(1, 2);
-                    player.ChangeStat(partnerStat, pb);
-                    leader.ChangeStat(mainStat, lb);
-                    result.description = $"Partner: {leader.playerName}\nYou +{pb} {partnerStat}, {leader.playerName} +{lb} {mainStat}";
-                }
-                else
-                {
-                    int pb = UnityEngine.Random.Range(1, 3);
-                    player.ChangeStat(partnerStat, pb);
-                    result.description = $"Solo +{pb} {partnerStat}";
-                }
-                break;
+    if (myLevel > maxLevel)
+    {
+        // Соло — партнёр не нужен
+        int mb = Random.Range(2, 5), pb = Random.Range(1, 3);
+        string partnerStat = GetRandomOtherStat(mainStat);
+        player.ChangeStat(mainStat, mb);
+        player.ChangeStat(partnerStat, pb);
+       result.description = $"Solo project! +{mb} {mainStat}, +{pb} {partnerStat}";
+    }
+    else
+    {
+        // Собираем всех кандидатов с максимальным уровнем
+        var candidates = others.FindAll(o => o.level >= myLevel)
+                           .ConvertAll(o => o.p);
+
+        PlayerController chosenPartner = null;
+
+        if (candidates.Count == 1)
+        {
+            // Партнёр один — выбирать не нужно
+            chosenPartner = candidates[0];
+        }
+        else
+        {
+            // Несколько кандидатов — показываем UI выбора
+            yield return greenCardUI.ShowAndWait(mainStat, candidates, p => chosenPartner = p);
+        }
+
+        int lb = Random.Range(2, 4), pb = Random.Range(1, 2);
+        string partnerStat2 = GetRandomOtherStat(mainStat);
+        player.ChangeStat(partnerStat2, pb);
+        chosenPartner.ChangeStat(mainStat, lb);
+        result.description = $"Partner: {chosenPartner.playerName}\nYou +{pb} {partnerStat2}, {chosenPartner.playerName} +{lb} {mainStat}";
+    }
+        break;
         }
 
         uiManager?.ShowCard(result);
@@ -510,7 +518,6 @@ private void PullTravelCard(PlayerController player)
 }
 private IEnumerator TryApplyGrant(PlayerController player, List<string> availableStats)
 {
-    // TODO: заменить на UI-выбор сферы
     string chosenStat = availableStats[0];
 
     player.appliedGrants.Add(chosenStat);
