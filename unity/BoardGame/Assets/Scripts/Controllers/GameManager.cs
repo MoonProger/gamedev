@@ -213,8 +213,8 @@ public class GameManager : MonoBehaviour
     yield return StartCoroutine(TryApplyGrant(currentPlayer, availableGrants));
     break;
             case BoardNode.NodeType.Project:
-                Debug.Log($"{currentPlayer.playerName} started a project!");
-                break;
+            yield return StartCoroutine(TryDoProject(currentPlayer));
+            break;
             case BoardNode.NodeType.None:
                 break;
             default:
@@ -557,4 +557,81 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
         Debug.Log($"{player.playerName} grant rejected. Roll {roll} >= exp {expLevel}");
     }
 }
+private IEnumerator TryDoProject(PlayerController player)
+{
+    // Собираем сферы где уровень 10 и проект ещё не сделан
+    List<string> availableSpheres = new List<string>();
+    foreach (string stat in allStats)
+        if (player.GetStatValue(stat) >= 10 && !player.completedProjects.Contains(stat))
+            availableSpheres.Add(stat);
+
+    // Условие 1: нет прокачанных сфер
+    if (availableSpheres.Count == 0)
+    {
+        uiManager?.ShowCard(new CardResult
+        {
+            title = "PROJECT — NOT AVAILABLE",
+            description = "You need level 10 in at least one sphere\nto start a project."
+        });
+        yield break;
+    }
+
+    // Условие 2: нет гранта и нет 5 монет
+    bool hasGrant = player.earnedGrants.Count > 0;
+    bool hasMoney = player.GetStatValue("money") >= 5;
+
+    if (!hasGrant && !hasMoney)
+    {
+        uiManager?.ShowCard(new CardResult
+        {
+            title = "PROJECT — NO FUNDS",
+            description = "You need a grant or 5 coins\nto start a project."
+        });
+        yield break;
+    }
+
+    // Выбираем сферу — если одна, берём автоматически, иначе UI
+    string chosenSphere = null;
+
+    if (availableSpheres.Count == 1)
+    {
+        chosenSphere = availableSpheres[0];
+    }
+    else
+    {
+        // TODO: покажи UI выбора сферы (аналогично GreenCardUI)
+        chosenSphere = availableSpheres[0]; // временный fallback
+    }
+
+    // Списываем ресурс — грант приоритетнее
+    string paymentMethod;
+    if (hasGrant)
+    {
+        // Берём первый грант который совпадает со сферой, иначе любой
+        string grantToUse = player.earnedGrants.Contains(chosenSphere)
+            ? chosenSphere
+            : player.earnedGrants[0];
+        player.earnedGrants.Remove(grantToUse);
+        paymentMethod = $"grant ({grantToUse})";
+    }
+    else
+    {
+        player.ChangeStat("money", -5);
+        paymentMethod = "5 coins";
+    }
+
+    player.completedProjects.Add(chosenSphere);
+    player.ChangeStat("success", 5);
+
+    Debug.Log($"{player.playerName} completed project in {chosenSphere} using {paymentMethod}. +5 Success");
+
+    uiManager?.ShowCard(new CardResult
+    {
+        title = "PROJECT COMPLETE! 🏆",
+        description = $"Sphere: {chosenSphere.ToUpper()}\n" +
+                      $"Paid: {paymentMethod}\n" +
+                      $"+5 Success"
+    });
+}
+
 }

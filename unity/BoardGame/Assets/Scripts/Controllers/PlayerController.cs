@@ -26,6 +26,7 @@ public class PlayerController : MonoBehaviour
     [Header("Grants")]
     public List<string> appliedGrants = new List<string>();  // сферы, на которые уже подавал
     public List<string> earnedGrants = new List<string>();   // полученные гранты
+    public List<string> completedProjects = new List<string>();
 
     private Renderer[] renderers;
     private AudioSource audioSource;
