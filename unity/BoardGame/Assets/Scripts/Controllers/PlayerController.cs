@@ -73,28 +73,49 @@ public class PlayerController : MonoBehaviour
     #region Stats Logic
 
     public void ChangeStat(string statName, int amount)
+{
+    switch (statName.ToLower())
     {
-        switch (statName.ToLower())
-        {
-            case "money": money += amount; break;
-            case "experience": experience += Mathf.Clamp(experience + amount, 0, 10); break;
-            case "success": success += Mathf.Clamp(success + amount, 0, 15); break;
+        case "money": money += amount; break;
+        case "experience": experience = Mathf.Clamp(experience + amount, 0, 10); break;
+        case "success": success = Mathf.Clamp(success + amount, 0, 12); break;
 
-            case "volounteer": volounteer = Mathf.Clamp(volounteer + amount, 0, 10); break;
-            case "science":    science    = Mathf.Clamp(science + amount, 0, 10); break;
-            case "art":        art        = Mathf.Clamp(art + amount, 0, 10); break;
-            case "media":      media      = Mathf.Clamp(media + amount, 0, 10); break;
-            case "business":   business   = Mathf.Clamp(business + amount, 0, 10); break;
-            case "sport":      sport      = Mathf.Clamp(sport + amount, 0, 10); break;
-            case "tourism":    tourism    = Mathf.Clamp(tourism + amount, 0, 10); break;
-            case "it":         IT         = Mathf.Clamp(IT + amount, 0, 10); break;
+        case "volounteer": CheckMilestone(ref volounteer, amount); break;
+        case "science":    CheckMilestone(ref science,    amount); break;
+        case "art":        CheckMilestone(ref art,        amount); break;
+        case "media":      CheckMilestone(ref media,      amount); break;
+        case "business":   CheckMilestone(ref business,   amount); break;
+        case "sport":      CheckMilestone(ref sport,      amount); break;
+        case "tourism":    CheckMilestone(ref tourism,    amount); break;
+        case "it":         CheckMilestone(ref IT,         amount); break;
 
-            default:
-                Debug.LogWarning($"Статистика {statName} не найдена!");
-                break;
-        }
-        Debug.Log($"{playerName}: {statName} {amount}. Текущее: {GetStatValue(statName)}");
+        default:
+            Debug.LogWarning($"Статистика {statName} не найдена!");
+            break;
     }
+    Debug.Log($"{playerName}: {statName} {amount}. Текущее: {GetStatValue(statName)}");
+}
+
+private void CheckMilestone(ref int stat, int amount)
+{
+    int before = stat;
+    stat = Mathf.Clamp(stat + amount, 0, 10);
+    int after = stat;
+
+    // Пересёк порог 5 снизу вверх
+    if (before < 5 && after >= 5)
+    {
+        success = Mathf.Clamp(success + 2, 0, 15);
+        Debug.Log($"{playerName}: достиг 5 в сфере — +2 Success (итого {success})");
+    }
+
+    // Пересёк порог 10 снизу вверх
+    if (before < 10 && after >= 10)
+    {
+        success = Mathf.Clamp(success + 1, 0, 15);
+        Debug.Log($"{playerName}: достиг 10 в сфере — +1 Success (итого {success})");
+    }
+}
 
     public int GetStatValue(string statName)
     {

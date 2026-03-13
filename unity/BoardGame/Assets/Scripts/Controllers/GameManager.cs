@@ -12,6 +12,11 @@ public enum CardType { Surprise, Yellow, Blue, Red, Green }
 
 public class GameManager : MonoBehaviour
 {   
+
+    [Header("Audio")]
+    public AudioClip victorySound;
+    private AudioSource audioSource;
+
     [Header("UI")]
     public GreenCardUI greenCardUI;
 
@@ -38,7 +43,12 @@ public class GameManager : MonoBehaviour
 
     private static readonly string[] allStats = { "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
 
-    private void Awake() => dice.OnDiceRolled += RegisterRoll;
+    private void Awake()
+{
+    dice.OnDiceRolled += RegisterRoll;
+    audioSource = GetComponent<AudioSource>();
+    if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
+}
     private void OnDestroy() => dice.OnDiceRolled -= RegisterRoll;
     private void Update() => HandleSelectionInput();
 
@@ -222,6 +232,13 @@ public class GameManager : MonoBehaviour
                 break;
         }
 
+        CheckVictory(currentPlayer);
+        if (isMoving && hasRolledThisTurn && currentPlayer.success >= 12)
+{
+    table.UpdateTablePositions();
+    isMoving = false;
+    yield break;
+}
         table.UpdateTablePositions();
         isMoving = false;
         hasRolledThisTurn = false;
@@ -234,8 +251,7 @@ public class GameManager : MonoBehaviour
         BoardNode node = player.currentNode;
         if (node.nodeStat == BoardNode.NodeType.None) yield break;
 
-        // CardType cardType = (CardType)UnityEngine.Random.Range(0, System.Enum.GetValues(typeof(CardType)).Length);
-        CardType cardType = CardType.Green;
+        CardType cardType = (CardType)UnityEngine.Random.Range(0, System.Enum.GetValues(typeof(CardType)).Length);
         CardResult result = new CardResult();
 
         string statName = node.nodeStat.ToString().ToLower();
@@ -632,6 +648,26 @@ private IEnumerator TryDoProject(PlayerController player)
                       $"Paid: {paymentMethod}\n" +
                       $"+5 Success"
     });
+}
+
+private void CheckVictory(PlayerController player)
+{
+    if (player.success < 12) return;
+
+    Debug.Log($"{player.playerName} WON with {player.success} success points!");
+
+    if (victorySound != null)
+        audioSource.PlayOneShot(victorySound);
+
+    uiManager?.ShowCard(new CardResult
+    {
+        title = "🏆 VICTORY!",
+        description = $"{player.playerName} wins!\nSuccess: {player.success}"
+    });
+
+    // Останавливаем игру
+    isMoving = true;
+    hasRolledThisTurn = true;
 }
 
 }
