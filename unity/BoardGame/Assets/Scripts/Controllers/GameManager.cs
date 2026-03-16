@@ -123,9 +123,29 @@ public class GameManager : MonoBehaviour
     {
         if (isMoving) { Debug.Log("Cannot roll while token is moving"); return; }
         if (hasRolledThisTurn) { Debug.Log("Already rolled this turn. Choose a destination."); return; }
+         // Проверка пропуска хода
+    if (players[currentPlayerIndex].skipTurns > 0)
+    {
+        players[currentPlayerIndex].skipTurns--;
+        Debug.Log($"{players[currentPlayerIndex].playerName} skips turn ({players[currentPlayerIndex].skipTurns} left)");
+        uiManager?.ShowCard(new CardResult
+        {
+            title = "TURN SKIPPED",
+            description = $"You must skip this turn."
+        });
+        hasRolledThisTurn = true; // чтобы конец хода отработал
+        StartCoroutine(EndTurnAfterDelay());
+        return;
+    }
         dice.RollDice();
     }
-
+private IEnumerator EndTurnAfterDelay()
+{
+    yield return new WaitForSeconds(2f);
+    hasRolledThisTurn = false;
+    currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
+    UpdatePlayersVisuals();
+}
     private void RegisterRoll(int result)
     {
         lastRoll = result;
@@ -246,113 +266,125 @@ public class GameManager : MonoBehaviour
         UpdatePlayersVisuals();
     }
 
-    private IEnumerator PullCardCoroutine(PlayerController player)
+private IEnumerator PullCardCoroutine(PlayerController player)
+{
+    BoardNode node = player.currentNode;
+    if (node.nodeStat == BoardNode.NodeType.None) yield break;
+
+    string statName = node.nodeStat.ToString().ToLower();
+    int statLevel = player.GetStatValue(statName);
+    int expLevel = player.GetStatValue("experience");
+
+    // Тянем карточку по сфере
+    CardData card = CardDatabase.GetRandomBySphere(statName);
+    
+string colorPrefix = card.cardType switch
+{
+    CardType.Yellow   => "[YELLOW] ",
+    CardType.Blue     => "[BLUE] ",
+    CardType.Red      => "[RED] ",
+    CardType.Green    => "[GREEN] ",
+    CardType.Surprise => "[SURPRISE] ",
+    _ => ""
+};
+
+CardResult result = new CardResult
+{
+    title = colorPrefix + card.title,
+    description = card.description
+};
+
+    switch (card.cardType)
     {
-        BoardNode node = player.currentNode;
-        if (node.nodeStat == BoardNode.NodeType.None) yield break;
+        case CardType.Surprise:
+            foreach (var eff in card.effects)
+            {
+                if (eff.effect == CardEffect.GainMoney)   player.ChangeStat("money", eff.amount);
+                if (eff.effect == CardEffect.LoseMoney)   player.ChangeStat("money", -eff.amount);
+                if (eff.effect == CardEffect.SkipNextTurn) player.skipTurns += eff.amount;
+                if (eff.effect == CardEffect.GainSuccess) player.ChangeStat("success", eff.amount);
+            }
+            break;
 
-        CardType cardType = (CardType)UnityEngine.Random.Range(0, System.Enum.GetValues(typeof(CardType)).Length);
-        CardResult result = new CardResult();
+        case CardType.Yellow:
+            foreach (var eff in card.effects)
+            {
+                string t = string.IsNullOrEmpty(eff.statName) ? statName : eff.statName;
+                if (eff.effect == CardEffect.GainStat)     player.ChangeStat(t, eff.amount);
+                if (eff.effect == CardEffect.LoseStat)     player.ChangeStat(t, -eff.amount);
+                if (eff.effect == CardEffect.SkipNextTurn) player.skipTurns += eff.amount;
+            }
+            break;
 
-        string statName = node.nodeStat.ToString().ToLower();
-        int statLevel = player.GetStatValue(statName);
-        int expLevel = player.GetStatValue("experience");
-
-        switch (cardType)
-        {
-            case CardType.Surprise:
-                result.title = "SURPRISE";
-                result.description = "Something unusual happened...";
-                break;
-
-            case CardType.Yellow:
+        case CardType.Blue:
+            int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
+            if (expLevel > diceSum)
+            {
                 player.ChangeStat(statName, 1);
-                result.title = "YELLOW CARD";
-                result.description = $"Regular training! {node.nodeStat} +1";
-                break;
+                result.description += $"\nRoll: {diceSum} < Exp: {expLevel} — {statName} +1";
+            }
+            else
+            {
+                player.ChangeStat("experience", 1);
+                result.description += $"\nRoll: {diceSum} >= Exp: {expLevel} — +1 Experience";
+            }
+            break;
 
-            case CardType.Blue:
-                int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
-                if (expLevel > diceSum)
-                {
-                    player.ChangeStat(statName, 1);
-                    result.title = "BLUE CARD — SUCCESS";
-                    result.description = $"Roll: {diceSum} < Your exp: {expLevel}\n{node.nodeStat} +1";
-                }
+        case CardType.Red:
+            if (statLevel >= 5)
+            {
+                int bonus = UnityEngine.Random.Range(1, 4);
+                player.ChangeStat(statName, bonus);
+                player.ChangeStat("success", 1);
+                result.description += $"\n{statName} lvl {statLevel} >= 5 — +{bonus} {statName}, +1 Success";
+            }
+            else
+            {
+                player.ChangeStat("experience", 1);
+                result.description += $"\n{statName} lvl {statLevel} < 5 — +1 Experience";
+            }
+            break;
+
+        case CardType.Green:
+            int myLevel = player.GetStatValue(statName);
+            var others = new List<(PlayerController p, int level)>();
+            for (int i = 0; i < expectedPlayerCount; i++)
+                if (players[i] != player)
+                    others.Add((players[i], players[i].GetStatValue(statName)));
+            others.Sort((a, b) => b.level.CompareTo(a.level));
+            int maxLevel = others.Count > 0 ? others[0].level : 0;
+
+            // Бонусы берём из базы карточек
+            CardEffectData leaderEff  = card.effects.Count > 0 ? card.effects[0] : null;
+            CardEffectData partnerEff = card.effects.Count > 1 ? card.effects[1] : null;
+
+            int leaderBonus  = leaderEff  != null ? leaderEff.amount  : Random.Range(2, 5);
+            int partnerBonus = partnerEff != null ? partnerEff.amount : Random.Range(1, 3);
+            string partnerStatName = partnerEff != null && !string.IsNullOrEmpty(partnerEff.statName)
+                ? partnerEff.statName
+                : GetRandomOtherStat(statName);
+
+            if (myLevel > maxLevel)
+            {
+                player.ChangeStat(statName, leaderBonus);
+                player.ChangeStat(partnerStatName, partnerBonus);
+                result.description += $"\nSolo! +{leaderBonus} {statName}, +{partnerBonus} {partnerStatName}";
+            }
+            else
+            {
+                var candidates = others.FindAll(o => o.level >= myLevel).ConvertAll(o => o.p);
+                PlayerController chosenPartner = null;
+                if (candidates.Count == 1)
+                    chosenPartner = candidates[0];
                 else
-                {
-                    player.ChangeStat("experience", 1);
-                    result.title = "BLUE CARD — EXPERIENCE";
-                    result.description = $"Roll: {diceSum} >= Your exp: {expLevel}\n+1 Experience";
-                }
-                break;
+                    yield return greenCardUI.ShowAndWait(statName, candidates, p => chosenPartner = p);
 
-            case CardType.Red:
-                result.title = "RED CARD";
-                if (statLevel >= 5)
-                {
-                    int bonus = UnityEngine.Random.Range(1, 4);
-                    player.ChangeStat(statName, bonus);
-                    player.ChangeStat("success", 1);
-                    result.description = $"{node.nodeStat} level {statLevel} >= 5\n+{bonus} {node.nodeStat}, +1 Success";
-                }
-                else
-                {
-                    player.ChangeStat("experience", 1);
-                    result.description = $"{node.nodeStat} level {statLevel} < 5\n+1 Experience";
-                }
-                break;
-
-            case CardType.Green:
-    result.title = "GREEN CARD — JOINT PROJECT";
-    string mainStat = statName;
-    int myLevel = player.GetStatValue(mainStat);
-
-    var others = new List<(PlayerController p, int level)>();
-    for (int i = 0; i < expectedPlayerCount; i++)
-        if (players[i] != player)
-            others.Add((players[i], players[i].GetStatValue(mainStat)));
-    others.Sort((a, b) => b.level.CompareTo(a.level));
-
-    int maxLevel = others.Count > 0 ? others[0].level : 0;
-
-    if (myLevel > maxLevel)
-    {
-        // Соло — партнёр не нужен
-        int mb = Random.Range(2, 5), pb = Random.Range(1, 3);
-        string partnerStat = GetRandomOtherStat(mainStat);
-        player.ChangeStat(mainStat, mb);
-        player.ChangeStat(partnerStat, pb);
-       result.description = $"Solo project! +{mb} {mainStat}, +{pb} {partnerStat}";
+                player.ChangeStat(partnerStatName, partnerBonus);
+                chosenPartner.ChangeStat(statName, leaderBonus);
+                result.description += $"\nPartner: {chosenPartner.playerName} — You +{partnerBonus} {partnerStatName}, {chosenPartner.playerName} +{leaderBonus} {statName}";
+            }
+            break;
     }
-    else
-    {
-        // Собираем всех кандидатов с максимальным уровнем
-        var candidates = others.FindAll(o => o.level >= myLevel)
-                           .ConvertAll(o => o.p);
-
-        PlayerController chosenPartner = null;
-
-        if (candidates.Count == 1)
-        {
-            // Партнёр один — выбирать не нужно
-            chosenPartner = candidates[0];
-        }
-        else
-        {
-            // Несколько кандидатов — показываем UI выбора
-            yield return greenCardUI.ShowAndWait(mainStat, candidates, p => chosenPartner = p);
-        }
-
-        int lb = Random.Range(2, 4), pb = Random.Range(1, 2);
-        string partnerStat2 = GetRandomOtherStat(mainStat);
-        player.ChangeStat(partnerStat2, pb);
-        chosenPartner.ChangeStat(mainStat, lb);
-        result.description = $"Partner: {chosenPartner.playerName}\nYou +{pb} {partnerStat2}, {chosenPartner.playerName} +{lb} {mainStat}";
-    }
-        break;
-        }
-
         uiManager?.ShowCard(result);
     }
 

@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 public class PlayerController : MonoBehaviour
 {
+
+    [Header("Turn Control")]
+public int skipTurns = 0;   
     [Header("Основные данные")]
     public string playerName;
     public BoardNode currentNode;
@@ -12,6 +15,7 @@ public class PlayerController : MonoBehaviour
     public int money = 1000;
     public int experience = 0;
     public int success = 0;
+    
 
     [Header("8 Сфер Жизни (0-10)")]
     public int volounteer = 5;

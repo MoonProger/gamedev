@@ -25,19 +25,15 @@ public class UIManager : MonoBehaviour
     public TMPro.TextMeshProUGUI cardTitle;
     public TMPro.TextMeshProUGUI cardDesc;
 
-    public void ShowCard(CardResult result)
+public void ShowCard(CardResult result)
 {
     cardPanel.SetActive(true);
     cardTitle.text = result.title;
     cardDesc.text = result.description;
-    
-    // Окно можно закрыть через пару секунд или по кнопке
-    StartCoroutine(HideCardAfterDelay(3f));
 }
 
-    private IEnumerator HideCardAfterDelay(float delay)
+public void HideCard()
 {
-    yield return new WaitForSeconds(delay);
     cardPanel.SetActive(false);
 }
 
