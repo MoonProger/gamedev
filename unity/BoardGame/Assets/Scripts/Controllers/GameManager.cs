@@ -13,6 +13,9 @@ public enum CardType { Surprise, Yellow, Blue, Red, Green }
 public class GameManager : MonoBehaviour
 {   
 
+    [Header("Card Visual")]
+public CardVisual cardVisual;
+
     [Header("Audio")]
     public AudioClip victorySound;
     private AudioSource audioSource;
@@ -128,11 +131,12 @@ public class GameManager : MonoBehaviour
     {
         players[currentPlayerIndex].skipTurns--;
         Debug.Log($"{players[currentPlayerIndex].playerName} skips turn ({players[currentPlayerIndex].skipTurns} left)");
-        uiManager?.ShowCard(new CardResult
-        {
-            title = "TURN SKIPPED",
-            description = $"You must skip this turn."
-        });
+        cardVisual?.ShowRaw(
+    "TURN SKIPPED",
+    "You must skip this turn.",
+    CardType.Surprise,
+    "none"
+);
         hasRolledThisTurn = true; // чтобы конец хода отработал
         StartCoroutine(EndTurnAfterDelay());
         return;
@@ -215,12 +219,12 @@ private IEnumerator EndTurnAfterDelay()
     else
     {
         Debug.Log($"{currentPlayer.playerName} has no money, staying on travel node");
-        CardResult noMoneyResult = new CardResult
-        {
-            title = "TRAVEL — NO FUNDS",
-            description = "Not enough money to travel. Stay here."
-        };
-        uiManager?.ShowCard(noMoneyResult);
+        cardVisual?.ShowRaw(
+    "TRAVEL — NO FUNDS",
+    "Not enough money to travel. Stay here.",
+    CardType.Surprise,
+    "travel"
+);
     }
     break;
             case BoardNode.NodeType.Grant:
@@ -232,11 +236,12 @@ private IEnumerator EndTurnAfterDelay()
 
     if (availableGrants.Count == 0)
     {
-        uiManager?.ShowCard(new CardResult
-        {
-            title = "GRANT — NOT AVAILABLE",
-            description = "You need level 10 in at least one sphere\nto apply for a grant."
-        });
+       cardVisual?.ShowRaw(
+    "GRANT — NOT AVAILABLE",
+    "You need level 10 in at least one sphere\nto apply for a grant.",
+    CardType.Surprise,
+    "grant"
+);
         break;
     }
 
@@ -385,7 +390,8 @@ CardResult result = new CardResult
             }
             break;
     }
-        uiManager?.ShowCard(result);
+        // Показываем физическую карточку
+cardVisual?.Show(card, statName);
     }
 
     private string GetRandomOtherStat(string exclude)
@@ -532,11 +538,6 @@ CardResult result = new CardResult
 
 private void PullTravelCard(PlayerController player)
 {
-    CardResult result = new CardResult
-    {
-        title = "✈️ TRAVEL CARD"
-    };
-
     string[] possibleStats = { "money", "experience", "success", "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
 
     // Перемешиваем и берём 2-3 случайных стата
@@ -559,10 +560,14 @@ private void PullTravelCard(PlayerController player)
         desc.AppendLine($"+{amount} {stat}");
     }
 
-    result.description = desc.ToString().Trim();
-    Debug.Log($"{player.playerName} travel bonuses: {result.description}");
+    Debug.Log($"{player.playerName} travel bonuses: {desc}");
 
-    uiManager?.ShowCard(result);
+    cardVisual?.ShowRaw(
+        "✈️ TRAVEL CARD",
+        desc.ToString().Trim(),
+        CardType.Surprise,
+        "travel"
+    );
 }
 private IEnumerator TryApplyGrant(PlayerController player, List<string> availableStats)
 {
@@ -582,25 +587,27 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
         player.earnedGrants.Add(chosenStat);
         player.ChangeStat("success", 1);
 
-        uiManager?.ShowCard(new CardResult
-        {
-            title = "GRANT APPROVED! 🎉",
-            description = $"Sphere: {chosenStat}\n" +
-                          $"Roll: {roll} < Your exp: {expLevel}\n" +
-                          $"Grant added to your profile! +1 Success"
-        });
+        cardVisual?.ShowRaw(
+    "GRANT APPROVED! 🎉",
+    $"Sphere: {chosenStat}\n" +
+    $"Roll: {roll} < Your exp: {expLevel}\n" +
+    $"Grant added to your profile! +1 Success",
+    CardType.Red,
+    chosenStat
+);
 
         Debug.Log($"{player.playerName} earned grant in {chosenStat}. Total grants: {player.earnedGrants.Count}");
     }
     else
     {
-        uiManager?.ShowCard(new CardResult
-        {
-            title = "GRANT REJECTED",
-            description = $"Sphere: {chosenStat}\n" +
-                          $"Roll: {roll} >= Your exp: {expLevel}\n" +
-                          $"Not enough experience."
-        });
+        cardVisual?.ShowRaw(
+    "GRANT REJECTED! 🎉",
+    $"Sphere: {chosenStat}\n" +
+    $"Roll: {roll} < Your exp: {expLevel}\n" +
+    $"Grant added to your profile! +1 Success",
+    CardType.Red,
+    chosenStat
+);
 
         Debug.Log($"{player.playerName} grant rejected. Roll {roll} >= exp {expLevel}");
     }
@@ -616,11 +623,12 @@ private IEnumerator TryDoProject(PlayerController player)
     // Условие 1: нет прокачанных сфер
     if (availableSpheres.Count == 0)
     {
-        uiManager?.ShowCard(new CardResult
-        {
-            title = "PROJECT — NOT AVAILABLE",
-            description = "You need level 10 in at least one sphere\nto start a project."
-        });
+        cardVisual?.ShowRaw(
+    "PROJECT — NOT AVAILABLE",
+    "You need level 10 in at least one sphere\nto start a project.",
+    CardType.Surprise,
+    "project"
+);
         yield break;
     }
 
@@ -630,11 +638,12 @@ private IEnumerator TryDoProject(PlayerController player)
 
     if (!hasGrant && !hasMoney)
     {
-        uiManager?.ShowCard(new CardResult
-        {
-            title = "PROJECT — NO FUNDS",
-            description = "You need a grant or 5 coins\nto start a project."
-        });
+        cardVisual?.ShowRaw(
+    "PROJECT — NO FUNDS",
+    "You need a grant or 5 coins\nto start a project.",
+    CardType.Surprise,
+    "project"
+);
         yield break;
     }
 
@@ -673,13 +682,14 @@ private IEnumerator TryDoProject(PlayerController player)
 
     Debug.Log($"{player.playerName} completed project in {chosenSphere} using {paymentMethod}. +5 Success");
 
-    uiManager?.ShowCard(new CardResult
-    {
-        title = "PROJECT COMPLETE! 🏆",
-        description = $"Sphere: {chosenSphere.ToUpper()}\n" +
-                      $"Paid: {paymentMethod}\n" +
-                      $"+5 Success"
-    });
+    cardVisual?.ShowRaw(
+    "PROJECT COMPLETE! 🏆",
+    $"Sphere: {chosenSphere.ToUpper()}\n" +
+    $"Paid: {paymentMethod}\n" +
+    $"+5 Success",
+    CardType.Green,
+    chosenSphere
+);
 }
 
 private void CheckVictory(PlayerController player)
@@ -691,11 +701,12 @@ private void CheckVictory(PlayerController player)
     if (victorySound != null)
         audioSource.PlayOneShot(victorySound);
 
-    uiManager?.ShowCard(new CardResult
-    {
-        title = "🏆 VICTORY!",
-        description = $"{player.playerName} wins!\nSuccess: {player.success}"
-    });
+    cardVisual?.ShowRaw(
+    "🏆 VICTORY!",
+    $"{player.playerName} wins!\nSuccess: {player.success}",
+    CardType.Red,
+    "success"
+);
 
     // Останавливаем игру
     isMoving = true;

@@ -5,6 +5,11 @@ using System.Collections.Generic;
 
 public class UIManager : MonoBehaviour
 {
+
+    [Header("Card Visual")]
+    public CardVisual cardVisual;
+
+
     [Header("Общие данные")]
     public TextMeshProUGUI moneyText;
     public TextMeshProUGUI expText;
@@ -19,23 +24,6 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI sportText;
     public TextMeshProUGUI tourismText;
     public TextMeshProUGUI itText;
-
-    [Header("Card UI")]
-    public GameObject cardPanel;      // Само окно карточки
-    public TMPro.TextMeshProUGUI cardTitle;
-    public TMPro.TextMeshProUGUI cardDesc;
-
-public void ShowCard(CardResult result)
-{
-    cardPanel.SetActive(true);
-    cardTitle.text = result.title;
-    cardDesc.text = result.description;
-}
-
-public void HideCard()
-{
-    cardPanel.SetActive(false);
-}
 
     public void UpdateAllStats(PlayerController player)
     {
