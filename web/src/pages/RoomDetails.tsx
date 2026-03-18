@@ -2,27 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import Button from '../components/ui/Button';
+import { Room } from '../types/room'; 
 import './RoomDetails.css';
-
-interface Room {
-  id: string;
-  title: string;
-  status: 'WAITING' | 'IN_GAME' | 'FINISHED';
-  players: Array<{
-    userId: string;
-    user: {
-      id: string;
-      username: string;
-    };
-    isReady: boolean;
-    joinedAt: string;
-  }>;
-  createdAt: string;
-  creator: {
-    id: string;
-    username: string;
-  } | null;
-}
 
 function getUserIdFromToken(): string | null {
   const token = api.getToken();
@@ -45,7 +26,10 @@ const RoomDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isReadyLoading, setIsReadyLoading] = useState(false);
-  const [isStarting, setIsStarting] = useState(false);
+  const [isStarting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,7 +58,7 @@ const RoomDetails: React.FC = () => {
   const handleReady = async () => {
     if (!room || !id) return;
     
-    const currentPlayer = room.players.find(p => p.userId === getUserIdFromToken());
+    const currentPlayer = room.players?.find(p => p.userId === getUserIdFromToken());
     if (!currentPlayer) return;
     
     setIsReadyLoading(true);
@@ -107,10 +91,52 @@ const RoomDetails: React.FC = () => {
     navigate(`/game/${id}`);
   };
 
+  const handleCloseRoom = async () => {
+    if (!id) return;
+    
+    try {
+      setIsClosing(true);
+      await api.closeRoom(id);
+      await loadRoom(); 
+    } catch (err) {
+      setError('Не удалось закрыть комнату');
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  const handleOpenRoom = async () => {
+    if (!id) return;
+    
+    try {
+      setIsClosing(true);
+      await api.openRoom(id);
+      await loadRoom();
+    } catch (err) {
+      setError('Не удалось открыть комнату');
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  const handleDeleteRoom = async () => {
+    if (!id) return;
+    
+    try {
+      setIsDeleting(true);
+      await api.deleteRoom(id);
+      navigate('/rooms');
+    } catch (err) {
+      setError('Не удалось удалить комнату');
+      setIsDeleting(false);
+    }
+    setShowDeleteConfirm(false);
+  };
+
   const currentUserId = getUserIdFromToken();
-  const currentPlayer = room?.players.find(p => p.userId === currentUserId);
+  const currentPlayer = room?.players?.find(p => p.userId === currentUserId);
   const isCreator = room?.creator?.id === currentUserId;
-  const allReady = room?.players.length >= 2 && room?.players.every(p => p.isReady);
+  const allReady = (room?.players?.length ?? 0) >= 2 && room?.players?.every(p => p.isReady);
 
   if (loading) {
     return (
@@ -143,9 +169,12 @@ const RoomDetails: React.FC = () => {
         </Button>
         <div className="room-title-section">
           <h1>{room.title}</h1>
-          <span className={`room-status ${room.status.toLowerCase()}`}>
+          <span className={`room-status ${room.status?.toLowerCase() || ''}`}>
             {room.status === 'WAITING' ? 'Ожидание игроков' : 
-             room.status === 'IN_GAME' ? 'Игра началась' : 'Игра завершена'}
+             room.status === 'IN_GAME' ? 'Игра началась' : 
+             room.status === 'CLOSED' ? 'Комната закрыта' :
+             room.status === 'FINISHED' ? 'Игра завершена' :
+             'Неизвестный статус'}
           </span>
         </div>
       </div>
@@ -163,17 +192,17 @@ const RoomDetails: React.FC = () => {
           </div>
           <div className="info-row">
             <span className="info-label">Игроков:</span>
-            <span className="info-value">{room.players.length}</span>
+            <span className="info-value">{room.players?.length || 0}</span>
           </div>
         </div>
 
         <div className="players-section">
           <h2>Игроки в комнате</h2>
           <div className="players-list">
-            {room.players.map(player => (
+            {room.players?.map(player => (
               <div key={player.userId} className="player-item">
                 <div className="player-info">
-                  <span className="player-name">{player.user?.username || 'Без имени'}</span>
+                  <span className="player-name">{player.username || 'Без имени'}</span>  {/* Убрали player.user.username */}
                   {player.userId === room.creator?.id && (
                     <span className="player-creator">Создатель</span>
                   )}
@@ -223,9 +252,72 @@ const RoomDetails: React.FC = () => {
           >
             Покинуть комнату
           </Button>
+
+          {isCreator && (
+            <div className="creator-actions" style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+              {room.status === 'WAITING' && (
+                <Button
+                  variant="outline"
+                  onClick={handleCloseRoom}
+                  disabled={isClosing}
+                  isLoading={isClosing}
+                  style={{ borderColor: '#f59e0b', color: '#f59e0b' }}
+                >
+                  Закрыть комнату
+                </Button>
+              )}
+              {room.status === 'CLOSED' && (
+                <Button
+                  variant="outline"
+                  onClick={handleOpenRoom}
+                  disabled={isClosing}
+                  isLoading={isClosing}
+                  style={{ borderColor: '#10b981', color: '#10b981' }}
+                >
+                  Открыть комнату
+                </Button>
+              )}
+              <Button
+                variant="danger"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isDeleting}
+              >
+                Удалить комнату
+              </Button>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+      
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2 style={{ color: '#ef4444' }}>Удаление комнаты</h2>
+            <p style={{ marginBottom: '1.5rem', color: '#666' }}>
+              Вы уверены, что хотите удалить комнату "{room.title}"?<br />
+              Это действие нельзя отменить.
+            </p>
+            <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                Отмена
+              </Button>
+              <Button 
+                variant="danger" 
+                onClick={handleDeleteRoom}
+                disabled={isDeleting}
+                isLoading={isDeleting}
+              >
+                Удалить
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div> 
   );
 };
 

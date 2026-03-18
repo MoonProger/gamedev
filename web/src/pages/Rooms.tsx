@@ -70,6 +70,7 @@ const Rooms: React.FC = () => {
     switch (status) {
       case 'WAITING': return 'Ожидание';
       case 'IN_GAME': return 'В игре';
+      case 'CLOSED': return 'Закрыта';
       case 'FINISHED': return 'Завершена';
       default: return status;
     }
@@ -79,6 +80,7 @@ const Rooms: React.FC = () => {
     switch (status) {
       case 'WAITING': return 'status-waiting';
       case 'IN_GAME': return 'status-ingame';
+      case 'CLOSED': return 'status-closed';
       case 'FINISHED': return 'status-finished';
       default: return '';
     }

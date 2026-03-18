@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate  } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import './Header.css';
 
@@ -8,10 +8,11 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
-  }, [location]); 
+  }, [location]);
 
   const checkAuth = async () => {
     const token = api.getToken();
@@ -19,6 +20,7 @@ const Header: React.FC = () => {
       try {
         const data = await api.getMe();
         setUsername(data.user.username);
+        setAvatar(data.user.avatar || null);
         setIsLoggedIn(true);
       } catch {
         setIsLoggedIn(false);
@@ -33,7 +35,15 @@ const Header: React.FC = () => {
     setIsLoggedIn(false);
     navigate('/');
   };
-  
+
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
+  const getInitials = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
+
   //для всех
   const navItems = [
     { path: '/', label: 'Главная' },
@@ -72,9 +82,25 @@ const Header: React.FC = () => {
         <div className="user-actions">
           {isLoggedIn ? (
             <>
-              <span className="username">{username}</span>
-              <button onClick={handleLogout} className="logout-button">
-                Выйти
+              <button 
+                className="user-profile-button"
+                onClick={handleProfileClick}
+              >
+                <div className="user-avatar-small">
+                  {avatar ? (
+                    <img src={avatar} alt={username} />
+                  ) : (
+                    getInitials(username)
+                  )}
+                </div>
+                <span className="user-name">{username}</span>
+              </button>
+              
+              <button 
+                className="logout-button"
+                onClick={handleLogout}
+              >
+                Выход
               </button>
             </>
           ) : (
