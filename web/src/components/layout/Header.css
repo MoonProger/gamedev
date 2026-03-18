@@ -65,13 +65,68 @@
   gap: 15px;
 }
 
-.username {
+/* Профиль пользователя */
+.user-profile-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 30px;
+  padding: 4px 12px 4px 4px;
+  cursor: pointer;
+  transition: all 0.2s;
   color: white;
+}
+
+.user-profile-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.user-avatar-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1rem;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.user-avatar-small img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-name {
   font-weight: 500;
-  background-color: rgba(255, 255, 255, 0.1);
+  font-size: 0.95rem;
+}
+
+/* Кнопка выхода - приглушённый красный */
+.logout-button {
+  background-color: rgba(239, 68, 68, 0.8);  /* Полупрозрачный красный */
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: white;
   padding: 6px 12px;
   border-radius: 6px;
+  cursor: pointer;
   font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px); /* Эффект стекла */
+}
+
+.logout-button:hover {
+  background-color: rgba(239, 68, 68, 1);  /* Становится плотнее при наведении */
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 .auth-button {
@@ -89,20 +144,3 @@
 .auth-button:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }
-
-.logout-button {
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-}
-
-.logout-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-

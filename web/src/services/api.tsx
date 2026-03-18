@@ -95,6 +95,24 @@ class ApiClient {
     });
   }
 
+  async deleteRoom(id: string) {
+    return this.request(`/rooms/${id}`, { // Исправил кавычки
+      method: 'DELETE',
+    });
+  }
+
+  async closeRoom(id: string) {
+    return this.request(`/rooms/${id}/close`, {
+      method: 'POST',
+    });
+  }
+
+  async openRoom(id: string) {
+    return this.request(`/rooms/${id}/open`, {
+      method: 'POST',
+    });
+  }
+
   async joinRoom(id: string) {
     return this.request(`/rooms/${id}/join`, {
       method: 'POST',
@@ -115,11 +133,11 @@ class ApiClient {
   }
 
   async startGame(roomId: string) {
-  console.log('Старт игры в комнате:', roomId);
-  return this.request(`/rooms/${roomId}/start`, {
-    method: 'POST',
+    console.log('Старт игры в комнате:', roomId);
+    return this.request(`/rooms/${roomId}/start`, {
+      method: 'POST',
     });
-    }
+  }
 }
 
 export const api = new ApiClient();

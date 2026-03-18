@@ -6,6 +6,7 @@ import Game from './pages/Game';
 import Rooms from './pages/Rooms';
 import RoomDetails from './pages/RoomDetails';
 import About from './pages/About';
+import Profile from './pages/Profile';
 import './App.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
           <Route path="/game/:id" element={<Game />} />
           <Route path="/rooms" element={<Rooms />} />
           <Route path="/rooms/:id" element={<RoomDetails />} />
+          <Route path="/profile" element={<Profile />} />
         </Routes>
       </main>
     </BrowserRouter>
