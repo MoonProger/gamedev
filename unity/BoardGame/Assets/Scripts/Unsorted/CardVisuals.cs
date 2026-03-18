@@ -11,11 +11,10 @@ public class CardVisual : MonoBehaviour
     public TextMeshPro titleText;
     public TextMeshPro descriptionText;
 
+
     [Header("Позиции")]
     public Transform hiddenPosition;   // куда карточка уходит (за стол)
     public Transform shownPosition;    // перед камерой
-
-    [Header("Анимация")]
     public float animDuration = 0.4f;
 
     private static readonly Color ColorYellow   = new Color(1f,    0.85f, 0.1f);

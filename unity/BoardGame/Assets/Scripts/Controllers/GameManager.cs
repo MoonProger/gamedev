@@ -13,8 +13,10 @@ public enum CardType { Surprise, Yellow, Blue, Red, Green }
 public class GameManager : MonoBehaviour
 {   
 
+
     [Header("Card Visual")]
-public CardVisual cardVisual;
+    public CardVisual cardVisual;
+    public DeckManager deckManager;
 
     [Header("Audio")]
     public AudioClip victorySound;
@@ -390,8 +392,8 @@ CardResult result = new CardResult
             }
             break;
     }
-        // Показываем физическую карточку
-cardVisual?.Show(card, statName);
+    CardVisual deck = deckManager.GetCardForNode(node.nodeStat);
+    deck?.Show(card, statName);
     }
 
     private string GetRandomOtherStat(string exclude)
@@ -562,12 +564,8 @@ private void PullTravelCard(PlayerController player)
 
     Debug.Log($"{player.playerName} travel bonuses: {desc}");
 
-    cardVisual?.ShowRaw(
-        "✈️ TRAVEL CARD",
-        desc.ToString().Trim(),
-        CardType.Surprise,
-        "travel"
-    );
+    CardVisual travelDeck = deckManager.GetCardForNode(BoardNode.NodeType.Travel);
+    travelDeck?.ShowRaw("✈️ TRAVEL CARD", desc.ToString().Trim(), CardType.Surprise, "travel");
 }
 private IEnumerator TryApplyGrant(PlayerController player, List<string> availableStats)
 {
@@ -587,14 +585,8 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
         player.earnedGrants.Add(chosenStat);
         player.ChangeStat("success", 1);
 
-        cardVisual?.ShowRaw(
-    "GRANT APPROVED! 🎉",
-    $"Sphere: {chosenStat}\n" +
-    $"Roll: {roll} < Your exp: {expLevel}\n" +
-    $"Grant added to your profile! +1 Success",
-    CardType.Red,
-    chosenStat
-);
+        CardVisual grantDeck = deckManager.GetCardForNode(BoardNode.NodeType.Grant);
+        grantDeck?.ShowRaw("GRANT APPROVED! 🎉", $"Sphere: {chosenStat}...", CardType.Red, chosenStat);
 
         Debug.Log($"{player.playerName} earned grant in {chosenStat}. Total grants: {player.earnedGrants.Count}");
     }
