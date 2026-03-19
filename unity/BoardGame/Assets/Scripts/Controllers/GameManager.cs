@@ -15,7 +15,7 @@ public class GameManager : MonoBehaviour
 
 
     [Header("Card Visual")]
-    public CardVisual cardVisual;
+    public CardVisual utilityCard;
     public DeckManager deckManager;
 
     [Header("Audio")]
@@ -133,7 +133,7 @@ public class GameManager : MonoBehaviour
     {
         players[currentPlayerIndex].skipTurns--;
         Debug.Log($"{players[currentPlayerIndex].playerName} skips turn ({players[currentPlayerIndex].skipTurns} left)");
-        cardVisual?.ShowRaw(
+        ShowCard(
     "TURN SKIPPED",
     "You must skip this turn.",
     CardType.Surprise,
@@ -221,7 +221,7 @@ private IEnumerator EndTurnAfterDelay()
     else
     {
         Debug.Log($"{currentPlayer.playerName} has no money, staying on travel node");
-        cardVisual?.ShowRaw(
+        ShowCard(
     "TRAVEL — NO FUNDS",
     "Not enough money to travel. Stay here.",
     CardType.Surprise,
@@ -238,7 +238,7 @@ private IEnumerator EndTurnAfterDelay()
 
     if (availableGrants.Count == 0)
     {
-       cardVisual?.ShowRaw(
+       ShowCard(
     "GRANT — NOT AVAILABLE",
     "You need level 10 in at least one sphere\nto apply for a grant.",
     CardType.Surprise,
@@ -302,96 +302,27 @@ CardResult result = new CardResult
 };
 
     switch (card.cardType)
-    {
-        case CardType.Surprise:
-            foreach (var eff in card.effects)
-            {
-                if (eff.effect == CardEffect.GainMoney)   player.ChangeStat("money", eff.amount);
-                if (eff.effect == CardEffect.LoseMoney)   player.ChangeStat("money", -eff.amount);
-                if (eff.effect == CardEffect.SkipNextTurn) player.skipTurns += eff.amount;
-                if (eff.effect == CardEffect.GainSuccess) player.ChangeStat("success", eff.amount);
-            }
-            break;
+{
+    case CardType.Surprise:
+        HandleSurpriseCard(player, card);
+        break;
 
-        case CardType.Yellow:
-            foreach (var eff in card.effects)
-            {
-                string t = string.IsNullOrEmpty(eff.statName) ? statName : eff.statName;
-                if (eff.effect == CardEffect.GainStat)     player.ChangeStat(t, eff.amount);
-                if (eff.effect == CardEffect.LoseStat)     player.ChangeStat(t, -eff.amount);
-                if (eff.effect == CardEffect.SkipNextTurn) player.skipTurns += eff.amount;
-            }
-            break;
+    case CardType.Yellow:
+        HandleYellowCard(player, card, statName);
+        break;
 
-        case CardType.Blue:
-            int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
-            if (expLevel > diceSum)
-            {
-                player.ChangeStat(statName, 1);
-                result.description += $"\nRoll: {diceSum} < Exp: {expLevel} — {statName} +1";
-            }
-            else
-            {
-                player.ChangeStat("experience", 1);
-                result.description += $"\nRoll: {diceSum} >= Exp: {expLevel} — +1 Experience";
-            }
-            break;
+    case CardType.Blue:
+        HandleBlueCard(player, card, statName, expLevel, result);
+        break;
 
-        case CardType.Red:
-            if (statLevel >= 5)
-            {
-                int bonus = UnityEngine.Random.Range(1, 4);
-                player.ChangeStat(statName, bonus);
-                player.ChangeStat("success", 1);
-                result.description += $"\n{statName} lvl {statLevel} >= 5 — +{bonus} {statName}, +1 Success";
-            }
-            else
-            {
-                player.ChangeStat("experience", 1);
-                result.description += $"\n{statName} lvl {statLevel} < 5 — +1 Experience";
-            }
-            break;
+    case CardType.Red:
+        HandleRedCard(player, card, statName, statLevel, result);
+        break;
 
-        case CardType.Green:
-            int myLevel = player.GetStatValue(statName);
-            var others = new List<(PlayerController p, int level)>();
-            for (int i = 0; i < expectedPlayerCount; i++)
-                if (players[i] != player)
-                    others.Add((players[i], players[i].GetStatValue(statName)));
-            others.Sort((a, b) => b.level.CompareTo(a.level));
-            int maxLevel = others.Count > 0 ? others[0].level : 0;
-
-            // Бонусы берём из базы карточек
-            CardEffectData leaderEff  = card.effects.Count > 0 ? card.effects[0] : null;
-            CardEffectData partnerEff = card.effects.Count > 1 ? card.effects[1] : null;
-
-            int leaderBonus  = leaderEff  != null ? leaderEff.amount  : Random.Range(2, 5);
-            int partnerBonus = partnerEff != null ? partnerEff.amount : Random.Range(1, 3);
-            string partnerStatName = partnerEff != null && !string.IsNullOrEmpty(partnerEff.statName)
-                ? partnerEff.statName
-                : GetRandomOtherStat(statName);
-
-            if (myLevel > maxLevel)
-            {
-                player.ChangeStat(statName, leaderBonus);
-                player.ChangeStat(partnerStatName, partnerBonus);
-                result.description += $"\nSolo! +{leaderBonus} {statName}, +{partnerBonus} {partnerStatName}";
-            }
-            else
-            {
-                var candidates = others.FindAll(o => o.level >= myLevel).ConvertAll(o => o.p);
-                PlayerController chosenPartner = null;
-                if (candidates.Count == 1)
-                    chosenPartner = candidates[0];
-                else
-                    yield return greenCardUI.ShowAndWait(statName, candidates, p => chosenPartner = p);
-
-                player.ChangeStat(partnerStatName, partnerBonus);
-                chosenPartner.ChangeStat(statName, leaderBonus);
-                result.description += $"\nPartner: {chosenPartner.playerName} — You +{partnerBonus} {partnerStatName}, {chosenPartner.playerName} +{leaderBonus} {statName}";
-            }
-            break;
-    }
+    case CardType.Green:
+        yield return HandleGreenCard(player, card, statName, result);
+        break;
+}
     CardVisual deck = deckManager.GetCardForNode(node.nodeStat);
     deck?.Show(card, statName);
     }
@@ -592,7 +523,7 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
     }
     else
     {
-        cardVisual?.ShowRaw(
+        ShowCard(
     "GRANT REJECTED! 🎉",
     $"Sphere: {chosenStat}\n" +
     $"Roll: {roll} < Your exp: {expLevel}\n" +
@@ -615,7 +546,7 @@ private IEnumerator TryDoProject(PlayerController player)
     // Условие 1: нет прокачанных сфер
     if (availableSpheres.Count == 0)
     {
-        cardVisual?.ShowRaw(
+        ShowCard(
     "PROJECT — NOT AVAILABLE",
     "You need level 10 in at least one sphere\nto start a project.",
     CardType.Surprise,
@@ -630,7 +561,7 @@ private IEnumerator TryDoProject(PlayerController player)
 
     if (!hasGrant && !hasMoney)
     {
-        cardVisual?.ShowRaw(
+        ShowCard(
     "PROJECT — NO FUNDS",
     "You need a grant or 5 coins\nto start a project.",
     CardType.Surprise,
@@ -674,14 +605,12 @@ private IEnumerator TryDoProject(PlayerController player)
 
     Debug.Log($"{player.playerName} completed project in {chosenSphere} using {paymentMethod}. +5 Success");
 
-    cardVisual?.ShowRaw(
+    ShowCard(
     "PROJECT COMPLETE! 🏆",
-    $"Sphere: {chosenSphere.ToUpper()}\n" +
-    $"Paid: {paymentMethod}\n" +
-    $"+5 Success",
+    $"Sphere: {chosenSphere.ToUpper()}\nPaid: {paymentMethod}\n+5 Success",
     CardType.Green,
     chosenSphere
-);
+    );
 }
 
 private void CheckVictory(PlayerController player)
@@ -693,16 +622,118 @@ private void CheckVictory(PlayerController player)
     if (victorySound != null)
         audioSource.PlayOneShot(victorySound);
 
-    cardVisual?.ShowRaw(
+ShowCard(
     "🏆 VICTORY!",
     $"{player.playerName} wins!\nSuccess: {player.success}",
     CardType.Red,
     "success"
 );
 
-    // Останавливаем игру
     isMoving = true;
     hasRolledThisTurn = true;
+}
+
+//хендлеры карточек
+private void HandleSurpriseCard(PlayerController player, CardData card)
+{
+    foreach (var eff in card.effects)
+    {
+        if (eff.effect == CardEffect.GainMoney)    player.ChangeStat("money", eff.amount);
+        if (eff.effect == CardEffect.LoseMoney)    player.ChangeStat("money", -eff.amount);
+        if (eff.effect == CardEffect.SkipNextTurn) player.skipTurns += eff.amount;
+        if (eff.effect == CardEffect.GainSuccess)  player.ChangeStat("success", eff.amount);
+    }
+}
+
+// YELLOW
+private void HandleYellowCard(PlayerController player, CardData card, string statName)
+{
+    foreach (var eff in card.effects)
+    {
+        string t = string.IsNullOrEmpty(eff.statName) ? statName : eff.statName;
+        if (eff.effect == CardEffect.GainStat)     player.ChangeStat(t, eff.amount);
+        if (eff.effect == CardEffect.LoseStat)     player.ChangeStat(t, -eff.amount);
+        if (eff.effect == CardEffect.SkipNextTurn) player.skipTurns += eff.amount;
+    }
+}
+
+// BLUE
+private void HandleBlueCard(PlayerController player, CardData card, string statName, int expLevel, CardResult result)
+{
+    int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
+    if (expLevel > diceSum)
+    {
+        player.ChangeStat(statName, 1);
+        result.description += $"\nRoll: {diceSum} < Exp: {expLevel} — {statName} +1";
+    }
+    else
+    {
+        player.ChangeStat("experience", 1);
+        result.description += $"\nRoll: {diceSum} >= Exp: {expLevel} — +1 Experience";
+    }
+}
+
+// RED
+private void HandleRedCard(PlayerController player, CardData card, string statName, int statLevel, CardResult result)
+{
+    if (statLevel >= 5)
+    {
+        int bonus = UnityEngine.Random.Range(1, 4);
+        player.ChangeStat(statName, bonus);
+        player.ChangeStat("success", 1);
+        result.description += $"\n{statName} lvl {statLevel} >= 5 — +{bonus} {statName}, +1 Success";
+    }
+    else
+    {
+        player.ChangeStat("experience", 1);
+        result.description += $"\n{statName} lvl {statLevel} < 5 — +1 Experience";
+    }
+}
+
+// GREEN (корутина, потому что уже есть yield внутри)
+private IEnumerator HandleGreenCard(PlayerController player, CardData card, string statName, CardResult result)
+{
+    int myLevel = player.GetStatValue(statName);
+    var others = new List<(PlayerController p, int level)>();
+    for (int i = 0; i < expectedPlayerCount; i++)
+        if (players[i] != player)
+            others.Add((players[i], players[i].GetStatValue(statName)));
+    others.Sort((a, b) => b.level.CompareTo(a.level));
+    int maxLevel = others.Count > 0 ? others[0].level : 0;
+
+    CardEffectData leaderEff  = card.effects.Count > 0 ? card.effects[0] : null;
+    CardEffectData partnerEff = card.effects.Count > 1 ? card.effects[1] : null;
+
+    int leaderBonus  = leaderEff  != null ? leaderEff.amount  : Random.Range(2, 5);
+    int partnerBonus = partnerEff != null ? partnerEff.amount : Random.Range(1, 3);
+    string partnerStatName = partnerEff != null && !string.IsNullOrEmpty(partnerEff.statName)
+        ? partnerEff.statName
+        : GetRandomOtherStat(statName);
+
+    if (myLevel > maxLevel)
+    {
+        player.ChangeStat(statName, leaderBonus);
+        player.ChangeStat(partnerStatName, partnerBonus);
+        result.description += $"\nSolo! +{leaderBonus} {statName}, +{partnerBonus} {partnerStatName}";
+    }
+    else
+    {
+        var candidates = others.FindAll(o => o.level >= myLevel).ConvertAll(o => o.p);
+        PlayerController chosenPartner = null;
+        if (candidates.Count == 1)
+            chosenPartner = candidates[0];
+        else
+            yield return greenCardUI.ShowAndWait(statName, candidates, p => chosenPartner = p);
+
+        player.ChangeStat(partnerStatName, partnerBonus);
+        chosenPartner.ChangeStat(statName, leaderBonus);
+        result.description += $"\nPartner: {chosenPartner.playerName} — You +{partnerBonus} {partnerStatName}, {chosenPartner.playerName} +{leaderBonus} {statName}";
+    }
+}
+
+private void ShowCard(string title, string desc, CardType type, string stat)
+{
+    utilityCard?.ShowRaw(title, desc, type, stat);
 }
 
 }

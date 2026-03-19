@@ -12,7 +12,7 @@ public int skipTurns = 0;
     public AudioClip jumpSound;
 
     [Header("Экономика и Прогресс")]
-    public int money = 1000;
+    public int money = 0;
     public int experience = 0;
     public int success = 0;
     
@@ -109,14 +109,14 @@ private void CheckMilestone(ref int stat, int amount)
     // Пересёк порог 5 снизу вверх
     if (before < 5 && after >= 5)
     {
-        success = Mathf.Clamp(success + 2, 0, 15);
+        success = Mathf.Clamp(success + 2, 0, 12);
         Debug.Log($"{playerName}: достиг 5 в сфере — +2 Success (итого {success})");
     }
 
     // Пересёк порог 10 снизу вверх
     if (before < 10 && after >= 10)
     {
-        success = Mathf.Clamp(success + 1, 0, 15);
+        success = Mathf.Clamp(success + 1, 0, 12);
         Debug.Log($"{playerName}: достиг 10 в сфере — +1 Success (итого {success})");
     }
 }
