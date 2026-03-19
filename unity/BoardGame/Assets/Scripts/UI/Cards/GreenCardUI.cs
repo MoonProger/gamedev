@@ -8,8 +8,6 @@ public class GreenCardUI : MonoBehaviour
 {
     [Header("Панель зелёной карточки")]
     public GameObject panel;
-    public TextMeshProUGUI titleText;
-    public TextMeshProUGUI mainStatText;
     public Transform partnerButtonContainer;
     public GameObject partnerButtonPrefab;
 
@@ -18,9 +16,6 @@ public class GreenCardUI : MonoBehaviour
     public IEnumerator ShowAndWait(string mainStat, List<PlayerController> candidates, System.Action<PlayerController> callback)
     {
         onPartnerChosen = callback;
-
-        titleText.text = "🟢 Team Project";
-        mainStatText.text = $"Sphere: {mainStat.ToUpper()}\nChoose Partner:";
 
         foreach (Transform child in partnerButtonContainer)
             Destroy(child.gameObject);

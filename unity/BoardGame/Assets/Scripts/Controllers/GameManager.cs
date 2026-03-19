@@ -21,6 +21,10 @@ public class GameManager : MonoBehaviour
     [Header("Audio")]
     public AudioClip victorySound;
     private AudioSource audioSource;
+    public AudioClip drawCardSound;  
+    public AudioClip travelSound;  
+    public AudioClip sadSound;  
+    public AudioClip moneySound;
 
     [Header("UI")]
     public GreenCardUI greenCardUI;
@@ -128,7 +132,7 @@ public class GameManager : MonoBehaviour
     {
         if (isMoving) { Debug.Log("Cannot roll while token is moving"); return; }
         if (hasRolledThisTurn) { Debug.Log("Already rolled this turn. Choose a destination."); return; }
-         // Проверка пропуска хода
+
     if (players[currentPlayerIndex].skipTurns > 0)
     {
         players[currentPlayerIndex].skipTurns--;
@@ -209,43 +213,46 @@ private IEnumerator EndTurnAfterDelay()
         {
             case BoardNode.NodeType.Money:
                 currentPlayer.ChangeStat("money", 1);
+                if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(moneySound);
                 Debug.Log($"{currentPlayer.playerName} gained +1 money");
                 break;
             case BoardNode.NodeType.Travel:
-    if (currentPlayer.GetStatValue("money") > 0)
-    {
-        currentPlayer.ChangeStat("money", -1);
-        Debug.Log($"{currentPlayer.playerName} paid 1 money for travel");
-        yield return StartCoroutine(ChooseTravelDestination(currentPlayer));
-    }
-    else
-    {
-        Debug.Log($"{currentPlayer.playerName} has no money, staying on travel node");
-        ShowCard(
-    "TRAVEL — NO FUNDS",
-    "Not enough money to travel. Stay here.",
-    CardType.Surprise,
-    "travel"
-);
+                if (currentPlayer.GetStatValue("money") > 0)
+                {
+                    currentPlayer.ChangeStat("money", -1);
+                    Debug.Log($"{currentPlayer.playerName} paid 1 money for travel");
+                    if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(travelSound);
+                    yield return StartCoroutine(ChooseTravelDestination(currentPlayer));
+                }
+                else
+                {
+                    if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
+                    Debug.Log($"{currentPlayer.playerName} has no money, staying on travel node");
+                    ShowCard(
+                    "TRAVEL — NO FUNDS",
+                    "Not enough money to travel. Stay here.",
+                    CardType.Surprise,
+                    "travel"
+                    );
     }
     break;
             case BoardNode.NodeType.Grant:
-    // Находим сферы где у игрока 10, и он ещё не подавал
-    List<string> availableGrants = new List<string>();
-    foreach (string stat in allStats)
-        if (currentPlayer.GetStatValue(stat) >= 10 && !currentPlayer.appliedGrants.Contains(stat))
-            availableGrants.Add(stat);
+                List<string> availableGrants = new List<string>();
+                foreach (string stat in allStats)
+                    if (currentPlayer.GetStatValue(stat) >= 10 && !currentPlayer.appliedGrants.Contains(stat))
+                        availableGrants.Add(stat);
 
-    if (availableGrants.Count == 0)
-    {
-       ShowCard(
-    "GRANT — NOT AVAILABLE",
-    "You need level 10 in at least one sphere\nto apply for a grant.",
-    CardType.Surprise,
-    "grant"
-);
-        break;
-    }
+                if (availableGrants.Count == 0)
+                {
+                if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
+                ShowCard(
+                "GRANT — NOT AVAILABLE",
+                "You need level 10 in at least one sphere\nto apply for a grant.",
+                CardType.Surprise,
+                "grant"
+                );
+                break;
+                }
 
     yield return StartCoroutine(TryApplyGrant(currentPlayer, availableGrants));
     break;
@@ -281,8 +288,7 @@ private IEnumerator PullCardCoroutine(PlayerController player)
     string statName = node.nodeStat.ToString().ToLower();
     int statLevel = player.GetStatValue(statName);
     int expLevel = player.GetStatValue("experience");
-
-    // Тянем карточку по сфере
+    if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
     CardData card = CardDatabase.GetRandomBySphere(statName);
     
 string colorPrefix = card.cardType switch
@@ -300,7 +306,7 @@ CardResult result = new CardResult
     title = colorPrefix + card.title,
     description = card.description
 };
-
+    CardVisual deck = deckManager.GetCardForNode(node.nodeStat);
     switch (card.cardType)
 {
     case CardType.Surprise:
@@ -320,11 +326,13 @@ CardResult result = new CardResult
         break;
 
     case CardType.Green:
-        yield return HandleGreenCard(player, card, statName, result);
+        yield return HandleGreenCard(player, card, statName, result, deck);
         break;
 }
-    CardVisual deck = deckManager.GetCardForNode(node.nodeStat);
-    deck?.Show(card, statName);
+
+    if (card.cardType!=CardType.Green){
+        deck?.Show(card, statName);
+    }
     }
 
     private string GetRandomOtherStat(string exclude)
@@ -472,7 +480,7 @@ CardResult result = new CardResult
 private void PullTravelCard(PlayerController player)
 {
     string[] possibleStats = { "money", "experience", "success", "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
-
+    if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
     // Перемешиваем и берём 2-3 случайных стата
     int bonusCount = UnityEngine.Random.Range(2, 4);
     List<string> pool = new List<string>(possibleStats);
@@ -523,6 +531,7 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
     }
     else
     {
+        if (sadSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
         ShowCard(
     "GRANT REJECTED! 🎉",
     $"Sphere: {chosenStat}\n" +
@@ -546,6 +555,7 @@ private IEnumerator TryDoProject(PlayerController player)
     // Условие 1: нет прокачанных сфер
     if (availableSpheres.Count == 0)
     {
+        if (sadSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
         ShowCard(
     "PROJECT — NOT AVAILABLE",
     "You need level 10 in at least one sphere\nto start a project.",
@@ -561,6 +571,7 @@ private IEnumerator TryDoProject(PlayerController player)
 
     if (!hasGrant && !hasMoney)
     {
+        if (sadSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
         ShowCard(
     "PROJECT — NO FUNDS",
     "You need a grant or 5 coins\nto start a project.",
@@ -622,12 +633,12 @@ private void CheckVictory(PlayerController player)
     if (victorySound != null)
         audioSource.PlayOneShot(victorySound);
 
-ShowCard(
+    ShowCard(
     "🏆 VICTORY!",
     $"{player.playerName} wins!\nSuccess: {player.success}",
     CardType.Red,
     "success"
-);
+    );
 
     isMoving = true;
     hasRolledThisTurn = true;
@@ -691,7 +702,7 @@ private void HandleRedCard(PlayerController player, CardData card, string statNa
 }
 
 // GREEN (корутина, потому что уже есть yield внутри)
-private IEnumerator HandleGreenCard(PlayerController player, CardData card, string statName, CardResult result)
+private IEnumerator HandleGreenCard(PlayerController player, CardData card, string statName, CardResult result, CardVisual deck)
 {
     int myLevel = player.GetStatValue(statName);
     var others = new List<(PlayerController p, int level)>();
@@ -723,6 +734,7 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
         if (candidates.Count == 1)
             chosenPartner = candidates[0];
         else
+            deck?.Show(card, statName);
             yield return greenCardUI.ShowAndWait(statName, candidates, p => chosenPartner = p);
 
         player.ChangeStat(partnerStatName, partnerBonus);
@@ -732,7 +744,8 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
 }
 
 private void ShowCard(string title, string desc, CardType type, string stat)
-{
+{   
+    if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
     utilityCard?.ShowRaw(title, desc, type, stat);
 }
 
