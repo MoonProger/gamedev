@@ -4,7 +4,9 @@ import jwt from "jsonwebtoken";
 import { WsIn, WsOut } from "./ws.types";
 import { handleGameMessage } from "../game/game.handlers";
 import { roomToDto } from "../rooms/rooms.dto";
-import { joinRoom, leaveRoom, setReady, getRoom } from "../rooms/rooms.service";
+import { joinRoom, joinPrivateRoom, leaveRoom, setReady, getRoom } from "../rooms/rooms.service";
+import { loadGameState } from "../game/game.persistence";
+import { setGame } from "../game/game.state";
 
 type JwtPayload = { userId: string; email: string };
 
@@ -80,30 +82,41 @@ export function attachWs(server: HttpServer) {
 
       // join room
       if (msg.type === "room.join") {
-        const roomId = msg.payload.roomId;
+          const roomId = msg.payload.roomId;
+          const password = msg.payload.password;
 
-        try {
-          await joinRoom(roomId, meta.userId);
-        } catch (e: any) {
-          safeSend(ws, { type: "error", payload: { message: e.message } });
+          try {
+            if (password) {
+              await joinPrivateRoom(roomId, meta.userId, password);
+            } else {
+              await joinRoom(roomId, meta.userId);
+            }
+          } catch (e: any) {
+            safeSend(ws, { type: "error", payload: { message: e.message } });
+            return;
+          }
+
+          if (meta.roomId && roomSockets.has(meta.roomId)) {
+            roomSockets.get(meta.roomId)!.delete(ws);
+          }
+
+          meta.roomId = roomId;
+          clients.set(ws, meta);
+
+          if (!roomSockets.has(roomId)) roomSockets.set(roomId, new Set());
+          roomSockets.get(roomId)!.add(ws);
+
+          broadcast(roomId, { type: "room.player_joined", payload: { userId: meta.userId } });
+          await pushRoomState(roomId);
+
+          const persistedGame = await loadGameState(roomId);
+          if (persistedGame) {
+            setGame(roomId, persistedGame as any);
+            safeSend(ws, { type: "game.state", payload: persistedGame } as any);
+          }
+
           return;
         }
-
-        // удалить из старой комнаты, если был
-        if (meta.roomId && roomSockets.has(meta.roomId)) {
-          roomSockets.get(meta.roomId)!.delete(ws);
-        }
-
-        meta.roomId = roomId;
-        clients.set(ws, meta);
-
-        if (!roomSockets.has(roomId)) roomSockets.set(roomId, new Set());
-        roomSockets.get(roomId)!.add(ws);
-
-        broadcast(roomId, { type: "room.player_joined", payload: { userId: meta.userId } });
-        await pushRoomState(roomId);
-        return;
-      }
 
       // остальные сообщения требуют roomId
       if (!meta.roomId) {
