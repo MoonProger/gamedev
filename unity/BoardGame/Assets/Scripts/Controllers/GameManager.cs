@@ -715,21 +715,24 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
         player.ChangeStat(statName, leaderBonus);
         player.ChangeStat(partnerStatName, partnerBonus);
         extraDesc = $"\nSolo! +{leaderBonus} {statName}, +{partnerBonus} {partnerStatName}";
+        deck?.Show(card, statName, extraDesc);
     }
     else
     {
+        extraDesc = $"You get: +{partnerBonus} {partnerStatName}\nPartner (leader) gets: +{leaderBonus} {statName}";
+        deck?.Show(card, statName, extraDesc);
+        deck?.SetLocked(true);
         var candidates = others.FindAll(o => o.level >= myLevel).ConvertAll(o => o.p);
         PlayerController chosenPartner = null;
         if (candidates.Count == 1)
             chosenPartner = candidates[0];
         else
             yield return greenCardUI.ShowAndWait(statName, candidates, p => chosenPartner = p);
-
+        deck?.SetLocked(false);
         player.ChangeStat(partnerStatName, partnerBonus);
         chosenPartner.ChangeStat(statName, leaderBonus);
-        extraDesc = $"\nPartner: {chosenPartner.playerName} — You +{partnerBonus} {partnerStatName}, {chosenPartner.playerName} +{leaderBonus} {statName}";
     }
-    deck?.Show(card, statName, extraDesc);
+
 }
 
 private void ShowCard(string title, string desc, CardType type, string stat)
