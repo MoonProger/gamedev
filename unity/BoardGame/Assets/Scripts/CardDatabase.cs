@@ -31,7 +31,6 @@ public class CardData
 
 public static class CardDatabase
 {
-    // Карточки сгруппированы по сфере
     private static readonly Dictionary<string, List<CardData>> BySphere = new Dictionary<string, List<CardData>>
     {
         { "science", new List<CardData> {

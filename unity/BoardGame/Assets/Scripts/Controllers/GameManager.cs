@@ -2,12 +2,6 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-public class CardResult
-{
-    public string title;
-    public string description;
-}
-
 public enum CardType { Surprise, Yellow, Blue, Red, Green }
 
 public class GameManager : MonoBehaviour
@@ -300,12 +294,7 @@ string colorPrefix = card.cardType switch
     CardType.Surprise => "[SURPRISE] ",
     _ => ""
 };
-
-CardResult result = new CardResult
-{
-    title = colorPrefix + card.title,
-    description = card.description
-};
+    string extraDesc = "";
     CardVisual deck = deckManager.GetCardForNode(node.nodeStat);
     switch (card.cardType)
 {
@@ -318,20 +307,20 @@ CardResult result = new CardResult
         break;
 
     case CardType.Blue:
-        HandleBlueCard(player, card, statName, expLevel, result);
+        extraDesc = HandleBlueCard(player, card, statName, expLevel);
         break;
 
     case CardType.Red:
-        HandleRedCard(player, card, statName, statLevel, result);
+        extraDesc = HandleRedCard(player, card, statName, statLevel);
         break;
 
     case CardType.Green:
-        yield return HandleGreenCard(player, card, statName, result, deck);
+        yield return HandleGreenCard(player, card, statName, deck);
         break;
 }
 
     if (card.cardType!=CardType.Green){
-        deck?.Show(card, statName);
+        deck?.Show(card, statName, extraDesc);
     }
     }
 
@@ -536,7 +525,7 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
     "GRANT REJECTED! 🎉",
     $"Sphere: {chosenStat}\n" +
     $"Roll: {roll} < Your exp: {expLevel}\n" +
-    $"Grant added to your profile! +1 Success",
+    $"Grant added to your profile!",
     CardType.Red,
     chosenStat
 );
@@ -669,40 +658,40 @@ private void HandleYellowCard(PlayerController player, CardData card, string sta
 }
 
 // BLUE
-private void HandleBlueCard(PlayerController player, CardData card, string statName, int expLevel, CardResult result)
+private string HandleBlueCard(PlayerController player, CardData card, string statName, int expLevel)
 {
     int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
     if (expLevel > diceSum)
     {
         player.ChangeStat(statName, 1);
-        result.description += $"\nRoll: {diceSum} < Exp: {expLevel} — {statName} +1";
+        return $"\nRoll: {diceSum} < Exp: {expLevel} — {statName} +1";
     }
     else
     {
         player.ChangeStat("experience", 1);
-        result.description += $"\nRoll: {diceSum} >= Exp: {expLevel} — +1 Experience";
+        return $"\nRoll: {diceSum} >= Exp: {expLevel} — +1 Experience";
     }
 }
 
 // RED
-private void HandleRedCard(PlayerController player, CardData card, string statName, int statLevel, CardResult result)
+private string HandleRedCard(PlayerController player, CardData card, string statName, int statLevel)
 {
     if (statLevel >= 5)
     {
         int bonus = UnityEngine.Random.Range(1, 4);
         player.ChangeStat(statName, bonus);
         player.ChangeStat("success", 1);
-        result.description += $"\n{statName} lvl {statLevel} >= 5 — +{bonus} {statName}, +1 Success";
+        return $"\n{statName} lvl {statLevel} >= 5 — +{bonus} {statName}, +1 Success";
     }
     else
     {
         player.ChangeStat("experience", 1);
-        result.description += $"\n{statName} lvl {statLevel} < 5 — +1 Experience";
+        return $"\n{statName} lvl {statLevel} < 5 — +1 Experience";
     }
 }
 
-// GREEN (корутина, потому что уже есть yield внутри)
-private IEnumerator HandleGreenCard(PlayerController player, CardData card, string statName, CardResult result, CardVisual deck)
+
+private IEnumerator HandleGreenCard(PlayerController player, CardData card, string statName, CardVisual deck)
 {
     int myLevel = player.GetStatValue(statName);
     var others = new List<(PlayerController p, int level)>();
@@ -720,12 +709,12 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
     string partnerStatName = partnerEff != null && !string.IsNullOrEmpty(partnerEff.statName)
         ? partnerEff.statName
         : GetRandomOtherStat(statName);
-
+    string extraDesc = "";
     if (myLevel > maxLevel)
     {
         player.ChangeStat(statName, leaderBonus);
         player.ChangeStat(partnerStatName, partnerBonus);
-        result.description += $"\nSolo! +{leaderBonus} {statName}, +{partnerBonus} {partnerStatName}";
+        extraDesc = $"\nSolo! +{leaderBonus} {statName}, +{partnerBonus} {partnerStatName}";
     }
     else
     {
@@ -734,13 +723,13 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
         if (candidates.Count == 1)
             chosenPartner = candidates[0];
         else
-            deck?.Show(card, statName);
             yield return greenCardUI.ShowAndWait(statName, candidates, p => chosenPartner = p);
 
         player.ChangeStat(partnerStatName, partnerBonus);
         chosenPartner.ChangeStat(statName, leaderBonus);
-        result.description += $"\nPartner: {chosenPartner.playerName} — You +{partnerBonus} {partnerStatName}, {chosenPartner.playerName} +{leaderBonus} {statName}";
+        extraDesc = $"\nPartner: {chosenPartner.playerName} — You +{partnerBonus} {partnerStatName}, {chosenPartner.playerName} +{leaderBonus} {statName}";
     }
+    deck?.Show(card, statName, extraDesc);
 }
 
 private void ShowCard(string title, string desc, CardType type, string stat)

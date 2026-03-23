@@ -38,10 +38,13 @@ public class CardVisual : MonoBehaviour
         if (isShown) Hide();
     }
 
- public void Show(CardData card, string sphere)
+public void Show(CardData card, string sphere, string extraDesc = "")
 {
-    ApplyVisuals(card.cardType, sphere, card.title, card.description);
-    AnimateTo(shownPosition);  // ← добавить эту строку
+    string fullDesc = string.IsNullOrEmpty(extraDesc) 
+        ? card.description 
+        : card.description + "\n" + extraDesc;
+    ApplyVisuals(card.cardType, sphere, card.title, fullDesc);
+    AnimateTo(shownPosition);
     isShown = true;
 }
 
