@@ -133,3 +133,34 @@ function safeJsonParse(value: string | null, fallback: any) {
     return fallback;
   }
 }
+
+export async function deleteRoom(roomId: string, userId: string) {
+  const room = await prisma.room.findUnique({ where: { id: roomId } });
+  if (!room) throw new Error("ROOM_NOT_FOUND");
+  if (room.creatorId !== userId) throw new Error("NOT_AUTHORIZED");
+  
+  await prisma.room.delete({ where: { id: roomId } });
+  return { success: true };
+}
+
+export async function closeRoom(roomId: string, userId: string) {
+  const room = await prisma.room.findUnique({ where: { id: roomId } });
+  if (!room) throw new Error("ROOM_NOT_FOUND");
+  if (room.creatorId !== userId) throw new Error("NOT_AUTHORIZED");
+  
+  return prisma.room.update({
+    where: { id: roomId },
+    data: { status: "CLOSED" }
+  });
+}
+
+export async function openRoom(roomId: string, userId: string) {
+  const room = await prisma.room.findUnique({ where: { id: roomId } });
+  if (!room) throw new Error("ROOM_NOT_FOUND");
+  if (room.creatorId !== userId) throw new Error("NOT_AUTHORIZED");
+  
+  return prisma.room.update({
+    where: { id: roomId },
+    data: { status: "WAITING" }
+  });
+}
