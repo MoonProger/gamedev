@@ -5,6 +5,7 @@ import { authRoutes } from "./modules/auth/auth.routes";
 import { roomsRoutes } from "./modules/rooms/rooms.routes";
 import { usersRoutes } from "./modules/users/users.routes";
 import { attachWs } from "./modules/ws/ws.server";
+import { statsRoutes } from "./modules/stats/stats.routes";
 
 const app = express();
 app.use(express.json());

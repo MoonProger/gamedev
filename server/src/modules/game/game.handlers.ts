@@ -2,6 +2,7 @@
 import { prisma } from "../../db/prisma";
 import { getOrCreateGame } from "./game.state";
 import { saveGameState } from "./game.persistence";
+import { finalizeGame } from "./game.results";
 
 function randDice() {
   return 1 + Math.floor(Math.random() * 6);
@@ -253,15 +254,34 @@ export async function handleGameMessage(ctx: {
 
     await saveGameState(roomId, game);
 
+    const totalSuccess = game.scores[userId]["success"];
+
     broadcast(roomId, {
       type: "game.project",
       payload: {
         playerId: userId,
         projectId: msg.payload.projectId,
         successPoints,
-        totalSuccess: game.scores[userId]["success"],
+        totalSuccess,
       },
     } as any);
+
+    if (totalSuccess >= 10) {
+      await finalizeGame(roomId, userId, game);
+
+      game.started = false;
+      game.phase = "WAITING_ROLL";
+      game.lastDice = null;
+
+      await saveGameState(roomId, game);
+
+      broadcast(roomId, {
+        type: "game.state",
+        payload: game,
+      } as any);
+
+      return;
+    }
 
     broadcast(roomId, {
       type: "game.turn_changed",

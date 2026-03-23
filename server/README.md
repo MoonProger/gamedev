@@ -55,3 +55,26 @@ Server events:
 - `game.token_moved` `{ playerId, pos, steps }`
 - `game.turn_changed` `{ activePlayerId }`
 - `game.state` `{ started, activePlayerId, positions, lastDice, phase }`
+
+### Users
+- PUT /api/users/profile
+
+### Stats
+- GET /api/stats/:userId
+
+### Private rooms
+- POST /rooms
+  - optional: password
+- POST /rooms/:id/join-private
+
+### New WebSocket events
+Client -> Server:
+- game.card
+- game.project
+- room.join { roomId, password? }
+
+Server -> Client:
+- game.card
+- game.project
+- game.paused
+- game.resumed
