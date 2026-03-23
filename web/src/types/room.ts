@@ -1,8 +1,8 @@
 export type RoomStatus = 'WAITING' | 'IN_GAME' | 'FINISHED' | 'CLOSED';
 
-export interface Player {
+export interface RoomPlayer {
   userId: string;
-  username: string; 
+  username: string;
   isReady: boolean;
   joinedAt?: string;
 }
@@ -11,18 +11,26 @@ export interface Room {
   id: string;
   title: string;
   status: RoomStatus;
-  isPrivate?: boolean;
-  password?: string;
-  players: Player[];  
+  settings: {
+    maxPlayers: number;
+    timerSeconds?: number;
+    fillWithBots?: boolean;
+  };
+  password: string | null;
   createdAt: string;
   creator: {
     id: string;
     username: string;
   } | null;
-  settings?: {
+  players: RoomPlayer[];
+}
+
+export interface CreateRoomData {
+  title: string;
+  password?: string;
+  settings: {
     maxPlayers: number;
-    timePerMove?: 'unlimited' | '30' | '60';
-    mode?: 'training' | 'standard' | 'tournament';
+    timerSeconds?: number;
     fillWithBots?: boolean;
   };
 }

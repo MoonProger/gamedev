@@ -27,8 +27,9 @@ class ApiClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
+    
     if (options.headers) {
-        Object.assign(headers, options.headers);
+      Object.assign(headers, options.headers);
     }
 
     const token = this.getToken();
@@ -79,6 +80,19 @@ class ApiClient {
     return this.request('/auth/me');
   }
 
+  // Profile endpoints
+  async updateProfile(data: { username?: string; avatar?: string }) {
+    return this.request('/api/users/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getUserStats(userId: string) {
+    const data = await this.request(`/api/stats/${userId}`);
+    return data.stats;
+  }
+
   // Rooms endpoints
   async getRooms() {
     return this.request('/rooms');
@@ -88,15 +102,30 @@ class ApiClient {
     return this.request(`/rooms/${id}`);
   }
 
-  async createRoom(title: string, settings?: any) {
+  async createRoom(title: string, options?: {
+    password?: string;
+    settings?: {
+      maxPlayers?: number;
+      timerSeconds?: number;
+      fillWithBots?: boolean;
+    }
+  }) {
     return this.request('/rooms', {
       method: 'POST',
-      body: JSON.stringify({ title, settings: settings || { maxPlayers: 5 } }),
+      body: JSON.stringify({ 
+        title,
+        password: options?.password,
+        settings: {
+          maxPlayers: options?.settings?.maxPlayers ?? 4,
+          timerSeconds: options?.settings?.timerSeconds,
+          fillWithBots: options?.settings?.fillWithBots ?? false,
+        }
+      }),
     });
   }
 
   async deleteRoom(id: string) {
-    return this.request(`/rooms/${id}`, { // Исправил кавычки
+    return this.request(`/rooms/${id}`, {
       method: 'DELETE',
     });
   }
@@ -119,6 +148,13 @@ class ApiClient {
     });
   }
 
+  async joinPrivateRoom(id: string, password: string) {
+    return this.request(`/rooms/${id}/join-private`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+  }
+
   async leaveRoom(id: string) {
     return this.request(`/rooms/${id}/leave`, {
       method: 'POST',
@@ -137,6 +173,30 @@ class ApiClient {
     return this.request(`/rooms/${roomId}/start`, {
       method: 'POST',
     });
+  }
+
+  // WebSocket 
+  connectWebSocket(onMessage: (data: any) => void): WebSocket {
+    const token = this.getToken();
+    console.log('Connecting WebSocket with token:', token);
+    if (!token) throw new Error('No token');
+    
+    const ws = new WebSocket(`ws://localhost:4000/ws?token=${token}`);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        onMessage(data);
+      } catch (e) {
+        console.error('WS parse error', e);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WS error', error);
+    };
+    
+    return ws;
   }
 }
 

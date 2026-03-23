@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { User, UserStats, UpdateProfileData } from '../types/user';
+import Loader from '../components/ui/Loader';
+import ErrorMessage from '../components/ui/ErrorMessage';
+import { useToast } from '../context/ToastContext';
+import { User, UserStats } from '../types/user';
 import './Profile.css';
 
 const Profile: React.FC = () => {
@@ -13,11 +16,11 @@ const Profile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-  const [editData, setEditData] = useState<UpdateProfileData>({});
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [editData, setEditData] = useState({ username: '' });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadProfile();
@@ -32,36 +35,17 @@ const Profile: React.FC = () => {
         return;
       }
 
-      // Загружаем данные пользователя
       const userData = await api.getMe();
       setUser(userData.user);
       setEditData({ username: userData.user.username });
 
-      // Загружаем статистику (пока заглушка)
-      const mockStats: UserStats = {
-        totalGames: 24,
-        wins: 15,
-        losses: 9,
-        winRate: 62.5,
-        favoriteSpheres: [
-          { sphere: 'IT', games: 12 },
-          { sphere: 'Предпринимательство', games: 8 },
-          { sphere: 'Творчество', games: 6 },
-          { sphere: 'Наука', games: 5 },
-          { sphere: 'Волонтерство', games: 4 },
-        ],
-        recentProgress: {
-          date: new Date().toISOString(),
-          spheres: [
-            { name: 'IT', value: 85 },
-            { name: 'Бизнес', value: 60 },
-            { name: 'Наука', value: 45 },
-            { name: 'Творчество', value: 70 },
-            { name: 'Спорт', value: 30 },
-          ],
-        },
-      };
-      setStats(mockStats);
+      try {
+        const statsData = await api.getUserStats(userData.user.id);
+        setStats(statsData);
+      } catch (statsErr) {
+        console.log('Статистика пока недоступна');
+        setStats(null);
+      }
     } catch (err) {
       setError('Не удалось загрузить профиль');
       console.error(err);
@@ -72,31 +56,22 @@ const Profile: React.FC = () => {
 
   const handleEditSubmit = async () => {
     if (!editData.username?.trim()) {
-      setError('Имя не может быть пустым');
+      showToast('Имя не может быть пустым', 'error');
       return;
     }
 
     try {
       setEditLoading(true);
-      // Здесь будет вызов API для обновления профиля
-      // await api.updateProfile(editData);
       
-      // Если есть аватар, загружаем его отдельно
-      if (avatarFile) {
-        // const formData = new FormData();
-        // formData.append('avatar', avatarFile);
-        // await api.uploadAvatar(formData);
-      }
-
-      // Обновляем локальные данные
-      setUser(prev => prev ? { ...prev, username: editData.username! } : null);
+      const updated = await api.updateProfile({ username: editData.username });
+      
+      setUser(prev => prev ? { ...prev, username: updated.user.username } : null);
       setIsEditing(false);
       setAvatarPreview(null);
-      setAvatarFile(null);
       
-      alert('Профиль обновлен!');
+      showToast('Профиль обновлен!', 'success');
     } catch (err) {
-      setError('Не удалось обновить профиль');
+      showToast('Не удалось обновить профиль', 'error');
     } finally {
       setEditLoading(false);
     }
@@ -105,7 +80,6 @@ const Profile: React.FC = () => {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
@@ -115,7 +89,6 @@ const Profile: React.FC = () => {
   };
 
   const removeAvatar = () => {
-    setAvatarFile(null);
     setAvatarPreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -127,34 +100,23 @@ const Profile: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+    } catch {
+      return 'Неизвестно';
+    }
   };
 
-  const maxSphereGames = stats?.favoriteSpheres.length 
-    ? Math.max(...stats.favoriteSpheres.map(s => s.games))
-    : 1;
-
   if (loading) {
-    return (
-      <div className="rooms-loading">
-        <div className="loader">Загрузка профиля...</div>
-      </div>
-    );
+    return <Loader text="Загрузка профиля..." fullPage />;
   }
 
   if (error || !user) {
-    return (
-      <div className="room-error">
-        <p>{error || 'Пользователь не найден'}</p>
-        <Button variant="primary" onClick={() => navigate('/')}>
-          На главную
-        </Button>
-      </div>
-    );
+    return <ErrorMessage message={error || 'Пользователь не найден'} onRetry={() => navigate('/')} fullPage />;
   }
 
   return (
@@ -162,7 +124,7 @@ const Profile: React.FC = () => {
       <div className="profile-header">
         <div className="profile-avatar">
           {avatarPreview || user.avatar ? (
-            <img src={avatarPreview || user.avatar} alt={user.username} />
+            <img src={avatarPreview || user.avatar || ''} alt={user.username} />
           ) : (
             <div className="avatar-placeholder">
               {getInitials(user.username)}
@@ -188,69 +150,24 @@ const Profile: React.FC = () => {
       </div>
 
       {stats ? (
-        <>
-          <div className="profile-stats-grid">
-            <div className="stat-card">
-              <div className="stat-value">{stats.totalGames}</div>
-              <div className="stat-label">Всего игр</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{stats.wins}</div>
-              <div className="stat-label">Побед</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{stats.losses}</div>
-              <div className="stat-label">Поражений</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{stats.winRate}%</div>
-              <div className="stat-label">Побед</div>
-              <div className="stat-trend">+12% за месяц</div>
-            </div>
+        <div className="profile-stats-grid">
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalGames}</div>
+            <div className="stat-label">Всего игр</div>
           </div>
-
-          <div className="spheres-section">
-            <h2>Любимые сферы</h2>
-            <div className="spheres-grid">
-              {stats.favoriteSpheres.map((sphere, index) => (
-                <div key={index} className="sphere-item">
-                  <div className="sphere-header">
-                    <span className="sphere-name">{sphere.sphere}</span>
-                    <span className="sphere-games">{sphere.games} игр</span>
-                  </div>
-                  <div className="sphere-bar">
-                    <div 
-                      className="sphere-fill"
-                      style={{ width: `${(sphere.games / maxSphereGames) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="stat-card">
+            <div className="stat-value">{stats.wins}</div>
+            <div className="stat-label">Побед</div>
           </div>
-
-          {stats.recentProgress && (
-            <div className="spheres-section">
-              <h2>Прогресс по сферам (последняя игра)</h2>
-              <div className="spheres-grid">
-                {stats.recentProgress.spheres.map((sphere, index) => (
-                  <div key={index} className="sphere-item">
-                    <div className="sphere-header">
-                      <span className="sphere-name">{sphere.name}</span>
-                      <span className="sphere-games">{sphere.value}%</span>
-                    </div>
-                    <div className="sphere-bar">
-                      <div 
-                        className="sphere-fill"
-                        style={{ width: `${sphere.value}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+          <div className="stat-card">
+            <div className="stat-value">{stats.losses}</div>
+            <div className="stat-label">Поражений</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalScore}</div>
+            <div className="stat-label">Всего очков</div>
+          </div>
+        </div>
       ) : (
         <div className="no-stats">
           <p>У вас пока нет сыгранных игр</p>
@@ -269,7 +186,7 @@ const Profile: React.FC = () => {
             <div className="edit-avatar-section">
               <div className="edit-avatar">
                 {avatarPreview || user.avatar ? (
-                  <img src={avatarPreview || user.avatar} alt="Avatar" />
+                  <img src={avatarPreview || user.avatar || ''} alt="Avatar" />
                 ) : (
                   <div className="avatar-placeholder">
                     {getInitials(user.username)}

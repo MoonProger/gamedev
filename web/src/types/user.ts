@@ -1,8 +1,8 @@
 export interface User {
   id: string;
-  username: string;
   email: string;
-  avatar?: string;
+  username: string;
+  avatar: string | null;
   createdAt: string;
 }
 
@@ -10,21 +10,6 @@ export interface UserStats {
   totalGames: number;
   wins: number;
   losses: number;
-  winRate: number;
-  favoriteSpheres: {
-    sphere: string;
-    games: number;
-  }[];
-  recentProgress?: {
-    date: string;
-    spheres: {
-      name: string;
-      value: number;
-    }[];
-  };
-}
-
-export interface UpdateProfileData {
-  username?: string;
-  avatar?: string;
+  totalScore: number;
+  favoriteSpheres: Record<string, number>;
 }

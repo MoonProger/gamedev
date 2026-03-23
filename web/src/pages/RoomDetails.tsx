@@ -1,8 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import Button from '../components/ui/Button';
-import { Room } from '../types/room'; 
+import Loader from '../components/ui/Loader';
+import ErrorMessage from '../components/ui/ErrorMessage';
+import { useToast } from '../context/ToastContext';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { Room } from '../types/room';
 import './RoomDetails.css';
 
 function getUserIdFromToken(): string | null {
@@ -21,6 +25,13 @@ function getUserIdFromToken(): string | null {
 
 const RoomDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const statePassword = (location.state as any)?.roomPassword;
+  const savedPassword = id ? localStorage.getItem(`room_${id}_password`) : null;
+  const initialPassword = statePassword || savedPassword || null;
+  
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,13 +41,40 @@ const RoomDetails: React.FC = () => {
   const [isClosing, setIsClosing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (id) {
-      loadRoom();
+  
+  const [roomPassword] = useState<string | null>(() => {
+    if (initialPassword && id) {
+      localStorage.removeItem(`room_${id}_password`);
     }
-  }, [id]);
+    return initialPassword;
+  });
+  
+  console.log('RoomDetails: id =', id);
+  console.log('RoomDetails: location.state =', location.state);
+  console.log('RoomDetails: savedPassword from localStorage =', savedPassword);
+  console.log('RoomDetails: roomPassword =', roomPassword);
+  
+  const { showToast } = useToast();
+
+  const handleWebSocketMessage = useCallback((data: any) => {
+    console.log('WS message:', data);
+    
+    switch (data.type) {
+      case 'room.state':
+        setRoom(data.payload);
+        break;
+      case 'game.started':
+        showToast('Игра началась!', 'success');
+        navigate(`/game/${id}`);
+        break;
+      case 'game.paused':
+        showToast(`Игра на паузе: ${data.payload.reason}`, 'info');
+        break;
+      case 'error':
+        showToast(data.payload.message, 'error');
+        break;
+    }
+  }, [navigate, showToast, id]);
 
   const loadRoom = async () => {
     if (!id) return;
@@ -44,7 +82,6 @@ const RoomDetails: React.FC = () => {
     try {
       setLoading(true);
       const data = await api.getRoom(id);
-      console.log('Данные комнаты:', data);
       setRoom(data.room);
       setError(null);
     } catch (err) {
@@ -55,6 +92,18 @@ const RoomDetails: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    loadRoom();
+  }, [id]);
+
+  // Вычисляем, нужно ли пропускать автоматический join
+  const currentUserId = getUserIdFromToken();
+  const isCreator = room?.creator?.id === currentUserId;
+  const isAlreadyInRoom = room?.players?.some(p => p.userId === currentUserId) ?? false;
+  const shouldSkipJoin = isCreator || isAlreadyInRoom;
+
+  // Передаём shouldSkipJoin в useWebSocket
+const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSocketMessage, shouldSkipJoin);
   const handleReady = async () => {
     if (!room || !id) return;
     
@@ -64,9 +113,10 @@ const RoomDetails: React.FC = () => {
     setIsReadyLoading(true);
     try {
       await api.setReady(id, !currentPlayer.isReady);
+      showToast(currentPlayer.isReady ? 'Готовность отменена' : 'Вы готовы!', 'success');
       await loadRoom();
     } catch (err) {
-      setError('Не удалось изменить статус');
+      showToast('Не удалось изменить статус', 'error');
     } finally {
       setIsReadyLoading(false);
     }
@@ -78,18 +128,38 @@ const RoomDetails: React.FC = () => {
     try {
       setIsLeaving(true);
       await api.leaveRoom(id);
+      showToast('Вы покинули комнату', 'info');
       navigate('/rooms');
     } catch (err) {
-      setError('Не удалось покинуть комнату');
+      showToast('Не удалось покинуть комнату', 'error');
       setIsLeaving(false);
     }
   };
 
-  const handleStartGame = () => {
-    console.log('Начинаем игру в комнате:', id);
-    if (!id) return;
-    navigate(`/game/${id}`);
-  };
+  const handleStartGame = async () => {
+  if (!id) return;
+  console.log('Starting game, waiting for WebSocket connection...');
+  
+  let attempts = 0;
+  while (!isConnected && attempts < 30) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    attempts++;
+  }
+  
+  if (!isConnected) {
+    console.error('WebSocket not connected after 3 seconds');
+    showToast('Ошибка подключения', 'error');
+    return;
+  }
+  
+  console.log('Sending room.join');
+  send('room.join', { roomId: id, password: roomPassword });
+  
+  setTimeout(() => {
+    console.log('Now sending game.start');
+    send('game.start', {});
+  }, 200);
+};
 
   const handleCloseRoom = async () => {
     if (!id) return;
@@ -97,9 +167,10 @@ const RoomDetails: React.FC = () => {
     try {
       setIsClosing(true);
       await api.closeRoom(id);
-      await loadRoom(); 
+      showToast('Комната закрыта', 'success');
+      await loadRoom();
     } catch (err) {
-      setError('Не удалось закрыть комнату');
+      showToast('Не удалось закрыть комнату', 'error');
     } finally {
       setIsClosing(false);
     }
@@ -111,9 +182,10 @@ const RoomDetails: React.FC = () => {
     try {
       setIsClosing(true);
       await api.openRoom(id);
+      showToast('Комната открыта', 'success');
       await loadRoom();
     } catch (err) {
-      setError('Не удалось открыть комнату');
+      showToast('Не удалось открыть комнату', 'error');
     } finally {
       setIsClosing(false);
     }
@@ -125,36 +197,25 @@ const RoomDetails: React.FC = () => {
     try {
       setIsDeleting(true);
       await api.deleteRoom(id);
+      showToast('Комната удалена', 'success');
       navigate('/rooms');
     } catch (err) {
-      setError('Не удалось удалить комнату');
+      showToast('Не удалось удалить комнату', 'error');
       setIsDeleting(false);
     }
     setShowDeleteConfirm(false);
   };
 
-  const currentUserId = getUserIdFromToken();
   const currentPlayer = room?.players?.find(p => p.userId === currentUserId);
-  const isCreator = room?.creator?.id === currentUserId;
   const allReady = (room?.players?.length ?? 0) >= 2 && room?.players?.every(p => p.isReady);
+  const maxPlayers = room?.settings?.maxPlayers ?? 4;
 
   if (loading) {
-    return (
-      <div className="room-loading">
-        <div className="loader">Загрузка комнаты...</div>
-      </div>
-    );
+    return <Loader text="Загрузка комнаты..." fullPage />;
   }
 
   if (error || !room) {
-    return (
-      <div className="room-error">
-        <p>{error || 'Комната не найдена'}</p>
-        <Button variant="primary" onClick={() => navigate('/rooms')}>
-          Вернуться к комнатам
-        </Button>
-      </div>
-    );
+    return <ErrorMessage message={error || 'Комната не найдена'} onRetry={() => navigate('/rooms')} fullPage />;
   }
 
   return (
@@ -192,8 +253,14 @@ const RoomDetails: React.FC = () => {
           </div>
           <div className="info-row">
             <span className="info-label">Игроков:</span>
-            <span className="info-value">{room.players?.length || 0}</span>
+            <span className="info-value">{room.players?.length || 0}/{maxPlayers}</span>
           </div>
+          {room.settings?.timerSeconds && (
+            <div className="info-row">
+              <span className="info-label">Время на ход:</span>
+              <span className="info-value">{room.settings.timerSeconds} сек</span>
+            </div>
+          )}
         </div>
 
         <div className="players-section">
@@ -202,7 +269,7 @@ const RoomDetails: React.FC = () => {
             {room.players?.map(player => (
               <div key={player.userId} className="player-item">
                 <div className="player-info">
-                  <span className="player-name">{player.username || 'Без имени'}</span>  {/* Убрали player.user.username */}
+                  <span className="player-name">{player.username || 'Без имени'}</span>
                   {player.userId === room.creator?.id && (
                     <span className="player-creator">Создатель</span>
                   )}
@@ -216,6 +283,16 @@ const RoomDetails: React.FC = () => {
                   ) : (
                     <span className="ready-status not-ready">Не готов</span>
                   )}
+                </div>
+              </div>
+            ))}
+            {Array.from({ length: maxPlayers - (room.players?.length ?? 0) }).map((_, i) => (
+              <div key={`empty-${i}`} className="player-item empty-slot">
+                <div className="player-info">
+                  <span className="player-name">Свободное место</span>
+                </div>
+                <div className="player-status">
+                  <span className="ready-status">Ожидает игрока</span>
                 </div>
               </div>
             ))}
