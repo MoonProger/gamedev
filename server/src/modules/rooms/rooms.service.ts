@@ -79,6 +79,18 @@ export async function joinRoom(roomId: string, userId: string) {
   const settings = safeJsonParse(room.settings, {});
   const count = await prisma.roomPlayer.count({ where: { roomId } });
   const maxPlayers = settings?.maxPlayers ?? 5;
+  
+  // Проверяем, есть ли игрок уже в комнате
+  const existingPlayer = await prisma.roomPlayer.findUnique({
+    where: { roomId_userId: { roomId, userId } }
+  });
+  
+  // Если игрок уже в комнате, просто возвращаем комнату без ошибки
+  if (existingPlayer) {
+    console.log(`User ${userId} already in room ${roomId}, skipping join`);
+    return getRoom(roomId);
+  }
+  
   if (count >= maxPlayers) throw new Error("ROOM_FULL");
 
   await prisma.roomPlayer.upsert({
@@ -102,6 +114,18 @@ export async function joinPrivateRoom(roomId: string, userId: string, password: 
   const settings = safeJsonParse(room.settings, {});
   const count = await prisma.roomPlayer.count({ where: { roomId } });
   const maxPlayers = settings?.maxPlayers ?? 5;
+  
+  // Проверяем, есть ли игрок уже в комнате
+  const existingPlayer = await prisma.roomPlayer.findUnique({
+    where: { roomId_userId: { roomId, userId } }
+  });
+  
+  // Если игрок уже в комнате, просто возвращаем комнату без ошибки
+  if (existingPlayer) {
+    console.log(`User ${userId} already in room ${roomId}, skipping join`);
+    return getRoom(roomId);
+  }
+  
   if (count >= maxPlayers) throw new Error("ROOM_FULL");
 
   await prisma.roomPlayer.upsert({
@@ -163,4 +187,29 @@ export async function openRoom(roomId: string, userId: string) {
     where: { id: roomId },
     data: { status: "WAITING" }
   });
+}
+import { resetGame } from "../game/game.state";
+
+export async function resetGameState(roomId: string) {
+  console.log(`Resetting game state for room ${roomId}`);
+  
+  // Очищаем in-memory состояние игры
+  resetGame(roomId);
+  
+  // Удаляем сохранённое состояние из БД
+  await prisma.gameState.delete({
+    where: { roomId }
+  }).catch(() => {});
+  
+  // Сбрасываем статус комнаты на WAITING
+  await prisma.room.update({
+    where: { id: roomId },
+    data: { status: "WAITING" }
+  }).catch(() => {});
+  
+  // Сбрасываем готовность всех игроков
+  await prisma.roomPlayer.updateMany({
+    where: { roomId },
+    data: { isReady: false }
+  }).catch(() => {});
 }

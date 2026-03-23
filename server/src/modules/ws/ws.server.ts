@@ -4,10 +4,9 @@ import jwt from "jsonwebtoken";
 import { WsIn, WsOut } from "./ws.types";
 import { handleGameMessage } from "../game/game.handlers";
 import { roomToDto } from "../rooms/rooms.dto";
-import { joinRoom, joinPrivateRoom, leaveRoom, setReady, getRoom } from "../rooms/rooms.service";
+import { joinRoom, joinPrivateRoom, leaveRoom, setReady, getRoom, getRawRoom, resetGameState } from "../rooms/rooms.service";
 import { loadGameState } from "../game/game.persistence";
-import { setGame } from "../game/game.state";
-import { loadGameState, saveGameState } from "../game/game.persistence";
+import { saveGameState } from "../game/game.persistence";
 import { getOrCreateGame, setGame } from "../game/game.state";
 
 type JwtPayload = { userId: string; email: string };
@@ -131,8 +130,6 @@ export function attachWs(server: HttpServer) {
 
           return;
         }
-
-      // остальные сообщения требуют roomId
       if (!meta.roomId) {
         safeSend(ws, { type: "error", payload: { message: "Join room first" } });
         return;
@@ -146,6 +143,18 @@ export function attachWs(server: HttpServer) {
         meta.roomId = undefined;
         clients.set(ws, meta);
 
+        // Проверяем, остались ли игроки в комнате
+        const room = await getRawRoom(roomId);
+        const playersCount = room?.players.length || 0;
+        
+        console.log(`Player ${meta.userId} left room ${roomId}, remaining players: ${playersCount}`);
+        
+        // Если игроков не осталось, сбрасываем состояние игры
+        if (playersCount === 0) {
+          console.log(`No players left in room ${roomId}, resetting game state`);
+          await resetGameState(roomId);
+        }
+
         broadcast(roomId, { type: "room.player_left", payload: { userId: meta.userId } });
         await pushRoomState(roomId);
         return;
@@ -156,8 +165,7 @@ export function attachWs(server: HttpServer) {
         await pushRoomState(meta.roomId);
         return;
       }
-
-      // game message handler 
+      
       await handleGameMessage({
                   roomId: meta.roomId,
                   userId: meta.userId,
@@ -190,4 +198,4 @@ export function attachWs(server: HttpServer) {
     });
   });
 });
-} 
+}
