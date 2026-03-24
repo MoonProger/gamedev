@@ -16,6 +16,7 @@ public class CardVisual : MonoBehaviour
     public Transform hiddenPosition;   // куда карточка уходит (за стол)
     public Transform shownPosition;    // перед камерой
     public float animDuration = 0.4f;
+    private bool isLocked = false;
 
     private static readonly Color ColorYellow   = new Color(1f,    0.85f, 0.1f);
     private static readonly Color ColorBlue     = new Color(0.29f, 0.56f, 0.85f);
@@ -35,7 +36,7 @@ public class CardVisual : MonoBehaviour
 
     private void OnMouseDown()
     {
-        if (isShown) Hide();
+         if (isShown && !isLocked) Hide();
     }
 
 public void Show(CardData card, string sphere, string extraDesc = "")
@@ -109,4 +110,5 @@ private IEnumerator MoveAndRotate(Transform target)
     transform.position = target.position;
     transform.rotation = target.rotation;
 }
+public void SetLocked(bool locked) => isLocked = locked;
 }
