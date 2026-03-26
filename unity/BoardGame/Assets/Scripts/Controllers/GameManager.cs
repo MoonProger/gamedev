@@ -13,12 +13,23 @@ public class GameManager : MonoBehaviour
     public DeckManager deckManager;
 
     [Header("Audio")]
-    public AudioClip victorySound;
     private AudioSource audioSource;
+    private AudioSource bgMusicSource;
+    public AudioClip victorySound;
     public AudioClip drawCardSound;  
     public AudioClip travelSound;  
     public AudioClip sadSound;  
     public AudioClip moneySound;
+    public AudioClip backgroundMusic;
+
+    public AudioClip soundIT;
+    public AudioClip soundScience;
+    public AudioClip soundArt;
+    public AudioClip soundMedia;
+    public AudioClip soundBusiness;
+    public AudioClip soundSport;
+    public AudioClip soundTourism;
+    public AudioClip soundVolounteer;
 
     [Header("UI")]
     public GreenCardUI greenCardUI;
@@ -49,8 +60,16 @@ public class GameManager : MonoBehaviour
     private void Awake()
 {
     dice.OnDiceRolled += RegisterRoll;
-    audioSource = GetComponent<AudioSource>();
     if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
+    if (bgMusicSource == null) bgMusicSource = gameObject.AddComponent<AudioSource>();
+
+     if (backgroundMusic != null)
+    {
+        bgMusicSource.clip = backgroundMusic;
+        bgMusicSource.loop = true;
+        bgMusicSource.volume = 0.1f;
+        bgMusicSource.Play();
+    }
 }
     private void OnDestroy() => dice.OnDiceRolled -= RegisterRoll;
     private void Update() => HandleSelectionInput();
@@ -200,6 +219,7 @@ private IEnumerator EndTurnAfterDelay()
             }
         }
 
+        PlayNodeSound(currentPlayer.currentNode.nodeStat);
         TableManager table = FindObjectOfType<TableManager>();
         yield return new WaitForSeconds(0.5f);
 
@@ -741,4 +761,23 @@ private void ShowCard(string title, string desc, CardType type, string stat)
     utilityCard?.ShowRaw(title, desc, type, stat);
 }
 
+private void PlayNodeSound(BoardNode.NodeType nodeType)
+{
+     if (UnityEngine.Random.Range(0f, 1f) > 0.4f) return;
+    AudioClip clip = nodeType switch
+    {
+        BoardNode.NodeType.IT         => soundIT,
+        BoardNode.NodeType.Science    => soundScience,
+        BoardNode.NodeType.Art        => soundArt,
+        BoardNode.NodeType.Media      => soundMedia,
+        BoardNode.NodeType.Business   => soundBusiness,
+        BoardNode.NodeType.Sport      => soundSport,
+        BoardNode.NodeType.Tourism    => soundTourism,
+        BoardNode.NodeType.Volounteer => soundVolounteer,
+        _ => null
+    };
+
+    if (clip != null && audioSource != null)
+        audioSource.PlayOneShot(clip);
+}
 }

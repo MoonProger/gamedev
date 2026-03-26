@@ -19176,6 +19176,15 @@ MonoBehaviour:
   travelSound: {fileID: 8300000, guid: 784d768e66e7fcf4b9204b789160684f, type: 3}
   sadSound: {fileID: 8300000, guid: 761be0573f7abf84dba4467af5adbbcc, type: 3}
   moneySound: {fileID: 8300000, guid: 76de4fe7d295f9643bce73af229ec212, type: 3}
+  backgroundMusic: {fileID: 8300000, guid: 520233bde9e1a224a92f74a19e5cb565, type: 3}
+  soundIT: {fileID: 0}
+  soundScience: {fileID: 0}
+  soundArt: {fileID: 0}
+  soundMedia: {fileID: 0}
+  soundBusiness: {fileID: 0}
+  soundSport: {fileID: 0}
+  soundTourism: {fileID: 0}
+  soundVolounteer: {fileID: 0}
   greenCardUI: {fileID: 206523210}
   players:
   - {fileID: 143500295}
