@@ -26,7 +26,15 @@ public class CardData
     public string title;
     public string description;
     public CardType cardType;
+
+    // Для обычных карточек
     public List<CardEffectData> effects = new List<CardEffectData>();
+
+    // Только для Green-карточек
+    // soloEffects — если делаешь проект сам
+    // coopEffects — если делаешь с напарником
+    public List<CardEffectData> soloEffects = new List<CardEffectData>();
+    public List<CardEffectData> coopEffects = new List<CardEffectData>();
 }
 
 public static class CardDatabase
@@ -34,56 +42,60 @@ public static class CardDatabase
     private static readonly Dictionary<string, List<CardData>> BySphere = new Dictionary<string, List<CardData>>
     {
         { "science", new List<CardData> {
-            new CardData {
-                title = "SCIENCE FAIR",
-                description = "You presented your research.\n+2 Science",
-                cardType = CardType.Yellow,
-                effects = new List<CardEffectData> {
-                    new CardEffectData { effect = CardEffect.GainStat, statName = "", amount = 2 }
-                }
-            },
-            new CardData {
-                title = "LAB ACCIDENT",
-                description = "Experiment went wrong.\n-1 Science, +1 Experience",
-                cardType = CardType.Yellow,
-                effects = new List<CardEffectData> {
-                    new CardEffectData { effect = CardEffect.LoseStat, statName = "", amount = 1 },
-                    new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 1 }
-                }
-            },
-            new CardData {
-                title = "CONFERENCE TALK",
-                description = "Roll vs exp — win: +2 Science, lose: +1 Exp",
-                cardType = CardType.Blue,
-                effects = new List<CardEffectData> {
-                    new CardEffectData { effect = CardEffect.None }
-                }
-            },
-            new CardData {
-                title = "PUBLISHED PAPER",
-                description = "If Science >= 5: +3 Science, +1 Success\nElse: +1 Experience",
-                cardType = CardType.Red,
-                effects = new List<CardEffectData> {
-                    new CardEffectData { effect = CardEffect.None }
-                }
-            },
+            // new CardData {
+            //     title = "SCIENCE FAIR",
+            //     description = "You presented your research.\n+2 Science",
+            //     cardType = CardType.Yellow,
+            //     effects = new List<CardEffectData> {
+            //         new CardEffectData { effect = CardEffect.GainStat, statName = "", amount = 2 }
+            //     }
+            // },
+            // new CardData {
+            //     title = "LAB ACCIDENT",
+            //     description = "Experiment went wrong.\n-1 Science, +1 Experience",
+            //     cardType = CardType.Yellow,
+            //     effects = new List<CardEffectData> {
+            //         new CardEffectData { effect = CardEffect.LoseStat, statName = "", amount = 1 },
+            //         new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 1 }
+            //     }
+            // },
+            // new CardData {
+            //     title = "CONFERENCE TALK",
+            //     description = "Roll vs exp — win: +2 Science, lose: +1 Exp",
+            //     cardType = CardType.Blue,
+            //     effects = new List<CardEffectData> {
+            //         new CardEffectData { effect = CardEffect.None }
+            //     }
+            // },
+            // new CardData {
+            //     title = "PUBLISHED PAPER",
+            //     description = "If Science >= 5: +3 Science, +1 Success\nElse: +1 Experience",
+            //     cardType = CardType.Red,
+            //     effects = new List<CardEffectData> {
+            //         new CardEffectData { effect = CardEffect.None }
+            //     }
+            // },
             new CardData {
                 title = "JOINT RESEARCH",
-                description = "Collaborate on a study.",
+                description = "Соло: +1 Science, +1 Experience\nСовместно: +3 Science (вам), +2 Experience (напарнику)",
                 cardType = CardType.Green,
-                effects = new List<CardEffectData> {
-                    new CardEffectData { effect = CardEffect.GainStat, statName = "", amount = 3 },       // лидер: +3 основная
-                    new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 2 } // партнёр: +2 experience
+                soloEffects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "", amount = 1 },
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 1 }
+                },
+                coopEffects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "", amount = 3 },
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 2 }
                 }
             },
-            new CardData {
-                title = "LUCKY GRANT",
-                description = "Unexpected funding arrived!\n+3 Money",
-                cardType = CardType.Surprise,
-                effects = new List<CardEffectData> {
-                    new CardEffectData { effect = CardEffect.GainMoney, amount = 3 }
-                }
-            },
+            // new CardData {
+            //     title = "LUCKY GRANT",
+            //     description = "Unexpected funding arrived!\n+3 Money",
+            //     cardType = CardType.Surprise,
+            //     effects = new List<CardEffectData> {
+            //         new CardEffectData { effect = CardEffect.GainMoney, amount = 3 }
+            //     }
+            // },
         }},
 
         { "art", new List<CardData> {
@@ -474,5 +486,12 @@ public static class CardDatabase
         var filtered = BySphere[key].FindAll(c => c.cardType == type);
         if (filtered.Count == 0) return null;
         return filtered[Random.Range(0, filtered.Count)];
+    }
+    public static List<CardEffectData> GetEffects(CardData card, bool playWithPartner)
+    {
+        if (card.cardType != CardType.Green)
+            return card.effects;
+
+        return playWithPartner ? card.coopEffects : card.soloEffects;
     }
 }

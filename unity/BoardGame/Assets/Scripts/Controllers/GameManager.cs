@@ -718,41 +718,59 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
     for (int i = 0; i < expectedPlayerCount; i++)
         if (players[i] != player)
             others.Add((players[i], players[i].GetStatValue(statName)));
+
     others.Sort((a, b) => b.level.CompareTo(a.level));
     int maxLevel = others.Count > 0 ? others[0].level : 0;
 
-    CardEffectData leaderEff  = card.effects.Count > 0 ? card.effects[0] : null;
-    CardEffectData partnerEff = card.effects.Count > 1 ? card.effects[1] : null;
+    // Если я выше всех — играю соло, иначе с напарником
+    bool playWithPartner = myLevel <= maxLevel;
+
+    // Для Green берём нужный набор эффектов:
+    // soloEffects или coopEffects
+    List<CardEffectData> activeEffects = CardDatabase.GetEffects(card, playWithPartner);
+
+    CardEffectData leaderEff  = activeEffects.Count > 0 ? activeEffects[0] : null;
+    CardEffectData partnerEff = activeEffects.Count > 1 ? activeEffects[1] : null;
 
     int leaderBonus  = leaderEff  != null ? leaderEff.amount  : Random.Range(2, 5);
     int partnerBonus = partnerEff != null ? partnerEff.amount : Random.Range(1, 3);
+
+    string leaderStatName = leaderEff != null && !string.IsNullOrEmpty(leaderEff.statName)
+        ? leaderEff.statName
+        : statName;
+
     string partnerStatName = partnerEff != null && !string.IsNullOrEmpty(partnerEff.statName)
         ? partnerEff.statName
         : GetRandomOtherStat(statName);
-    string extraDesc = "";
-    if (myLevel > maxLevel)
+
+    if (!playWithPartner)
     {
-        player.ChangeStat(statName, leaderBonus);
+        player.ChangeStat(leaderStatName, leaderBonus);
         player.ChangeStat(partnerStatName, partnerBonus);
-        extraDesc = $"\nSolo! +{leaderBonus} {statName}, +{partnerBonus} {partnerStatName}";
-        deck?.Show(card, statName, extraDesc);
+
+        deck?.Show(card, statName, "");
     }
     else
     {
-        extraDesc = $"You get: +{partnerBonus} {partnerStatName}\nPartner (leader) gets: +{leaderBonus} {statName}";
-        deck?.Show(card, statName, extraDesc);
+        deck?.Show(card, statName, "");
         deck?.SetLocked(true);
+
         var candidates = others.FindAll(o => o.level >= myLevel).ConvertAll(o => o.p);
+
         PlayerController chosenPartner = null;
         if (candidates.Count == 1)
             chosenPartner = candidates[0];
         else
             yield return greenCardUI.ShowAndWait(statName, candidates, p => chosenPartner = p);
-        deck?.SetLocked(false);
-        player.ChangeStat(partnerStatName, partnerBonus);
-        chosenPartner.ChangeStat(statName, leaderBonus);
-    }
 
+        deck?.SetLocked(false);
+
+        if (chosenPartner == null)
+            yield break;
+
+        player.ChangeStat(leaderStatName, leaderBonus);
+        chosenPartner.ChangeStat(partnerStatName, partnerBonus);
+    }
 }
 
 private void ShowCard(string title, string desc, CardType type, string stat)
