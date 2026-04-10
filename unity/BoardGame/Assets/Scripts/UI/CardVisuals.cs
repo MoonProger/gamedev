@@ -5,11 +5,7 @@ using System.Collections;
 public class CardVisual : MonoBehaviour
 {
     [Header("Поля карточки")]
-    public Renderer sphereFieldRenderer;
-    public TextMeshPro sphereText;
-    public Renderer logoFieldRenderer;
-    public TextMeshPro titleText;
-    public TextMeshPro descriptionText;
+    public Renderer cardImageRenderer;
 
 
     [Header("Позиции")]
@@ -43,18 +39,16 @@ public class CardVisual : MonoBehaviour
 
 public void Show(CardData card, string sphere, string extraDesc = "")
 {
-    string fullDesc = string.IsNullOrEmpty(extraDesc) 
-        ? card.description 
-        : card.description + "\n" + extraDesc;
-    ApplyVisuals(card.cardType, sphere, card.title, fullDesc);
+    if (card == null) return;
+    ApplyVisuals(card.cardType, sphere, card.image);
     AnimateTo(shownPosition);
     isShown = true;
 }
 
 public void ShowRaw(string title, string description, CardType type, string sphere)
 {
-    ApplyVisuals(type, sphere, title, description);
-    AnimateTo(shownPosition);  // ← добавить эту строку
+    ApplyVisuals(type, sphere, null);
+    AnimateTo(shownPosition);
     isShown = true;
 }
 
@@ -64,7 +58,7 @@ public void ShowRaw(string title, string description, CardType type, string sphe
         isShown = false;
     }
 
-    private void ApplyVisuals(CardType type, string sphere, string title, string description)
+    private void ApplyVisuals(CardType type, string sphere, Sprite image)
     {
         Color cardColor = type switch
         {
@@ -78,16 +72,8 @@ public void ShowRaw(string title, string description, CardType type, string sphe
             _ => Color.white
         };
 
-        if (sphereFieldRenderer != null)
-            sphereFieldRenderer.material.color = cardColor;
-        if (logoFieldRenderer != null)
-            logoFieldRenderer.material.color = cardColor;
-        if (sphereText != null)
-            sphereText.text = sphere.ToUpper();
-        if (titleText != null)
-            titleText.text = title;
-        if (descriptionText != null)
-            descriptionText.text = description;
+        if (cardImageRenderer != null)
+            cardImageRenderer.material.mainTexture = image != null ? image.texture : null;
     }
 
     private void AnimateTo(Transform target)

@@ -490,14 +490,11 @@ private void PullTravelCard(PlayerController player)
 {
     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
     CardData travelCard = CardDatabase.GetRandomBySphere("travel");
-    string extraDesc = ApplyGenericEffects(player, travelCard.effects);
-    string fullDesc = string.IsNullOrWhiteSpace(extraDesc)
-        ? travelCard.description
-        : $"{travelCard.description}\n{extraDesc}";
+    ApplyGenericEffects(player, travelCard.effects);
 
-    Debug.Log($"{player.playerName} drew travel card: {travelCard.title}");
+    Debug.Log($"{player.playerName} drew travel card.");
     CardVisual travelDeck = deckManager.GetCardForNode(BoardNode.NodeType.Travel);
-    travelDeck?.ShowRaw(travelCard.title, fullDesc, CardType.Travel, "travel");
+    travelDeck?.Show(travelCard, "travel");
 }
 private IEnumerator TryApplyGrant(PlayerController player, List<string> availableStats)
 {
@@ -516,14 +513,10 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
     {
         player.earnedGrants.Add(chosenStat);
         player.ChangeStat("success", 1);
-        CardData grantCard = CardDatabase.GetByType("grant", CardType.Grant);
-        string title = grantCard != null ? grantCard.title : "GRANT APPROVED! 🎉";
-        string desc = grantCard != null ? grantCard.description : "Your application was successful.";
-        string fullDesc =
-            $"{desc}\nSphere: {chosenStat}\nRoll: {roll} < Your exp: {expLevel}\n+1 Success";
+        CardData grantCard = CardDatabase.GetRandomBySphere("grant_success");
 
         CardVisual grantDeck = deckManager.GetCardForNode(BoardNode.NodeType.Grant);
-        grantDeck?.ShowRaw(title, fullDesc, CardType.Grant, chosenStat);
+        grantDeck?.Show(grantCard, chosenStat);
 
         Debug.Log($"{player.playerName} earned grant in {chosenStat}. Total grants: {player.earnedGrants.Count}");
     }
@@ -533,7 +526,7 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
         ShowCard(
     "GRANT REJECTED! 🎉",
     $"Sphere: {chosenStat}\n" +
-    $"Roll: {roll} < Your exp: {expLevel}\n" +
+    $"Roll: {roll} >= Your exp: {expLevel}\n" +
     $"Grant added to your profile!",
     CardType.Red,
     chosenStat
