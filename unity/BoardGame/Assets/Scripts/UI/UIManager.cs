@@ -25,6 +25,21 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI tourismText;
     public TextMeshProUGUI itText;
 
+    [Header("Уведомления")]
+    public GameObject notificationRoot;
+    public TextMeshProUGUI notificationText;
+    public float notificationDuration = 2f;
+
+    private Coroutine notificationRoutine;
+
+    private void Start()
+    {
+        if (notificationRoot != null)
+            notificationRoot.SetActive(false);
+        else if (notificationText != null)
+            notificationText.gameObject.SetActive(false);
+    }
+
     public void UpdateAllStats(PlayerController player)
     {
         if (player == null) return;
@@ -41,5 +56,37 @@ public class UIManager : MonoBehaviour
         sportText.text = player.sport.ToString();
         tourismText.text = player.tourism.ToString();
         itText.text = player.IT.ToString();
+    }
+
+    public void ShowNotification(string message, float? duration = null)
+    {
+        if (notificationText == null)
+        {
+            Debug.LogWarning("UIManager: notificationText is not assigned.");
+            return;
+        }
+
+        if (notificationRoutine != null)
+            StopCoroutine(notificationRoutine);
+
+        notificationRoutine = StartCoroutine(ShowNotificationRoutine(message, duration ?? notificationDuration));
+    }
+
+    private IEnumerator ShowNotificationRoutine(string message, float duration)
+    {
+        notificationText.text = message;
+        if (notificationRoot != null)
+            notificationRoot.SetActive(true);
+        else
+            notificationText.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(duration);
+
+        if (notificationRoot != null)
+            notificationRoot.SetActive(false);
+        else
+            notificationText.gameObject.SetActive(false);
+
+        notificationRoutine = null;
     }
 }

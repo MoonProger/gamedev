@@ -23,6 +23,8 @@ public class CardVisual : MonoBehaviour
     private static readonly Color ColorRed      = new Color(0.9f,  0.2f,  0.2f);
     private static readonly Color ColorGreen    = new Color(0.18f, 0.8f,  0.44f);
     private static readonly Color ColorSurprise = new Color(0.95f, 0.61f, 0.07f);
+    private static readonly Color ColorTravel   = new Color(0.20f, 0.75f, 0.95f);
+    private static readonly Color ColorGrant    = new Color(0.65f, 0.45f, 0.95f);
 
     private bool isShown = false;
     private Coroutine currentAnim;
@@ -71,6 +73,8 @@ public void ShowRaw(string title, string description, CardType type, string sphe
             CardType.Red      => ColorRed,
             CardType.Green    => ColorGreen,
             CardType.Surprise => ColorSurprise,
+            CardType.Travel   => ColorTravel,
+            CardType.Grant    => ColorGrant,
             _ => Color.white
         };
 

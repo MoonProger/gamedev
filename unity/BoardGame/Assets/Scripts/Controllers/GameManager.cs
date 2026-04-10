@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-public enum CardType { Surprise, Yellow, Blue, Red, Green }
+public enum CardType { Surprise, Yellow, Blue, Red, Green, Travel, Grant }
 
 public class GameManager : MonoBehaviour
 {   
@@ -488,32 +488,16 @@ string colorPrefix = card.cardType switch
 
 private void PullTravelCard(PlayerController player)
 {
-    string[] possibleStats = { "money", "experience", "success", "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
-    // Перемешиваем и берём 2-3 случайных стата
-    int bonusCount = UnityEngine.Random.Range(2, 4);
-    List<string> pool = new List<string>(possibleStats);
-    List<string> chosen = new List<string>();
+    CardData travelCard = CardDatabase.GetRandomBySphere("travel");
+    string extraDesc = ApplyGenericEffects(player, travelCard.effects);
+    string fullDesc = string.IsNullOrWhiteSpace(extraDesc)
+        ? travelCard.description
+        : $"{travelCard.description}\n{extraDesc}";
 
-    while (chosen.Count < bonusCount)
-    {
-        int idx = UnityEngine.Random.Range(0, pool.Count);
-        chosen.Add(pool[idx]);
-        pool.RemoveAt(idx);
-    }
-
-    System.Text.StringBuilder desc = new System.Text.StringBuilder();
-    foreach (string stat in chosen)
-    {
-        int amount = UnityEngine.Random.Range(1, 3);
-        player.ChangeStat(stat, amount);
-        desc.AppendLine($"+{amount} {stat}");
-    }
-
-    Debug.Log($"{player.playerName} travel bonuses: {desc}");
-
+    Debug.Log($"{player.playerName} drew travel card: {travelCard.title}");
     CardVisual travelDeck = deckManager.GetCardForNode(BoardNode.NodeType.Travel);
-    travelDeck?.ShowRaw("✈️ TRAVEL CARD", desc.ToString().Trim(), CardType.Surprise, "travel");
+    travelDeck?.ShowRaw(travelCard.title, fullDesc, CardType.Travel, "travel");
 }
 private IEnumerator TryApplyGrant(PlayerController player, List<string> availableStats)
 {
@@ -532,9 +516,14 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
     {
         player.earnedGrants.Add(chosenStat);
         player.ChangeStat("success", 1);
+        CardData grantCard = CardDatabase.GetByType("grant", CardType.Grant);
+        string title = grantCard != null ? grantCard.title : "GRANT APPROVED! 🎉";
+        string desc = grantCard != null ? grantCard.description : "Your application was successful.";
+        string fullDesc =
+            $"{desc}\nSphere: {chosenStat}\nRoll: {roll} < Your exp: {expLevel}\n+1 Success";
 
         CardVisual grantDeck = deckManager.GetCardForNode(BoardNode.NodeType.Grant);
-        grantDeck?.ShowRaw("GRANT APPROVED! 🎉", $"Sphere: {chosenStat}...", CardType.Red, chosenStat);
+        grantDeck?.ShowRaw(title, fullDesc, CardType.Grant, chosenStat);
 
         Debug.Log($"{player.playerName} earned grant in {chosenStat}. Total grants: {player.earnedGrants.Count}");
     }
@@ -631,6 +620,50 @@ private IEnumerator TryDoProject(PlayerController player)
     CardType.Green,
     chosenSphere
     );
+}
+private string ApplyGenericEffects(PlayerController player, List<CardEffectData> effects)
+{
+    if (player == null || effects == null || effects.Count == 0)
+        return "";
+
+    System.Text.StringBuilder result = new System.Text.StringBuilder();
+
+    foreach (var eff in effects)
+    {
+        if (eff == null || eff.effect == CardEffect.None) continue;
+
+        switch (eff.effect)
+        {
+            case CardEffect.GainMoney:
+                player.ChangeStat("money", eff.amount);
+                result.AppendLine($"+{eff.amount} money");
+                break;
+            case CardEffect.LoseMoney:
+                player.ChangeStat("money", -eff.amount);
+                result.AppendLine($"-{eff.amount} money");
+                break;
+            case CardEffect.GainSuccess:
+                player.ChangeStat("success", eff.amount);
+                result.AppendLine($"+{eff.amount} success");
+                break;
+            case CardEffect.GainStat:
+                if (!string.IsNullOrEmpty(eff.statName))
+                {
+                    player.ChangeStat(eff.statName, eff.amount);
+                    result.AppendLine($"+{eff.amount} {eff.statName}");
+                }
+                break;
+            case CardEffect.LoseStat:
+                if (!string.IsNullOrEmpty(eff.statName))
+                {
+                    player.ChangeStat(eff.statName, -eff.amount);
+                    result.AppendLine($"-{eff.amount} {eff.statName}");
+                }
+                break;
+        }
+    }
+
+    return result.ToString().Trim();
 }
 
 private void CheckVictory(PlayerController player)
@@ -775,8 +808,8 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
 
 private void ShowCard(string title, string desc, CardType type, string stat)
 {   
-    if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
-    utilityCard?.ShowRaw(title, desc, type, stat);
+    string message = string.IsNullOrWhiteSpace(desc) ? title : $"{title}\n{desc}";
+    uiManager?.ShowNotification(message);
 }
 
 private void PlayNodeSound(BoardNode.NodeType nodeType)

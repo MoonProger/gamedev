@@ -463,6 +463,44 @@ public static class CardDatabase
                 }
             },
         }},
+        { "travel", new List<CardData> {
+            new CardData {
+                title = "TRAVEL BOOST",
+                description = "Your trip gave you new opportunities.",
+                cardType = CardType.Travel,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.GainMoney, amount = 2 },
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 1 }
+                }
+            },
+            new CardData {
+                title = "TRAVEL NETWORK",
+                description = "You met useful contacts on your journey.",
+                cardType = CardType.Travel,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "media", amount = 1 },
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "business", amount = 1 }
+                }
+            },
+        }},
+        { "grant", new List<CardData> {
+            new CardData {
+                title = "GRANT APPROVED! 🎉",
+                description = "Your application was successful.",
+                cardType = CardType.Grant,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.GainSuccess, amount = 1 }
+                }
+            },
+            new CardData {
+                title = "GRANT REJECTED",
+                description = "The committee did not approve your proposal.",
+                cardType = CardType.Grant,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.None }
+                }
+            },
+        }},
     };
 
     // Получить случайную карточку по сфере
@@ -471,7 +509,7 @@ public static class CardDatabase
         string key = sphere.ToLower();
         if (!BySphere.ContainsKey(key))
         {
-            Debug.LogWarning($"CardDatabase: сфера '{sphere}' не найдена!");
+            Debug.LogWarning($"CardDatabase: key '{sphere}' not found!");
             return new CardData { title = "UNKNOWN", description = "No card found.", cardType = CardType.Surprise, effects = new List<CardEffectData>() };
         }
         var deck = BySphere[key];
