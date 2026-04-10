@@ -13,9 +13,18 @@ public enum CardEffect
 }
 
 [System.Serializable]
+public enum CardEffectCondition
+{
+    Always,
+    OnSuccess,
+    OnFailure
+}
+
+[System.Serializable]
 public class CardEffectData
 {
     public CardEffect effect;
+    public CardEffectCondition condition = CardEffectCondition.Always;
     public string statName;
     public int amount;
 }

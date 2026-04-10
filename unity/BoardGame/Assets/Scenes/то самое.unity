@@ -6730,6 +6730,182 @@ MonoBehaviour:
       image: {fileID: 21300000, guid: 30330619bf88e034f86cae1cc557397b, type: 3}
       effects:
       - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 2
+      image: {fileID: 21300000, guid: 9393b3d7f0f20fd488372f940289a543, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: science
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: experience
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: ef9760e1e41a639438fe7a780625d7b3, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 666b9455c238d954b9c11b21e7a5dca6, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 417449feac0a7ca4ab460bb5d84b9d89, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: f99b298d6a86c1646920a0402777750d, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 656127e72d12ae94b8b2ef2c1cc9183c, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 2a2ad580a72b39a4199910e963eafdf0, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 1aa64083cdf4be5469c0c8c031d6ab86, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: e7403ade39b5e1c42aa2bcee887a9951, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 866dbc0e58607384ea0e744ca03c1c5a, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 89541ee93603a1f43a7a448e0d460087, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 2719da970c77d6846b2fbf590cc7245b, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: d55617ad2701cb148b0328799daf2c06, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 742dd3f73da3f7042bd21ea7ded2ac47, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 215c2b725a227a94ab8bef3f1f7817db, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 0928deb853c4b014dbf84a1640232532, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: f28741f2376c92f4396f0f7081bf1c20, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 8073ab7886add774e8bd66e5208a2d7f, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: science
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: cd7d9a8429e24aa4ebeb65587b9cc9d2, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
         statName: science
         amount: 1
       soloEffects: []

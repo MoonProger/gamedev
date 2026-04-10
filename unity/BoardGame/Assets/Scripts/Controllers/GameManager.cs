@@ -304,17 +304,7 @@ private IEnumerator PullCardCoroutine(PlayerController player)
     int expLevel = player.GetStatValue("experience");
     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
     CardData card = CardDatabase.GetRandomBySphere(statName);
-    
-string colorPrefix = card.cardType switch
-{
-    CardType.Yellow   => "[YELLOW] ",
-    CardType.Blue     => "[BLUE] ",
-    CardType.Red      => "[RED] ",
-    CardType.Green    => "[GREEN] ",
-    CardType.Surprise => "[SURPRISE] ",
-    _ => ""
-};
-    string extraDesc = "";
+
     CardVisual deck = deckManager.GetCardForNode(node.nodeStat);
     switch (card.cardType)
 {
@@ -327,11 +317,11 @@ string colorPrefix = card.cardType switch
         break;
 
     case CardType.Blue:
-        extraDesc = HandleBlueCard(player, card, statName, expLevel);
+        HandleBlueCard(player, card, statName, expLevel);
         break;
 
     case CardType.Red:
-        extraDesc = HandleRedCard(player, card, statName, statLevel);
+        HandleRedCard(player, card, statName, statLevel);
         break;
 
     case CardType.Green:
@@ -340,7 +330,7 @@ string colorPrefix = card.cardType switch
 }
 
     if (card.cardType!=CardType.Green){
-        deck?.Show(card, statName, extraDesc);
+        deck?.Show(card, statName);
     }
     }
 
@@ -614,7 +604,11 @@ private IEnumerator TryDoProject(PlayerController player)
     chosenSphere
     );
 }
-private string ApplyGenericEffects(PlayerController player, List<CardEffectData> effects)
+private string ApplyGenericEffects(
+    PlayerController player,
+    List<CardEffectData> effects,
+    string defaultStat = "",
+    CardEffectCondition triggerCondition = CardEffectCondition.Always)
 {
     if (player == null || effects == null || effects.Count == 0)
         return "";
@@ -624,6 +618,7 @@ private string ApplyGenericEffects(PlayerController player, List<CardEffectData>
     foreach (var eff in effects)
     {
         if (eff == null || eff.effect == CardEffect.None) continue;
+        if (eff.condition != CardEffectCondition.Always && eff.condition != triggerCondition) continue;
 
         switch (eff.effect)
         {
@@ -639,20 +634,30 @@ private string ApplyGenericEffects(PlayerController player, List<CardEffectData>
                 player.ChangeStat("success", eff.amount);
                 result.AppendLine($"+{eff.amount} success");
                 break;
+            case CardEffect.SkipNextTurn:
+                player.skipTurns += eff.amount;
+                result.AppendLine($"skip {eff.amount} turn(s)");
+                break;
             case CardEffect.GainStat:
-                if (!string.IsNullOrEmpty(eff.statName))
                 {
-                    player.ChangeStat(eff.statName, eff.amount);
-                    result.AppendLine($"+{eff.amount} {eff.statName}");
+                string statToGain = string.IsNullOrEmpty(eff.statName) ? defaultStat : eff.statName;
+                if (!string.IsNullOrEmpty(statToGain))
+                {
+                    player.ChangeStat(statToGain, eff.amount);
+                    result.AppendLine($"+{eff.amount} {statToGain}");
                 }
                 break;
+                }
             case CardEffect.LoseStat:
-                if (!string.IsNullOrEmpty(eff.statName))
                 {
-                    player.ChangeStat(eff.statName, -eff.amount);
-                    result.AppendLine($"-{eff.amount} {eff.statName}");
+                string statToLose = string.IsNullOrEmpty(eff.statName) ? defaultStat : eff.statName;
+                if (!string.IsNullOrEmpty(statToLose))
+                {
+                    player.ChangeStat(statToLose, -eff.amount);
+                    result.AppendLine($"-{eff.amount} {statToLose}");
                 }
                 break;
+                }
         }
     }
 
@@ -682,58 +687,50 @@ private void CheckVictory(PlayerController player)
 //хендлеры карточек
 private void HandleSurpriseCard(PlayerController player, CardData card)
 {
-    foreach (var eff in card.effects)
-    {
-        if (eff.effect == CardEffect.GainMoney)    player.ChangeStat("money", eff.amount);
-        if (eff.effect == CardEffect.LoseMoney)    player.ChangeStat("money", -eff.amount);
-        if (eff.effect == CardEffect.SkipNextTurn) player.skipTurns += eff.amount;
-        if (eff.effect == CardEffect.GainSuccess)  player.ChangeStat("success", eff.amount);
-    }
+    ApplyGenericEffects(player, card.effects);
 }
 
 // YELLOW
 private void HandleYellowCard(PlayerController player, CardData card, string statName)
 {
-    foreach (var eff in card.effects)
-    {
-        string t = string.IsNullOrEmpty(eff.statName) ? statName : eff.statName;
-        if (eff.effect == CardEffect.GainStat)     player.ChangeStat(t, eff.amount);
-        if (eff.effect == CardEffect.LoseStat)     player.ChangeStat(t, -eff.amount);
-        if (eff.effect == CardEffect.SkipNextTurn) player.skipTurns += eff.amount;
-    }
+    ApplyGenericEffects(player, card.effects, statName);
 }
 
 // BLUE
-private string HandleBlueCard(PlayerController player, CardData card, string statName, int expLevel)
+private void HandleBlueCard(PlayerController player, CardData card, string statName, int expLevel)
 {
     int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
+    bool success = expLevel > diceSum;
+
+    ApplyGenericEffects(
+        player,
+        card.effects,
+        statName,
+        success ? CardEffectCondition.OnSuccess : CardEffectCondition.OnFailure
+    );
+
     if (expLevel > diceSum)
-    {
-        player.ChangeStat(statName, 1);
-        return $"\nRoll: {diceSum} < Exp: {expLevel} — {statName} +1";
-    }
+        Debug.Log($"BLUE success: roll {diceSum} < exp {expLevel}");
     else
-    {
-        player.ChangeStat("experience", 1);
-        return $"\nRoll: {diceSum} >= Exp: {expLevel} — +1 Experience";
-    }
+        Debug.Log($"BLUE fail: roll {diceSum} >= exp {expLevel}");
 }
 
 // RED
-private string HandleRedCard(PlayerController player, CardData card, string statName, int statLevel)
+private void HandleRedCard(PlayerController player, CardData card, string statName, int statLevel)
 {
-    if (statLevel >= 5)
-    {
-        int bonus = UnityEngine.Random.Range(1, 4);
-        player.ChangeStat(statName, bonus);
-        player.ChangeStat("success", 1);
-        return $"\n{statName} lvl {statLevel} >= 5 — +{bonus} {statName}, +1 Success";
-    }
+    bool success = statLevel >= 5;
+
+    ApplyGenericEffects(
+        player,
+        card.effects,
+        statName,
+        success ? CardEffectCondition.OnSuccess : CardEffectCondition.OnFailure
+    );
+
+    if (success)
+        Debug.Log($"RED success: {statName} level {statLevel} >= 5");
     else
-    {
-        player.ChangeStat("experience", 1);
-        return $"\n{statName} lvl {statLevel} < 5 — +1 Experience";
-    }
+        Debug.Log($"RED fail: {statName} level {statLevel} < 5");
 }
 
 
