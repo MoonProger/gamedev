@@ -42,39 +42,39 @@ public static class CardDatabase
     private static readonly Dictionary<string, List<CardData>> BySphere = new Dictionary<string, List<CardData>>
     {
         { "science", new List<CardData> {
-            // new CardData {
-            //     title = "SCIENCE FAIR",
-            //     description = "You presented your research.\n+2 Science",
-            //     cardType = CardType.Yellow,
-            //     effects = new List<CardEffectData> {
-            //         new CardEffectData { effect = CardEffect.GainStat, statName = "", amount = 2 }
-            //     }
-            // },
-            // new CardData {
-            //     title = "LAB ACCIDENT",
-            //     description = "Experiment went wrong.\n-1 Science, +1 Experience",
-            //     cardType = CardType.Yellow,
-            //     effects = new List<CardEffectData> {
-            //         new CardEffectData { effect = CardEffect.LoseStat, statName = "", amount = 1 },
-            //         new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 1 }
-            //     }
-            // },
-            // new CardData {
-            //     title = "CONFERENCE TALK",
-            //     description = "Roll vs exp — win: +2 Science, lose: +1 Exp",
-            //     cardType = CardType.Blue,
-            //     effects = new List<CardEffectData> {
-            //         new CardEffectData { effect = CardEffect.None }
-            //     }
-            // },
-            // new CardData {
-            //     title = "PUBLISHED PAPER",
-            //     description = "If Science >= 5: +3 Science, +1 Success\nElse: +1 Experience",
-            //     cardType = CardType.Red,
-            //     effects = new List<CardEffectData> {
-            //         new CardEffectData { effect = CardEffect.None }
-            //     }
-            // },
+            new CardData {
+                title = "SCIENCE FAIR",
+                description = "You presented your research.\n+2 Science",
+                cardType = CardType.Yellow,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "", amount = 2 }
+                }
+            },
+            new CardData {
+                title = "LAB ACCIDENT",
+                description = "Experiment went wrong.\n-1 Science, +1 Experience",
+                cardType = CardType.Yellow,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.LoseStat, statName = "", amount = 1 },
+                    new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 1 }
+                }
+            },
+            new CardData {
+                title = "CONFERENCE TALK",
+                description = "Roll vs exp — win: +2 Science, lose: +1 Exp",
+                cardType = CardType.Blue,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.None }
+                }
+            },
+            new CardData {
+                title = "PUBLISHED PAPER",
+                description = "If Science >= 5: +3 Science, +1 Success\nElse: +1 Experience",
+                cardType = CardType.Red,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.None }
+                }
+            },
             new CardData {
                 title = "JOINT RESEARCH",
                 description = "Соло: +1 Science, +1 Experience\nСовместно: +3 Science (вам), +2 Experience (напарнику)",
@@ -88,14 +88,14 @@ public static class CardDatabase
                     new CardEffectData { effect = CardEffect.GainStat, statName = "experience", amount = 2 }
                 }
             },
-            // new CardData {
-            //     title = "LUCKY GRANT",
-            //     description = "Unexpected funding arrived!\n+3 Money",
-            //     cardType = CardType.Surprise,
-            //     effects = new List<CardEffectData> {
-            //         new CardEffectData { effect = CardEffect.GainMoney, amount = 3 }
-            //     }
-            // },
+            new CardData {
+                title = "LUCKY GRANT",
+                description = "Unexpected funding arrived!\n+3 Money",
+                cardType = CardType.Surprise,
+                effects = new List<CardEffectData> {
+                    new CardEffectData { effect = CardEffect.GainMoney, amount = 3 }
+                }
+            },
         }},
 
         { "art", new List<CardData> {
