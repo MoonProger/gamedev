@@ -640,7 +640,7 @@ private string ApplyGenericEffects(
                 break;
             case CardEffect.GainStat:
                 {
-                string statToGain = string.IsNullOrEmpty(eff.statName) ? defaultStat : eff.statName;
+                string statToGain = ResolveEffectStatName(eff.statName, defaultStat);
                 if (!string.IsNullOrEmpty(statToGain))
                 {
                     player.ChangeStat(statToGain, eff.amount);
@@ -650,7 +650,7 @@ private string ApplyGenericEffects(
                 }
             case CardEffect.LoseStat:
                 {
-                string statToLose = string.IsNullOrEmpty(eff.statName) ? defaultStat : eff.statName;
+                string statToLose = ResolveEffectStatName(eff.statName, defaultStat);
                 if (!string.IsNullOrEmpty(statToLose))
                 {
                     player.ChangeStat(statToLose, -eff.amount);
@@ -662,6 +662,25 @@ private string ApplyGenericEffects(
     }
 
     return result.ToString().Trim();
+}
+private string ResolveEffectStatName(CardStat stat, string fallback)
+{
+    return stat switch
+    {
+        CardStat.CurrentSphere => fallback,
+        CardStat.Money => "money",
+        CardStat.Experience => "experience",
+        CardStat.Success => "success",
+        CardStat.Volounteer => "volounteer",
+        CardStat.Science => "science",
+        CardStat.Art => "art",
+        CardStat.Media => "media",
+        CardStat.Business => "business",
+        CardStat.Sport => "sport",
+        CardStat.Tourism => "tourism",
+        CardStat.IT => "it",
+        _ => fallback
+    };
 }
 
 private void CheckVictory(PlayerController player)
@@ -736,63 +755,74 @@ private void HandleRedCard(PlayerController player, CardData card, string statNa
 
 private IEnumerator HandleGreenCard(PlayerController player, CardData card, string statName, CardVisual deck)
 {
-    int myLevel = player.GetStatValue(statName);
-    var others = new List<(PlayerController p, int level)>();
-    for (int i = 0; i < expectedPlayerCount; i++)
-        if (players[i] != player)
-            others.Add((players[i], players[i].GetStatValue(statName)));
+    var soloEffects = card.soloEffects ?? new List<CardEffectData>();
+    var coopEffects = card.coopEffects ?? new List<CardEffectData>();
 
-    others.Sort((a, b) => b.level.CompareTo(a.level));
-    int maxLevel = others.Count > 0 ? others[0].level : 0;
+    CardEffectData soloLeaderEff = soloEffects.Count > 0 ? soloEffects[0] : null;
+    CardEffectData soloPartnerEff = soloEffects.Count > 1 ? soloEffects[1] : null;
+    CardEffectData coopLeaderEff = coopEffects.Count > 0 ? coopEffects[0] : null;
+    CardEffectData coopPartnerEff = coopEffects.Count > 1 ? coopEffects[1] : null;
 
-    // Если я выше всех — играю соло, иначе с напарником
-    bool playWithPartner = myLevel <= maxLevel;
-
-    // Для Green берём нужный набор эффектов:
-    // soloEffects или coopEffects
-    List<CardEffectData> activeEffects = CardDatabase.GetEffects(card, playWithPartner);
-
-    CardEffectData leaderEff  = activeEffects.Count > 0 ? activeEffects[0] : null;
-    CardEffectData partnerEff = activeEffects.Count > 1 ? activeEffects[1] : null;
-
-    int leaderBonus  = leaderEff  != null ? leaderEff.amount  : Random.Range(2, 5);
-    int partnerBonus = partnerEff != null ? partnerEff.amount : Random.Range(1, 3);
-
-    string leaderStatName = leaderEff != null && !string.IsNullOrEmpty(leaderEff.statName)
-        ? leaderEff.statName
+    string soloLeaderStat = soloLeaderEff != null
+        ? ResolveEffectStatName(soloLeaderEff.statName, statName)
         : statName;
+    string soloPartnerStat = soloPartnerEff != null
+        ? ResolveEffectStatName(soloPartnerEff.statName, statName)
+        : statName;
+    int soloLeaderBonus = soloLeaderEff != null ? soloLeaderEff.amount : 0;
+    int soloPartnerBonus = soloPartnerEff != null ? soloPartnerEff.amount : 0;
 
-    string partnerStatName = partnerEff != null && !string.IsNullOrEmpty(partnerEff.statName)
-        ? partnerEff.statName
-        : GetRandomOtherStat(statName);
+    string coopLeaderStat = coopLeaderEff != null
+        ? ResolveEffectStatName(coopLeaderEff.statName, statName)
+        : statName;
+    string coopPartnerStat = coopPartnerEff != null
+        ? ResolveEffectStatName(coopPartnerEff.statName, statName)
+        : statName;
+    int coopLeaderBonus = coopLeaderEff != null ? coopLeaderEff.amount : 0;
+    int coopPartnerBonus = coopPartnerEff != null ? coopPartnerEff.amount : 0;
 
-    if (!playWithPartner)
+    // Важно: уровень сравниваем по партнерской сфере, а не по основной.
+    int myPartnerLevel = player.GetStatValue(coopPartnerStat);
+    var candidates = new List<PlayerController> { player }; // всегда можно выбрать себя (соло)
+    for (int i = 0; i < expectedPlayerCount; i++)
     {
-        player.ChangeStat(leaderStatName, leaderBonus);
-        player.ChangeStat(partnerStatName, partnerBonus);
+        var candidate = players[i];
+        if (candidate == player) continue;
+        if (candidate.GetStatValue(coopPartnerStat) >= myPartnerLevel)
+            candidates.Add(candidate);
+    }
 
-        deck?.Show(card, statName, "");
+    deck?.Show(card, statName, "");
+    deck?.SetLocked(true);
+
+    PlayerController chosenPartner = null;
+    if (greenCardUI == null || candidates.Count == 1)
+    {
+        chosenPartner = player;
     }
     else
     {
-        deck?.Show(card, statName, "");
-        deck?.SetLocked(true);
+        yield return greenCardUI.ShowAndWait(coopPartnerStat, candidates, p => chosenPartner = p);
+    }
 
-        var candidates = others.FindAll(o => o.level >= myLevel).ConvertAll(o => o.p);
+    deck?.SetLocked(false);
 
-        PlayerController chosenPartner = null;
-        if (candidates.Count == 1)
-            chosenPartner = candidates[0];
-        else
-            yield return greenCardUI.ShowAndWait(statName, candidates, p => chosenPartner = p);
+    if (chosenPartner == null)
+        yield break;
 
-        deck?.SetLocked(false);
-
-        if (chosenPartner == null)
-            yield break;
-
-        player.ChangeStat(leaderStatName, leaderBonus);
-        chosenPartner.ChangeStat(partnerStatName, partnerBonus);
+    if (chosenPartner == player)
+    {
+        if (!string.IsNullOrEmpty(soloLeaderStat) && soloLeaderBonus != 0)
+            player.ChangeStat(soloLeaderStat, soloLeaderBonus);
+        if (!string.IsNullOrEmpty(soloPartnerStat) && soloPartnerBonus != 0)
+            player.ChangeStat(soloPartnerStat, soloPartnerBonus);
+    }
+    else
+    {
+        if (!string.IsNullOrEmpty(coopLeaderStat) && coopLeaderBonus != 0)
+            player.ChangeStat(coopLeaderStat, coopLeaderBonus);
+        if (!string.IsNullOrEmpty(coopPartnerStat) && coopPartnerBonus != 0)
+            chosenPartner.ChangeStat(coopPartnerStat, coopPartnerBonus);
     }
 }
 

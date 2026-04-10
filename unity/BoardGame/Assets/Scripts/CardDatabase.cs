@@ -21,11 +21,28 @@ public enum CardEffectCondition
 }
 
 [System.Serializable]
+public enum CardStat
+{
+    CurrentSphere,
+    Money,
+    Experience,
+    Success,
+    Volounteer,
+    Science,
+    Art,
+    Media,
+    Business,
+    Sport,
+    Tourism,
+    IT
+}
+
+[System.Serializable]
 public class CardEffectData
 {
     public CardEffect effect;
     public CardEffectCondition condition = CardEffectCondition.Always;
-    public string statName;
+    public CardStat statName = CardStat.CurrentSphere;
     public int amount;
 }
 
