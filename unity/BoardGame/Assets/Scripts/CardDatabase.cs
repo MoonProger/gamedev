@@ -7,9 +7,7 @@ public enum CardEffect
     SkipNextTurn,
     GainStat,
     LoseStat,
-    GainMoney,
-    LoseMoney,
-    GainSuccess,
+    DrawNextCardFromSameSphere
 }
 
 [System.Serializable]
@@ -121,29 +119,6 @@ public class CardDatabase : MonoBehaviour
         }
 
         return deck[Random.Range(0, deck.Count)];
-    }
-
-    public static CardData GetByType(string sphere, CardType type)
-    {
-        if (Instance == null) return null;
-
-        if (string.IsNullOrWhiteSpace(sphere))
-            return null;
-
-        string key = sphere.ToLower();
-        if (!Instance.decksByKey.TryGetValue(key, out var deck) || deck == null || deck.Count == 0)
-            return null;
-
-        var filtered = deck.FindAll(c => c != null && c.cardType == type);
-        if (filtered.Count == 0) return null;
-        return filtered[Random.Range(0, filtered.Count)];
-    }
-
-    public static List<CardEffectData> GetEffects(CardData card, bool playWithPartner)
-    {
-        if (card == null) return new List<CardEffectData>();
-        if (card.cardType != CardType.Green) return card.effects;
-        return playWithPartner ? card.coopEffects : card.soloEffects;
     }
 
     private static CardData CreateFallbackCard()

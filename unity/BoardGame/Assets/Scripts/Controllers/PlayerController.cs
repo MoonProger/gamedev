@@ -1,8 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class PlayerController : MonoBehaviour
 {
+    public event Action<PlayerController> OnStatsChanged;
 
     [Header("Turn Control")]
 public int skipTurns = 0;   
@@ -78,9 +80,12 @@ public int skipTurns = 0;
 
     public void ChangeStat(string statName, int amount)
 {
-    switch (statName.ToLower())
+    string normalizedStat = NormalizeStatName(statName);
+    int before = GetStatValue(normalizedStat);
+
+    switch (normalizedStat)
     {
-        case "money": money += amount; break;
+        case "money": money = Mathf.Max(0, money + amount); break;
         case "experience": experience = Mathf.Clamp(experience + amount, 0, 10); break;
         case "success": success = Mathf.Clamp(success + amount, 0, 12); break;
 
@@ -94,10 +99,16 @@ public int skipTurns = 0;
         case "it":         CheckMilestone(ref IT,         amount); break;
 
         default:
-            Debug.LogWarning($"Статистика {statName} не найдена!");
+            Debug.LogWarning($"[СТАТЫ] Игрок {playerName}: статистика '{statName}' не найдена.");
             break;
     }
-    Debug.Log($"{playerName}: {statName} {amount}. Текущее: {GetStatValue(statName)}");
+
+    int after = GetStatValue(normalizedStat);
+    int appliedDelta = after - before;
+    string operation = appliedDelta >= 0 ? "+" : "";
+    string clampedSuffix = appliedDelta != amount ? " (ограничено границами)" : "";
+    Debug.Log($"[СТАТЫ] Игрок {playerName}: {GetStatLabel(normalizedStat)} {operation}{appliedDelta} (запрос: {amount}). Было: {before}, стало: {after}.{clampedSuffix}");
+    OnStatsChanged?.Invoke(this);
 }
 
 private void CheckMilestone(ref int stat, int amount)
@@ -110,14 +121,14 @@ private void CheckMilestone(ref int stat, int amount)
     if (before < 5 && after >= 5)
     {
         success = Mathf.Clamp(success + 2, 0, 12);
-        Debug.Log($"{playerName}: достиг 5 в сфере — +2 Success (итого {success})");
+        Debug.Log($"[СТАТЫ] Игрок {playerName}: достиг уровня 5 в сфере — +2 к успеху (итого успех: {success}).");
     }
 
     // Пересёк порог 10 снизу вверх
     if (before < 10 && after >= 10)
     {
         success = Mathf.Clamp(success + 1, 0, 12);
-        Debug.Log($"{playerName}: достиг 10 в сфере — +1 Success (итого {success})");
+        Debug.Log($"[СТАТЫ] Игрок {playerName}: достиг уровня 10 в сфере — +1 к успеху (итого успех: {success}).");
     }
 }
 
@@ -142,17 +153,42 @@ private void CheckMilestone(ref int stat, int amount)
 
     public void RandomizeStats()
 {
-    volounteer = Random.Range(0, 7);
-    science = Random.Range(0, 7);
-    art = Random.Range(0, 7);
-    media = Random.Range(0, 7);
-    business = Random.Range(0, 7);
-    sport = Random.Range(0, 7);
-    tourism = Random.Range(0, 7);
-    IT = Random.Range(0, 7);
+    volounteer = UnityEngine.Random.Range(0, 7);
+    science = UnityEngine.Random.Range(0, 7);
+    art = UnityEngine.Random.Range(0, 7);
+    media = UnityEngine.Random.Range(0, 7);
+    business = UnityEngine.Random.Range(0, 7);
+    sport = UnityEngine.Random.Range(0, 7);
+    tourism = UnityEngine.Random.Range(0, 7);
+    IT = UnityEngine.Random.Range(0, 7);
     
-    Debug.Log($"{playerName}: Сферы рандомизированы.");
+    Debug.Log($"[СТАТЫ] Игрок {playerName}: стартовые значения сфер сгенерированы.");
 }
+
+    private string NormalizeStatName(string statName)
+    {
+        if (string.IsNullOrWhiteSpace(statName)) return "";
+        return statName.Trim().ToLower();
+    }
+
+    private string GetStatLabel(string normalizedStatName)
+    {
+        return normalizedStatName switch
+        {
+            "money" => "деньги",
+            "experience" => "опыт",
+            "success" => "успех",
+            "volounteer" => "волонтерство",
+            "science" => "наука",
+            "art" => "искусство",
+            "media" => "медиа",
+            "business" => "бизнес",
+            "sport" => "спорт",
+            "tourism" => "туризм",
+            "it" => "IT",
+            _ => normalizedStatName
+        };
+    }
 
     #endregion
 }

@@ -60,6 +60,11 @@ public class GameManager : MonoBehaviour
     private void Awake()
 {
     dice.OnDiceRolled += RegisterRoll;
+    foreach (var player in players)
+    {
+        if (player != null)
+            player.OnStatsChanged += HandlePlayerStatsChanged;
+    }
     if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
     if (bgMusicSource == null) bgMusicSource = gameObject.AddComponent<AudioSource>();
 
@@ -71,14 +76,38 @@ public class GameManager : MonoBehaviour
         bgMusicSource.Play();
     }
 }
-    private void OnDestroy() => dice.OnDiceRolled -= RegisterRoll;
+    private void OnDestroy()
+    {
+        dice.OnDiceRolled -= RegisterRoll;
+        foreach (var player in players)
+        {
+            if (player != null)
+                player.OnStatsChanged -= HandlePlayerStatsChanged;
+        }
+    }
     private void Update() => HandleSelectionInput();
+
+    private void HandlePlayerStatsChanged(PlayerController changedPlayer)
+    {
+        if (changedPlayer == null || expectedPlayerCount <= 0) return;
+        if (currentPlayerIndex < 0 || currentPlayerIndex >= players.Count) return;
+        if (players[currentPlayerIndex] != changedPlayer) return;
+
+        uiManager?.UpdateAllStats(changedPlayer);
+    }
+
+    private void LogGame(string message) => Debug.Log($"[ИГРА] {message}");
+    private void LogPlayerEvent(PlayerController player, string message)
+    {
+        string playerName = player != null ? player.playerName : "Неизвестный игрок";
+        Debug.Log($"[ИГРА] {playerName}: {message}");
+    }
 
     private void Start()
     {
         if (expectedPlayerCount == 0)
         {
-            Debug.Log("Test mode: simulating React data");
+            LogGame("Тестовый режим: имитируем данные игроков.");
             SetPlayerCount(4);
             SetPlayerName("Player 1");
             SetPlayerName("Player 2");
@@ -90,13 +119,13 @@ public class GameManager : MonoBehaviour
     public void SetPlayerCount(int count)
     {
         expectedPlayerCount = count;
-        Debug.Log($"Expecting {count} players");
+        LogGame($"Ожидаемое количество игроков: {count}.");
     }
 
     public void SetPlayerName(string name)
     {
         playerNames.Add(name);
-        Debug.Log($"Received player: {name}");
+        LogGame($"Получено имя игрока: {name}.");
         if (playerNames.Count == expectedPlayerCount)
             InitializeGameFromReact();
     }
@@ -104,19 +133,19 @@ public class GameManager : MonoBehaviour
     public void SetPlayerId(string id)
     {
         playerIds.Add(id);
-        Debug.Log($"Received player ID: {id}");
+        LogGame($"Получен ID игрока: {id}.");
     }
 
     private void InitializeGameFromReact()
     {
-        Debug.Log($"Initializing game with {expectedPlayerCount} players");
+        LogGame($"Инициализация игры. Игроков: {expectedPlayerCount}.");
 
         for (int i = 0; i < players.Count; i++)
         {
             players[i].gameObject.SetActive(i < expectedPlayerCount);
-            Debug.Log(i < expectedPlayerCount
-                ? $"Activated player {i + 1}: {playerNames[i]}"
-                : $"Disabled extra token {i + 1}");
+            LogGame(i < expectedPlayerCount
+                ? $"Активирован игрок {i + 1}: {playerNames[i]}."
+                : $"Отключен лишний токен {i + 1}.");
         }
 
         TableManager tm = Object.FindFirstObjectByType<TableManager>();
@@ -138,18 +167,18 @@ public class GameManager : MonoBehaviour
         }
 
         UpdatePlayersVisuals();
-        Debug.Log("Game is ready to start");
+        LogGame("Подготовка завершена. Игра готова к старту.");
     }
 
     public void TryRollDice()
     {
-        if (isMoving) { Debug.Log("Cannot roll while token is moving"); return; }
-        if (hasRolledThisTurn) { Debug.Log("Already rolled this turn. Choose a destination."); return; }
+        if (isMoving) { LogGame("Нельзя бросить кубик во время движения фишки."); return; }
+        if (hasRolledThisTurn) { LogGame("Кубик уже брошен. Выберите точку назначения."); return; }
 
     if (players[currentPlayerIndex].skipTurns > 0)
     {
         players[currentPlayerIndex].skipTurns--;
-        Debug.Log($"{players[currentPlayerIndex].playerName} skips turn ({players[currentPlayerIndex].skipTurns} left)");
+        LogPlayerEvent(players[currentPlayerIndex], $"пропускает ход. Осталось пропусков: {players[currentPlayerIndex].skipTurns}.");
         ShowCard(
     "TURN SKIPPED",
     "You must skip this turn.",
@@ -173,7 +202,7 @@ private IEnumerator EndTurnAfterDelay()
     {
         lastRoll = result;
         hasRolledThisTurn = true;
-        Debug.Log($"Dice result: {lastRoll}");
+        LogPlayerEvent(players[currentPlayerIndex], $"бросил кубик: {lastRoll}.");
         ShowPossibleMoves(lastRoll);
     }
 
@@ -200,6 +229,7 @@ private IEnumerator EndTurnAfterDelay()
     private IEnumerator MoveSequence(BoardNode target, int totalRoll)
     {
         isMoving = true;
+        LogPlayerEvent(players[currentPlayerIndex], $"начал перемещение на {totalRoll} шаг(ов) к узлу {target.nodeName}.");
 
         List<BoardNode> path = GetPathToTarget(players[currentPlayerIndex].currentNode, target, totalRoll);
 
@@ -228,20 +258,20 @@ private IEnumerator EndTurnAfterDelay()
             case BoardNode.NodeType.Money:
                 currentPlayer.ChangeStat("money", 1);
                 if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(moneySound);
-                Debug.Log($"{currentPlayer.playerName} gained +1 money");
+                LogPlayerEvent(currentPlayer, "получил +1 деньги на денежной клетке.");
                 break;
             case BoardNode.NodeType.Travel:
                 if (currentPlayer.GetStatValue("money") > 0)
                 {
                     currentPlayer.ChangeStat("money", -1);
-                    Debug.Log($"{currentPlayer.playerName} paid 1 money for travel");
+                    LogPlayerEvent(currentPlayer, "оплатил 1 деньги за путешествие.");
                     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(travelSound);
                     yield return StartCoroutine(ChooseTravelDestination(currentPlayer));
                 }
                 else
                 {
                     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
-                    Debug.Log($"{currentPlayer.playerName} has no money, staying on travel node");
+                    LogPlayerEvent(currentPlayer, "не может путешествовать: недостаточно денег.");
                     ShowCard(
                     "TRAVEL — NO FUNDS",
                     "Not enough money to travel. Stay here.",
@@ -274,6 +304,7 @@ private IEnumerator EndTurnAfterDelay()
             yield return StartCoroutine(TryDoProject(currentPlayer));
             break;
             case BoardNode.NodeType.None:
+                LogPlayerEvent(currentPlayer, "остановился на пустой клетке.");
                 break;
             default:
                 yield return StartCoroutine(PullCardCoroutine(currentPlayer));
@@ -291,37 +322,42 @@ private IEnumerator EndTurnAfterDelay()
         isMoving = false;
         hasRolledThisTurn = false;
         currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
+        LogGame($"Ход завершен. Следующий игрок: {players[currentPlayerIndex].playerName}.");
         UpdatePlayersVisuals();
     }
 
-private IEnumerator PullCardCoroutine(PlayerController player)
+private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphere = null, int chainDepth = 0)
 {
     BoardNode node = player.currentNode;
     if (node.nodeStat == BoardNode.NodeType.None) yield break;
 
-    string statName = node.nodeStat.ToString().ToLower();
+    string statName = string.IsNullOrWhiteSpace(forcedSphere)
+        ? node.nodeStat.ToString().ToLower()
+        : forcedSphere.ToLower();
     int statLevel = player.GetStatValue(statName);
     int expLevel = player.GetStatValue("experience");
     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
     CardData card = CardDatabase.GetRandomBySphere(statName);
+    LogPlayerEvent(player, $"тянет карту сферы '{statName}' типа '{card.cardType}'.");
 
     CardVisual deck = deckManager.GetCardForNode(node.nodeStat);
+    bool shouldDrawNextCard = false;
     switch (card.cardType)
 {
     case CardType.Surprise:
-        HandleSurpriseCard(player, card);
+        shouldDrawNextCard = HandleSurpriseCard(player, card);
         break;
 
     case CardType.Yellow:
-        HandleYellowCard(player, card, statName);
+        shouldDrawNextCard = HandleYellowCard(player, card, statName);
         break;
 
     case CardType.Blue:
-        HandleBlueCard(player, card, statName, expLevel);
+        shouldDrawNextCard = HandleBlueCard(player, card, statName, expLevel);
         break;
 
     case CardType.Red:
-        HandleRedCard(player, card, statName, statLevel);
+        shouldDrawNextCard = HandleRedCard(player, card, statName, statLevel);
         break;
 
     case CardType.Green:
@@ -332,14 +368,14 @@ private IEnumerator PullCardCoroutine(PlayerController player)
     if (card.cardType!=CardType.Green){
         deck?.Show(card, statName);
     }
-    }
 
-    private string GetRandomOtherStat(string exclude)
+    // Новый эффект: после закрытия карты сразу тянем следующую из той же сферы.
+    if (shouldDrawNextCard && chainDepth < 5)
     {
-        var available = new List<string>();
-        foreach (string s in allStats)
-            if (s != exclude) available.Add(s);
-        return available[UnityEngine.Random.Range(0, available.Count)];
+        LogPlayerEvent(player, $"срабатывает эффект добора. Будет вытянута следующая карта из сферы '{statName}'.");
+        yield return WaitForCardHidden(deck, 30f);
+        yield return StartCoroutine(PullCardCoroutine(player, statName, chainDepth + 1));
+    }
     }
 
     private IEnumerator JumpToNode(PlayerController p, Vector3 targetPos)
@@ -442,7 +478,7 @@ private IEnumerator PullCardCoroutine(PlayerController player)
     }
     private IEnumerator ChooseTravelDestination(PlayerController player)
 {
-    Debug.Log("Choose any node to travel to...");
+    LogPlayerEvent(player, "выбирает клетку для путешествия.");
 
     // Подсвечиваем все ноды кроме текущей
     List<BoardNode> allNodes = new List<BoardNode>(FindObjectsOfType<BoardNode>());
@@ -471,7 +507,7 @@ private IEnumerator PullCardCoroutine(PlayerController player)
     // Прыгаем напрямую
     yield return StartCoroutine(JumpToNode(player, GetOffsetPosition(chosen)));
     player.currentNode = chosen;
-    Debug.Log($"{player.playerName} travelled to {chosen.nodeName}");
+    LogPlayerEvent(player, $"переместился путешествием на узел {chosen.nodeName}.");
 
     PullTravelCard(player);
 }
@@ -482,7 +518,7 @@ private void PullTravelCard(PlayerController player)
     CardData travelCard = CardDatabase.GetRandomBySphere("travel");
     ApplyGenericEffects(player, travelCard.effects);
 
-    Debug.Log($"{player.playerName} drew travel card.");
+    LogPlayerEvent(player, "вытянул карту путешествия.");
     CardVisual travelDeck = deckManager.GetCardForNode(BoardNode.NodeType.Travel);
     travelDeck?.Show(travelCard, "travel");
 }
@@ -495,7 +531,7 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
     int roll = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
     int expLevel = player.GetStatValue("experience");
 
-    Debug.Log($"{player.playerName} applies for grant in {chosenStat}. Roll: {roll}, Exp: {expLevel}");
+    LogPlayerEvent(player, $"подает заявку на грант в сфере '{chosenStat}'. Бросок: {roll}, опыт: {expLevel}.");
 
     yield return new WaitForSeconds(0.3f);
 
@@ -508,7 +544,7 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
         CardVisual grantDeck = deckManager.GetCardForNode(BoardNode.NodeType.Grant);
         grantDeck?.Show(grantCard, chosenStat);
 
-        Debug.Log($"{player.playerName} earned grant in {chosenStat}. Total grants: {player.earnedGrants.Count}");
+        LogPlayerEvent(player, $"получил грант в сфере '{chosenStat}'. Всего активных грантов: {player.earnedGrants.Count}.");
     }
     else
     {
@@ -522,7 +558,7 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
     chosenStat
 );
 
-        Debug.Log($"{player.playerName} grant rejected. Roll {roll} >= exp {expLevel}");
+        LogPlayerEvent(player, $"грант отклонен. Бросок {roll} >= опыт {expLevel}.");
     }
 }
 private IEnumerator TryDoProject(PlayerController player)
@@ -595,7 +631,7 @@ private IEnumerator TryDoProject(PlayerController player)
     player.completedProjects.Add(chosenSphere);
     player.ChangeStat("success", 5);
 
-    Debug.Log($"{player.playerName} completed project in {chosenSphere} using {paymentMethod}. +5 Success");
+    LogPlayerEvent(player, $"завершил проект в сфере '{chosenSphere}', оплата: {paymentMethod}. Награда: +5 успех.");
 
     ShowCard(
     "PROJECT COMPLETE! 🏆",
@@ -604,16 +640,16 @@ private IEnumerator TryDoProject(PlayerController player)
     chosenSphere
     );
 }
-private string ApplyGenericEffects(
+private bool ApplyGenericEffects(
     PlayerController player,
     List<CardEffectData> effects,
     string defaultStat = "",
     CardEffectCondition triggerCondition = CardEffectCondition.Always)
 {
     if (player == null || effects == null || effects.Count == 0)
-        return "";
+        return false;
 
-    System.Text.StringBuilder result = new System.Text.StringBuilder();
+    bool shouldDrawNextCard = false;
 
     foreach (var eff in effects)
     {
@@ -622,21 +658,9 @@ private string ApplyGenericEffects(
 
         switch (eff.effect)
         {
-            case CardEffect.GainMoney:
-                player.ChangeStat("money", eff.amount);
-                result.AppendLine($"+{eff.amount} money");
-                break;
-            case CardEffect.LoseMoney:
-                player.ChangeStat("money", -eff.amount);
-                result.AppendLine($"-{eff.amount} money");
-                break;
-            case CardEffect.GainSuccess:
-                player.ChangeStat("success", eff.amount);
-                result.AppendLine($"+{eff.amount} success");
-                break;
             case CardEffect.SkipNextTurn:
                 player.skipTurns += eff.amount;
-                result.AppendLine($"skip {eff.amount} turn(s)");
+                LogPlayerEvent(player, $"эффект карты: пропуск ходов +{eff.amount}. Теперь пропусков: {player.skipTurns}.");
                 break;
             case CardEffect.GainStat:
                 {
@@ -644,7 +668,7 @@ private string ApplyGenericEffects(
                 if (!string.IsNullOrEmpty(statToGain))
                 {
                     player.ChangeStat(statToGain, eff.amount);
-                    result.AppendLine($"+{eff.amount} {statToGain}");
+                    LogPlayerEvent(player, $"эффект карты: +{eff.amount} к стату '{statToGain}'.");
                 }
                 break;
                 }
@@ -654,14 +678,18 @@ private string ApplyGenericEffects(
                 if (!string.IsNullOrEmpty(statToLose))
                 {
                     player.ChangeStat(statToLose, -eff.amount);
-                    result.AppendLine($"-{eff.amount} {statToLose}");
+                    LogPlayerEvent(player, $"эффект карты: -{eff.amount} к стату '{statToLose}'.");
                 }
                 break;
                 }
+            case CardEffect.DrawNextCardFromSameSphere:
+                shouldDrawNextCard = true;
+                LogPlayerEvent(player, "эффект карты: добор следующей карты из этой же сферы.");
+                break;
         }
     }
 
-    return result.ToString().Trim();
+    return shouldDrawNextCard;
 }
 private string ResolveEffectStatName(CardStat stat, string fallback)
 {
@@ -683,11 +711,23 @@ private string ResolveEffectStatName(CardStat stat, string fallback)
     };
 }
 
+private IEnumerator WaitForCardHidden(CardVisual deck, float timeoutSeconds)
+{
+    if (deck == null) yield break;
+
+    float timer = timeoutSeconds;
+    while ((deck.IsShown || deck.IsAnimating) && timer > 0f)
+    {
+        timer -= Time.deltaTime;
+        yield return null;
+    }
+}
+
 private void CheckVictory(PlayerController player)
 {
     if (player.success < 12) return;
 
-    Debug.Log($"{player.playerName} WON with {player.success} success points!");
+    LogPlayerEvent(player, $"победил! Очки успеха: {player.success}.");
 
     if (victorySound != null)
         audioSource.PlayOneShot(victorySound);
@@ -704,24 +744,24 @@ private void CheckVictory(PlayerController player)
 }
 
 //хендлеры карточек
-private void HandleSurpriseCard(PlayerController player, CardData card)
+private bool HandleSurpriseCard(PlayerController player, CardData card)
 {
-    ApplyGenericEffects(player, card.effects);
+    return ApplyGenericEffects(player, card.effects);
 }
 
 // YELLOW
-private void HandleYellowCard(PlayerController player, CardData card, string statName)
+private bool HandleYellowCard(PlayerController player, CardData card, string statName)
 {
-    ApplyGenericEffects(player, card.effects, statName);
+    return ApplyGenericEffects(player, card.effects, statName);
 }
 
 // BLUE
-private void HandleBlueCard(PlayerController player, CardData card, string statName, int expLevel)
+private bool HandleBlueCard(PlayerController player, CardData card, string statName, int expLevel)
 {
     int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
     bool success = expLevel > diceSum;
 
-    ApplyGenericEffects(
+    bool shouldDrawNextCard = ApplyGenericEffects(
         player,
         card.effects,
         statName,
@@ -729,17 +769,19 @@ private void HandleBlueCard(PlayerController player, CardData card, string statN
     );
 
     if (expLevel > diceSum)
-        Debug.Log($"BLUE success: roll {diceSum} < exp {expLevel}");
+        LogPlayerEvent(player, $"синяя карта: успех проверки (бросок {diceSum} < опыт {expLevel}).");
     else
-        Debug.Log($"BLUE fail: roll {diceSum} >= exp {expLevel}");
+        LogPlayerEvent(player, $"синяя карта: провал проверки (бросок {diceSum} >= опыт {expLevel}).");
+
+    return shouldDrawNextCard;
 }
 
 // RED
-private void HandleRedCard(PlayerController player, CardData card, string statName, int statLevel)
+private bool HandleRedCard(PlayerController player, CardData card, string statName, int statLevel)
 {
     bool success = statLevel >= 5;
 
-    ApplyGenericEffects(
+    bool shouldDrawNextCard = ApplyGenericEffects(
         player,
         card.effects,
         statName,
@@ -747,9 +789,11 @@ private void HandleRedCard(PlayerController player, CardData card, string statNa
     );
 
     if (success)
-        Debug.Log($"RED success: {statName} level {statLevel} >= 5");
+        LogPlayerEvent(player, $"красная карта: успех проверки ({statName} = {statLevel}, нужно >= 5).");
     else
-        Debug.Log($"RED fail: {statName} level {statLevel} < 5");
+        LogPlayerEvent(player, $"красная карта: провал проверки ({statName} = {statLevel}, нужно >= 5).");
+
+    return shouldDrawNextCard;
 }
 
 
@@ -802,7 +846,7 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
     }
     else
     {
-        yield return greenCardUI.ShowAndWait(coopPartnerStat, candidates, p => chosenPartner = p);
+        yield return greenCardUI.ShowAndWait(coopPartnerStat, candidates, player, p => chosenPartner = p);
     }
 
     deck?.SetLocked(false);
@@ -829,6 +873,7 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
 private void ShowCard(string title, string desc, CardType type, string stat)
 {   
     string message = string.IsNullOrWhiteSpace(desc) ? title : $"{title}\n{desc}";
+    LogGame($"Системное уведомление: {message.Replace('\n', ' ')}");
     uiManager?.ShowNotification(message);
 }
 

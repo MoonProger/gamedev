@@ -15,7 +15,10 @@ public class CardVisual : MonoBehaviour
     private bool isLocked = false;
 
     private bool isShown = false;
+    private bool isAnimating = false;
     private Coroutine currentAnim;
+    public bool IsShown => isShown;
+    public bool IsAnimating => isAnimating;
 
     // Коллайдер для клика
     private void Awake()
@@ -65,6 +68,7 @@ public void ShowRaw(string title, string description, CardType type, string sphe
 
 private IEnumerator MoveAndRotate(Transform target)
 {
+    isAnimating = true;
     Vector3 startPos = transform.position;
     Quaternion startRot = transform.rotation;
     float elapsed = 0f;
@@ -80,6 +84,8 @@ private IEnumerator MoveAndRotate(Transform target)
 
     transform.position = target.position;
     transform.rotation = target.rotation;
+    isAnimating = false;
+    currentAnim = null;
 }
 public void SetLocked(bool locked) => isLocked = locked;
 }

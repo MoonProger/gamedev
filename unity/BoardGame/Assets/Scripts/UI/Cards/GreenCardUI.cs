@@ -13,7 +13,7 @@ public class GreenCardUI : MonoBehaviour
 
     private System.Action<PlayerController> onPartnerChosen;
 
-    public IEnumerator ShowAndWait(string mainStat, List<PlayerController> candidates, System.Action<PlayerController> callback)
+    public IEnumerator ShowAndWait(string mainStat, List<PlayerController> candidates, PlayerController selfPlayer, System.Action<PlayerController> callback)
     {
         onPartnerChosen = callback;
 
@@ -24,7 +24,8 @@ public class GreenCardUI : MonoBehaviour
         {
             PlayerController captured = candidate;
             GameObject btn = Instantiate(partnerButtonPrefab, partnerButtonContainer);
-            btn.GetComponentInChildren<TextMeshProUGUI>().text = captured.playerName;
+            string label = captured == selfPlayer ? "Solo" : captured.playerName;
+            btn.GetComponentInChildren<TextMeshProUGUI>().text = label;
             btn.GetComponent<Button>().onClick.AddListener(() => ChoosePartner(captured));
         }
 
