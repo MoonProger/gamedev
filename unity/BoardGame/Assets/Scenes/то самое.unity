@@ -5541,10 +5541,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Table Button
+  m_text: "\u0422\u0430\u0431\u043B\u0438\u0446\u0430 \u0441\u0444\u0435\u0440"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
+  m_sharedMaterial: {fileID: 2433813225226474965, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -5574,7 +5574,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 1
+  m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -6080,6 +6080,320 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   decks:
+  - key: science
+    cards:
+    - cardType: 1
+      image: {fileID: 21300000, guid: 30330619bf88e034f86cae1cc557397b, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 2
+      image: {fileID: 21300000, guid: 9393b3d7f0f20fd488372f940289a543, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: ef9760e1e41a639438fe7a780625d7b3, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 666b9455c238d954b9c11b21e7a5dca6, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      soloEffects: []
+      coopEffects: []
+    - cardType: 2
+      image: {fileID: 21300000, guid: 417449feac0a7ca4ab460bb5d84b9d89, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 2
+      image: {fileID: 21300000, guid: f99b298d6a86c1646920a0402777750d, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: 656127e72d12ae94b8b2ef2c1cc9183c, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 2
+      image: {fileID: 21300000, guid: 2a2ad580a72b39a4199910e963eafdf0, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 2
+      image: {fileID: 21300000, guid: 1aa64083cdf4be5469c0c8c031d6ab86, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 3
+      image: {fileID: 21300000, guid: e7403ade39b5e1c42aa2bcee887a9951, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 1
+        statName: 3
+        amount: 1
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 3
+      image: {fileID: 21300000, guid: 866dbc0e58607384ea0e744ca03c1c5a, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 1
+        statName: 3
+        amount: 1
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 4
+      image: {fileID: 21300000, guid: 89541ee93603a1f43a7a448e0d460087, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 8
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 8
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 2719da970c77d6846b2fbf590cc7245b, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 11
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 11
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: d55617ad2701cb148b0328799daf2c06, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 4
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 4
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 742dd3f73da3f7042bd21ea7ded2ac47, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 7
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 7
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 215c2b725a227a94ab8bef3f1f7817db, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 9
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 9
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 0928deb853c4b014dbf84a1640232532, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 10
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 10
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: f28741f2376c92f4396f0f7081bf1c20, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 6
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 6
+        amount: 1
+    - cardType: 0
+      image: {fileID: 21300000, guid: 8073ab7886add774e8bd66e5208a2d7f, type: 3}
+      effects:
+      - effect: 4
+        condition: 0
+        statName: 0
+        amount: 0
+      - effect: 2
+        condition: 0
+        statName: 1
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 0
+      image: {fileID: 21300000, guid: cd7d9a8429e24aa4ebeb65587b9cc9d2, type: 3}
+      effects:
+      - effect: 3
+        condition: 0
+        statName: 1
+        amount: 1
+      - effect: 4
+        condition: 0
+        statName: 0
+        amount: 0
+      soloEffects: []
+      coopEffects: []
   - key: art
     cards:
     - cardType: 1
@@ -6708,21 +7022,10 @@ MonoBehaviour:
         amount: 0
       soloEffects: []
       coopEffects: []
-  - key: grant_success
-    cards: []
-  - key: it
+  - key: sport
     cards:
     - cardType: 1
-      image: {fileID: 21300000, guid: bbd961f69a85e574292ae9d17ccb18ab, type: 3}
-      effects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 1
-      image: {fileID: 21300000, guid: 516dbd81a233875498152ad3e92d5928, type: 3}
+      image: {fileID: 21300000, guid: 2864baa4c16b5a9478db37313647c1ce, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -6731,7 +7034,16 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 1
-      image: {fileID: 21300000, guid: 7394b8b4c210aa246bba4ecd9388ba1a, type: 3}
+      image: {fileID: 21300000, guid: c1b89d8d8933f7a44959d87f4bd5ca44, type: 3}
+      effects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 1
+      image: {fileID: 21300000, guid: f87486f800fc5034d9a12606c1cee99a, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -6740,7 +7052,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 1fd156d62948285458ebec3fade46ec7, type: 3}
+      image: {fileID: 21300000, guid: 902fb42700c23f74dbc22cee1e09342a, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -6753,7 +7065,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 1ef5bfc33442f2c43a100c65f2f1afb3, type: 3}
+      image: {fileID: 21300000, guid: 6100ab32222f9834fb0408b2746084ef, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -6766,7 +7078,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 3dcb3c492807d09488496b17e18a60c1, type: 3}
+      image: {fileID: 21300000, guid: a44c002cb55bf874b8cc7fedafd60633, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -6779,7 +7091,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 8ab70ff53cb5ebf46aa454880823e3f4, type: 3}
+      image: {fileID: 21300000, guid: ce5510cae7473b54c85b268854d7652f, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -6792,7 +7104,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: df7488d86c95be14db65c1342f6c5ade, type: 3}
+      image: {fileID: 21300000, guid: 52e0362e2a051d44aa3093570df7d7a7, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -6805,7 +7117,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 982b0a649c1c2694bb9b47a739aae953, type: 3}
+      image: {fileID: 21300000, guid: 56f8f204c48358a47a98b48e5cf41854, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -6818,7 +7130,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 3
-      image: {fileID: 21300000, guid: 909ac2612b7cf004fa9e14c82e7c50c9, type: 3}
+      image: {fileID: 21300000, guid: e74cf412c51386d4ba07efab76cc8e58, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -6835,7 +7147,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 3
-      image: {fileID: 21300000, guid: 65560762481d3344ea40cd9c6b0260b2, type: 3}
+      image: {fileID: 21300000, guid: 82b91934ac3b39c41a6baf1236f9e991, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -6852,7 +7164,28 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 4
-      image: {fileID: 21300000, guid: e8acbc1e0fb706845811cf5362494519, type: 3}
+      image: {fileID: 21300000, guid: 02070087707f0444e9fcea3b7c190f46, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 11
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 11
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 66694d00c071409409650a3164d0bee6, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -6873,49 +7206,7 @@ MonoBehaviour:
         statName: 8
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: 27c50965537c2c843a96a56eec1cea0f, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 9
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 9
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 94cac044383b2cc49b145a063e48e067, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 6
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 6
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 94a5af1dcc0f0c94dac3115df26a7045, type: 3}
+      image: {fileID: 21300000, guid: c9c3867d43cd79444a2fed80c67fe33f, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -6936,28 +7227,7 @@ MonoBehaviour:
         statName: 4
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: 3ec787f352ef0ec4a89ef58ebf95f924, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 10
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 10
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 7540e16ac46a56a4baa5cfda3710d96f, type: 3}
+      image: {fileID: 21300000, guid: 3f75c72270b7c4944ba75c845b949a89, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -6978,7 +7248,7 @@ MonoBehaviour:
         statName: 7
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: 0c488f4103eaf5142ba2e5a747073980, type: 3}
+      image: {fileID: 21300000, guid: 6fcef0f2e44f135428ececd48813a0de, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -6997,9 +7267,51 @@ MonoBehaviour:
       - effect: 2
         condition: 0
         statName: 5
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 1cacca7eee8da3e4d9c6336d8b8a19c1, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 6
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 6
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: c58c86c3036f4484889f1583c4ba6777, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 10
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 10
         amount: 1
     - cardType: 0
-      image: {fileID: 21300000, guid: 259d16f3f4df3ff40808f71360fa92be, type: 3}
+      image: {fileID: 21300000, guid: 636d1baefb3ec1c4fb7065728390a8e5, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -7012,7 +7324,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 0
-      image: {fileID: 21300000, guid: b1113c550100bb04293c5eb62c8d4812, type: 3}
+      image: {fileID: 21300000, guid: 208b2d3c61b2cfa49affd59c7b93cfb4, type: 3}
       effects:
       - effect: 3
         condition: 0
@@ -7338,10 +7650,10 @@ MonoBehaviour:
         amount: 0
       soloEffects: []
       coopEffects: []
-  - key: science
+  - key: volounteer
     cards:
     - cardType: 1
-      image: {fileID: 21300000, guid: 30330619bf88e034f86cae1cc557397b, type: 3}
+      image: {fileID: 21300000, guid: e900b3d1e8b816448a5de358e1e0994c, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -7349,21 +7661,8 @@ MonoBehaviour:
         amount: 1
       soloEffects: []
       coopEffects: []
-    - cardType: 2
-      image: {fileID: 21300000, guid: 9393b3d7f0f20fd488372f940289a543, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
     - cardType: 1
-      image: {fileID: 21300000, guid: ef9760e1e41a639438fe7a780625d7b3, type: 3}
+      image: {fileID: 21300000, guid: 5d9c12b0df4cde448b0de513906e2bb2, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -7372,7 +7671,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 1
-      image: {fileID: 21300000, guid: 666b9455c238d954b9c11b21e7a5dca6, type: 3}
+      image: {fileID: 21300000, guid: 99bbf3752471be94c8a8be4a59a1aadd, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -7381,7 +7680,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 417449feac0a7ca4ab460bb5d84b9d89, type: 3}
+      image: {fileID: 21300000, guid: 4751b479eabe8dd4c926d96337918fe1, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -7394,20 +7693,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: f99b298d6a86c1646920a0402777750d, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 1
-      image: {fileID: 21300000, guid: 656127e72d12ae94b8b2ef2c1cc9183c, type: 3}
+      image: {fileID: 21300000, guid: 745e683cdd5d5c540b21c5ab4aefb44f, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -7420,7 +7706,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 2a2ad580a72b39a4199910e963eafdf0, type: 3}
+      image: {fileID: 21300000, guid: 2142ec1ac2a18ca43980212a3eabe41d, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -7433,7 +7719,33 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 1aa64083cdf4be5469c0c8c031d6ab86, type: 3}
+      image: {fileID: 21300000, guid: ceec8b483b3469243bf406b23d7a120c, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 2
+      image: {fileID: 21300000, guid: 9c68a5c5c1af9b140bdb47e447d29443, type: 3}
+      effects:
+      - effect: 2
+        condition: 1
+        statName: 0
+        amount: 3
+      - effect: 2
+        condition: 2
+        statName: 2
+        amount: 1
+      soloEffects: []
+      coopEffects: []
+    - cardType: 2
+      image: {fileID: 21300000, guid: 40a968cbba7265347a7124eedbb79140, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -7446,7 +7758,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 3
-      image: {fileID: 21300000, guid: e7403ade39b5e1c42aa2bcee887a9951, type: 3}
+      image: {fileID: 21300000, guid: f78b892bcf988254fb1a847590996245, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -7463,7 +7775,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 3
-      image: {fileID: 21300000, guid: 866dbc0e58607384ea0e744ca03c1c5a, type: 3}
+      image: {fileID: 21300000, guid: e60aca6bae1f0ec468133430ad50851c, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -7480,28 +7792,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 4
-      image: {fileID: 21300000, guid: 89541ee93603a1f43a7a448e0d460087, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 8
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 8
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 2719da970c77d6846b2fbf590cc7245b, type: 3}
+      image: {fileID: 21300000, guid: 44616289e97b11a4a8318b009f3dfcaa, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -7522,300 +7813,7 @@ MonoBehaviour:
         statName: 11
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: d55617ad2701cb148b0328799daf2c06, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 4
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 4
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 742dd3f73da3f7042bd21ea7ded2ac47, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 7
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 7
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 215c2b725a227a94ab8bef3f1f7817db, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 9
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 9
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 0928deb853c4b014dbf84a1640232532, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 10
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 10
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: f28741f2376c92f4396f0f7081bf1c20, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 6
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 6
-        amount: 1
-    - cardType: 0
-      image: {fileID: 21300000, guid: 8073ab7886add774e8bd66e5208a2d7f, type: 3}
-      effects:
-      - effect: 4
-        condition: 0
-        statName: 0
-        amount: 0
-      - effect: 2
-        condition: 0
-        statName: 1
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 0
-      image: {fileID: 21300000, guid: cd7d9a8429e24aa4ebeb65587b9cc9d2, type: 3}
-      effects:
-      - effect: 3
-        condition: 0
-        statName: 1
-        amount: 1
-      - effect: 4
-        condition: 0
-        statName: 0
-        amount: 0
-      soloEffects: []
-      coopEffects: []
-  - key: sport
-    cards:
-    - cardType: 1
-      image: {fileID: 21300000, guid: 2864baa4c16b5a9478db37313647c1ce, type: 3}
-      effects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      soloEffects: []
-      coopEffects: []
-    - cardType: 1
-      image: {fileID: 21300000, guid: c1b89d8d8933f7a44959d87f4bd5ca44, type: 3}
-      effects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 1
-      image: {fileID: 21300000, guid: f87486f800fc5034d9a12606c1cee99a, type: 3}
-      effects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      soloEffects: []
-      coopEffects: []
-    - cardType: 2
-      image: {fileID: 21300000, guid: 902fb42700c23f74dbc22cee1e09342a, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 2
-      image: {fileID: 21300000, guid: 6100ab32222f9834fb0408b2746084ef, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 2
-      image: {fileID: 21300000, guid: a44c002cb55bf874b8cc7fedafd60633, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 2
-      image: {fileID: 21300000, guid: ce5510cae7473b54c85b268854d7652f, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 2
-      image: {fileID: 21300000, guid: 52e0362e2a051d44aa3093570df7d7a7, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 2
-      image: {fileID: 21300000, guid: 56f8f204c48358a47a98b48e5cf41854, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 3
-      image: {fileID: 21300000, guid: e74cf412c51386d4ba07efab76cc8e58, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 1
-        statName: 3
-        amount: 1
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 3
-      image: {fileID: 21300000, guid: 82b91934ac3b39c41a6baf1236f9e991, type: 3}
-      effects:
-      - effect: 2
-        condition: 1
-        statName: 0
-        amount: 3
-      - effect: 2
-        condition: 1
-        statName: 3
-        amount: 1
-      - effect: 2
-        condition: 2
-        statName: 2
-        amount: 1
-      soloEffects: []
-      coopEffects: []
-    - cardType: 4
-      image: {fileID: 21300000, guid: 02070087707f0444e9fcea3b7c190f46, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 11
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 11
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 66694d00c071409409650a3164d0bee6, type: 3}
+      image: {fileID: 21300000, guid: 2798d45406d0ee94897ea98b76c7e973, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -7836,28 +7834,7 @@ MonoBehaviour:
         statName: 8
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: c9c3867d43cd79444a2fed80c67fe33f, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 4
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 4
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 3f75c72270b7c4944ba75c845b949a89, type: 3}
+      image: {fileID: 21300000, guid: 665e4fb5cbe7cdd4a942e28b9b298703, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -7878,7 +7855,7 @@ MonoBehaviour:
         statName: 7
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: 6fcef0f2e44f135428ececd48813a0de, type: 3}
+      image: {fileID: 21300000, guid: 6cee1038bdc27fc4992311aa755d71a5, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -7899,7 +7876,28 @@ MonoBehaviour:
         statName: 5
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: 1cacca7eee8da3e4d9c6336d8b8a19c1, type: 3}
+      image: {fileID: 21300000, guid: 3706f6644709fa14b82e9824a63f1790, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 9
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 9
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 2752694260c634e4da7edd6f11bfcd45, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -7920,7 +7918,7 @@ MonoBehaviour:
         statName: 6
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: c58c86c3036f4484889f1583c4ba6777, type: 3}
+      image: {fileID: 21300000, guid: 1ed2f942e48178c4699ebd869000c022, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -7941,7 +7939,7 @@ MonoBehaviour:
         statName: 10
         amount: 1
     - cardType: 0
-      image: {fileID: 21300000, guid: 636d1baefb3ec1c4fb7065728390a8e5, type: 3}
+      image: {fileID: 21300000, guid: 786720d15fd834040983b99997341c95, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -7954,7 +7952,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 0
-      image: {fileID: 21300000, guid: 208b2d3c61b2cfa49affd59c7b93cfb4, type: 3}
+      image: {fileID: 21300000, guid: 942f431abf758684fa42d43d34454330, type: 3}
       effects:
       - effect: 3
         condition: 0
@@ -8280,12 +8278,10 @@ MonoBehaviour:
         amount: 0
       soloEffects: []
       coopEffects: []
-  - key: travel
-    cards: []
-  - key: volounteer
+  - key: it
     cards:
     - cardType: 1
-      image: {fileID: 21300000, guid: e900b3d1e8b816448a5de358e1e0994c, type: 3}
+      image: {fileID: 21300000, guid: bbd961f69a85e574292ae9d17ccb18ab, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -8294,7 +8290,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 1
-      image: {fileID: 21300000, guid: 5d9c12b0df4cde448b0de513906e2bb2, type: 3}
+      image: {fileID: 21300000, guid: 516dbd81a233875498152ad3e92d5928, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -8303,7 +8299,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 1
-      image: {fileID: 21300000, guid: 99bbf3752471be94c8a8be4a59a1aadd, type: 3}
+      image: {fileID: 21300000, guid: 7394b8b4c210aa246bba4ecd9388ba1a, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -8312,7 +8308,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 4751b479eabe8dd4c926d96337918fe1, type: 3}
+      image: {fileID: 21300000, guid: 1fd156d62948285458ebec3fade46ec7, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -8325,7 +8321,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 745e683cdd5d5c540b21c5ab4aefb44f, type: 3}
+      image: {fileID: 21300000, guid: 1ef5bfc33442f2c43a100c65f2f1afb3, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -8338,7 +8334,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 2142ec1ac2a18ca43980212a3eabe41d, type: 3}
+      image: {fileID: 21300000, guid: 3dcb3c492807d09488496b17e18a60c1, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -8351,7 +8347,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: ceec8b483b3469243bf406b23d7a120c, type: 3}
+      image: {fileID: 21300000, guid: 8ab70ff53cb5ebf46aa454880823e3f4, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -8364,7 +8360,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 9c68a5c5c1af9b140bdb47e447d29443, type: 3}
+      image: {fileID: 21300000, guid: df7488d86c95be14db65c1342f6c5ade, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -8377,7 +8373,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 2
-      image: {fileID: 21300000, guid: 40a968cbba7265347a7124eedbb79140, type: 3}
+      image: {fileID: 21300000, guid: 982b0a649c1c2694bb9b47a739aae953, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -8390,7 +8386,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 3
-      image: {fileID: 21300000, guid: f78b892bcf988254fb1a847590996245, type: 3}
+      image: {fileID: 21300000, guid: 909ac2612b7cf004fa9e14c82e7c50c9, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -8407,7 +8403,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 3
-      image: {fileID: 21300000, guid: e60aca6bae1f0ec468133430ad50851c, type: 3}
+      image: {fileID: 21300000, guid: 65560762481d3344ea40cd9c6b0260b2, type: 3}
       effects:
       - effect: 2
         condition: 1
@@ -8424,28 +8420,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 4
-      image: {fileID: 21300000, guid: 44616289e97b11a4a8318b009f3dfcaa, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 11
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 11
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 2798d45406d0ee94897ea98b76c7e973, type: 3}
+      image: {fileID: 21300000, guid: e8acbc1e0fb706845811cf5362494519, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -8466,49 +8441,7 @@ MonoBehaviour:
         statName: 8
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: 665e4fb5cbe7cdd4a942e28b9b298703, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 7
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 7
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 6cee1038bdc27fc4992311aa755d71a5, type: 3}
-      effects: []
-      soloEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 1
-      - effect: 2
-        condition: 0
-        statName: 5
-        amount: 1
-      coopEffects:
-      - effect: 2
-        condition: 0
-        statName: 0
-        amount: 2
-      - effect: 2
-        condition: 0
-        statName: 5
-        amount: 1
-    - cardType: 4
-      image: {fileID: 21300000, guid: 3706f6644709fa14b82e9824a63f1790, type: 3}
+      image: {fileID: 21300000, guid: 27c50965537c2c843a96a56eec1cea0f, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -8529,7 +8462,7 @@ MonoBehaviour:
         statName: 9
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: 2752694260c634e4da7edd6f11bfcd45, type: 3}
+      image: {fileID: 21300000, guid: 94cac044383b2cc49b145a063e48e067, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -8550,7 +8483,28 @@ MonoBehaviour:
         statName: 6
         amount: 1
     - cardType: 4
-      image: {fileID: 21300000, guid: 1ed2f942e48178c4699ebd869000c022, type: 3}
+      image: {fileID: 21300000, guid: 94a5af1dcc0f0c94dac3115df26a7045, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 4
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 4
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 3ec787f352ef0ec4a89ef58ebf95f924, type: 3}
       effects: []
       soloEffects:
       - effect: 2
@@ -8569,9 +8523,51 @@ MonoBehaviour:
       - effect: 2
         condition: 0
         statName: 10
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 7540e16ac46a56a4baa5cfda3710d96f, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 7
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 7
+        amount: 1
+    - cardType: 4
+      image: {fileID: 21300000, guid: 0c488f4103eaf5142ba2e5a747073980, type: 3}
+      effects: []
+      soloEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 1
+      - effect: 2
+        condition: 0
+        statName: 5
+        amount: 1
+      coopEffects:
+      - effect: 2
+        condition: 0
+        statName: 0
+        amount: 2
+      - effect: 2
+        condition: 0
+        statName: 5
         amount: 1
     - cardType: 0
-      image: {fileID: 21300000, guid: 786720d15fd834040983b99997341c95, type: 3}
+      image: {fileID: 21300000, guid: 259d16f3f4df3ff40808f71360fa92be, type: 3}
       effects:
       - effect: 2
         condition: 0
@@ -8584,7 +8580,7 @@ MonoBehaviour:
       soloEffects: []
       coopEffects: []
     - cardType: 0
-      image: {fileID: 21300000, guid: 942f431abf758684fa42d43d34454330, type: 3}
+      image: {fileID: 21300000, guid: b1113c550100bb04293c5eb62c8d4812, type: 3}
       effects:
       - effect: 3
         condition: 0
@@ -8596,6 +8592,10 @@ MonoBehaviour:
         amount: 0
       soloEffects: []
       coopEffects: []
+  - key: travel
+    cards: []
+  - key: grant_success
+    cards: []
 --- !u!4 &324860003
 Transform:
   m_ObjectHideFlags: 0
@@ -9914,8 +9914,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
+  m_sharedMaterial: {fileID: 2433813225226474965, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -10140,10 +10140,20 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1032126729532547655, guid: 38b411e446a05a741aa1f6de2653c3f8, type: 3}
   m_PrefabInstance: {fileID: 4281542169994211451}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &452256545 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+  m_PrefabInstance: {fileID: 2737421282690511602}
+  m_PrefabAsset: {fileID: 0}
 --- !u!224 &468203605 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1032126729532547655, guid: 38b411e446a05a741aa1f6de2653c3f8, type: 3}
   m_PrefabInstance: {fileID: 2565906482036931154}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &489133258 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+  m_PrefabInstance: {fileID: 2232611809888331541}
   m_PrefabAsset: {fileID: 0}
 --- !u!224 &499817445 stripped
 RectTransform:
@@ -10561,6 +10571,11 @@ MeshFilter:
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1032126729532547655, guid: 38b411e446a05a741aa1f6de2653c3f8, type: 3}
   m_PrefabInstance: {fileID: 5240878330863709089}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &536168127 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+  m_PrefabInstance: {fileID: 3447760752761576733}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &555083879
 GameObject:
@@ -15980,6 +15995,19 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 5556377156084235250, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
   m_PrefabInstance: {fileID: 2232611809888331541}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &944808515
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 489133258}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdebf84297d9f384b9962669d0c43f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  header: "\u0422\u0432\u043E\u0440\u0447\u0435\u0441\u0442\u0432\u043E"
 --- !u!1 &962091637
 GameObject:
   m_ObjectHideFlags: 0
@@ -19912,6 +19940,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 967595320}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
+--- !u!1 &1223489918 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+  m_PrefabInstance: {fileID: 4092103432682493874}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1223489923
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1223489918}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdebf84297d9f384b9962669d0c43f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  header: "\u041C\u0435\u0434\u0438\u0430"
 --- !u!1 &1227171245
 GameObject:
   m_ObjectHideFlags: 0
@@ -22789,6 +22835,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2517701}
   m_LocalEulerAnglesHint: {x: 0, y: 154.252, z: 0.387}
+--- !u!1 &1391532266 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+  m_PrefabInstance: {fileID: 5114668838175549725}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1391532271
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1391532266}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdebf84297d9f384b9962669d0c43f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  header: "\u0422\u0443\u0440\u0438\u0437\u043C"
 --- !u!1 &1403574447
 GameObject:
   m_ObjectHideFlags: 0
@@ -23426,6 +23490,24 @@ Mesh:
     offset: 0
     size: 0
     path: 
+--- !u!1 &1433688087 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+  m_PrefabInstance: {fileID: 719830041869025544}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1433688092
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1433688087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdebf84297d9f384b9962669d0c43f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  header: "\u0412\u043E\u043B\u043E\u043D\u0442\u0435\u0440\u0441\u0442\u0432\u043E"
 --- !u!224 &1434904704 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1032126729532547655, guid: 38b411e446a05a741aa1f6de2653c3f8, type: 3}
@@ -26547,6 +26629,24 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1715350447}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1724910308 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+  m_PrefabInstance: {fileID: 2028767216660271590}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1724910313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1724910308}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdebf84297d9f384b9962669d0c43f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  header: "\u0421\u043F\u043E\u0440\u0442"
 --- !u!1 &1738039314
 GameObject:
   m_ObjectHideFlags: 0
@@ -26723,11 +26823,37 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 5556377156084235250, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
   m_PrefabInstance: {fileID: 3447760752761576733}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1739151247
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 536168127}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdebf84297d9f384b9962669d0c43f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  header: "\u0411\u0438\u0437\u043D\u0435\u0441"
 --- !u!224 &1746256205 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5556377156084235250, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
   m_PrefabInstance: {fileID: 2737421282690511602}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1746256210
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 452256545}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdebf84297d9f384b9962669d0c43f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  header: "\u041D\u0430\u0443\u043A\u0430"
 --- !u!1 &1750845992
 GameObject:
   m_ObjectHideFlags: 0
@@ -27956,6 +28082,24 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1824364820}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1825663618 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+  m_PrefabInstance: {fileID: 4921768694692643228}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1825663623
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1825663618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdebf84297d9f384b9962669d0c43f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  header: "\u0410\u0439\u0442\u0438"
 --- !u!1 &1838662345
 GameObject:
   m_ObjectHideFlags: 0
@@ -28365,6 +28509,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tooltipObject: {fileID: 8558416853309213563}
   tooltipText: {fileID: 4065990542754934912}
+  cursorGap: 20
+  screenPadding: 8
 --- !u!224 &1853189113 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1032126729532547655, guid: 38b411e446a05a741aa1f6de2653c3f8, type: 3}
@@ -32785,7 +32931,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u041C\u0435\u0434\u0438\u0430"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -32849,7 +32995,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!114 &423971590395220808
@@ -33665,7 +33811,7 @@ PrefabInstance:
     - target: {fileID: 1056284338785787992, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 6764ca9ab31adff4497798e70f434c59, type: 3}
+      objectReference: {fileID: 21300000, guid: 42e4a5317f7b75840aa3d152c294c48f, type: 3}
     - target: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Name
       value: VolounteerCounter
@@ -33857,7 +34003,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1433688092}
   m_SourcePrefab: {fileID: 100100000, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
 --- !u!114 &769920636892001680
 MonoBehaviour:
@@ -33881,7 +34030,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u0422\u0432\u043E\u0440\u0447\u0435\u0441\u0442\u0432\u043E"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -33945,7 +34094,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!1001 &851887184650959527
@@ -34222,7 +34371,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: IT
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -34286,7 +34435,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!1001 &937922097487284733
@@ -35270,7 +35419,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u041D\u0430\u0443\u043A\u0430"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -35334,7 +35483,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!1001 &1463106658679934039
@@ -36444,7 +36593,7 @@ PrefabInstance:
     - target: {fileID: 1056284338785787992, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: dbec7562ed994fa48b520a51cf10b8fc, type: 3}
+      objectReference: {fileID: 21300000, guid: c0804333dcf64bc4fbbb25b1e669b8be, type: 3}
     - target: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Name
       value: SportCounter
@@ -36592,7 +36741,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1724910313}
   m_SourcePrefab: {fileID: 100100000, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
 --- !u!114 &2054360290774036121
 MonoBehaviour:
@@ -36988,7 +37140,7 @@ PrefabInstance:
     - target: {fileID: 1056284338785787992, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: ff0259a203225ab44a0b82c9fe4827a1, type: 3}
+      objectReference: {fileID: 21300000, guid: 93ac3afac78dbc24bbc94e86da0a9183, type: 3}
     - target: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Name
       value: ArtCounter
@@ -37136,7 +37288,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 944808515}
   m_SourcePrefab: {fileID: 100100000, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
 --- !u!1001 &2266912837945515652
 PrefabInstance:
@@ -38468,7 +38623,7 @@ PrefabInstance:
     - target: {fileID: 1056284338785787992, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: ced773d643c4d704bb4f39d004bb523d, type: 3}
+      objectReference: {fileID: 21300000, guid: d8c7aa865029d184795b3462e7dee373, type: 3}
     - target: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Name
       value: ScienceCounter
@@ -38624,7 +38779,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1746256210}
   m_SourcePrefab: {fileID: 100100000, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
 --- !u!224 &2792252791502107615
 RectTransform:
@@ -39215,7 +39373,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u0412\u043E\u043B\u043E\u043D\u0442\u0451\u0440\u0441\u0442\u0432\u043E"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -39279,7 +39437,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!114 &2967367946454300635
@@ -40243,7 +40401,7 @@ PrefabInstance:
     - target: {fileID: 1056284338785787992, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 4d9d7c0a8634c9a47aa794f0786a302b, type: 3}
+      objectReference: {fileID: 21300000, guid: 67924b473a0d5ab499953ab51ddc4150, type: 3}
     - target: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Name
       value: BusinessCounter
@@ -40391,7 +40549,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1739151247}
   m_SourcePrefab: {fileID: 100100000, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
 --- !u!114 &3529694208292230465
 MonoBehaviour:
@@ -41240,7 +41401,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u0421\u043F\u043E\u0440\u0442"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -41304,7 +41465,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!1001 &3844052023096767933
@@ -41494,7 +41655,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: 10
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -41558,7 +41719,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!1001 &3966256531173255322
@@ -42247,7 +42408,7 @@ MonoBehaviour:
 
 '
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -42311,7 +42472,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!1001 &4092103432682493874
@@ -42325,7 +42486,7 @@ PrefabInstance:
     - target: {fileID: 1056284338785787992, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: d135ebd105472f94f8976842d33d06ea, type: 3}
+      objectReference: {fileID: 21300000, guid: 9072de6210b448448990c02e80a1a880, type: 3}
     - target: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Name
       value: MediaCounter
@@ -42473,7 +42634,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1223489923}
   m_SourcePrefab: {fileID: 100100000, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
 --- !u!224 &4109204119301510906
 RectTransform:
@@ -43783,7 +43947,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u041F\u0440\u0435\u0434\u043F\u0440-\u0441\u0442\u0432\u043E"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -43847,7 +44011,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!114 &4717861720242871251
@@ -44063,7 +44227,7 @@ PrefabInstance:
     - target: {fileID: 1056284338785787992, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 61e67bfe8f8009e4dba448f7618c7936, type: 3}
+      objectReference: {fileID: 21300000, guid: bd42033a8c9ec5f4b83b4897f7361ba5, type: 3}
     - target: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Name
       value: ITCounter
@@ -44211,7 +44375,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1825663623}
   m_SourcePrefab: {fileID: 100100000, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
 --- !u!1001 &4936467786560686020
 PrefabInstance:
@@ -44712,7 +44879,7 @@ PrefabInstance:
     - target: {fileID: 1056284338785787992, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 5df87cda88604cb4ea6af5a98d2051e5, type: 3}
+      objectReference: {fileID: 21300000, guid: 4f86387b24e346d43bad86627185907c, type: 3}
     - target: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
       propertyPath: m_Name
       value: TourismCounter
@@ -44860,7 +45027,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1143098453631925882, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1391532271}
   m_SourcePrefab: {fileID: 100100000, guid: 57ba0f56f65ad4c4682067e8153465f5, type: 3}
 --- !u!1001 &5120823989292315229
 PrefabInstance:
@@ -49139,7 +49309,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u0422\u0443\u0440\u0438\u0437\u043C"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -49203,7 +49373,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!224 &6809091431638980759
@@ -53043,7 +53213,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: 
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 170e67e170df6e24abfcf97aa974c9ed, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -53107,7 +53277,7 @@ MonoBehaviour:
   m_margin: {x: 0, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  m_hasFontAssetChanged: 0
+  m_hasFontAssetChanged: 1
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!114 &8533348816728924116
