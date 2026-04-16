@@ -21,18 +21,19 @@ public enum CardEffectCondition
 [System.Serializable]
 public enum CardStat
 {
-    CurrentSphere,
-    Money,
-    Experience,
-    Success,
-    Volounteer,
-    Science,
-    Art,
-    Media,
-    Business,
-    Sport,
-    Tourism,
-    IT
+    CurrentSphere = 0,
+    Money = 1,
+    Experience = 2,
+    Success = 3,
+    Volounteer = 4,
+    Science = 5,
+    Art = 6,
+    Media = 7,
+    Business = 8,
+    Sport = 9,
+    Tourism = 10,
+    IT = 11,
+    LastSphere = 12
 }
 
 [System.Serializable]

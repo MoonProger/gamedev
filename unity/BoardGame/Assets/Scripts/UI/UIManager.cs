@@ -14,6 +14,7 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI moneyText;
     public TextMeshProUGUI expText;
     public TextMeshProUGUI successText;
+    public TextMeshProUGUI grantsText;
 
     [Header("8 Сфер")]
     public TextMeshProUGUI volunteerText;
@@ -47,6 +48,8 @@ public class UIManager : MonoBehaviour
         moneyText.text = player.money.ToString();
         expText.text = player.experience.ToString();
         successText.text = player.success.ToString();
+        if (grantsText != null)
+            grantsText.text = (player.earnedGrants != null ? player.earnedGrants.Count : 0).ToString();
 
         volunteerText.text = player.volounteer.ToString();
         scienceText.text = player.science.ToString();

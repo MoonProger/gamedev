@@ -1,11 +1,27 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 
 public enum CardType { Surprise, Yellow, Blue, Red, Green, Travel, Grant }
 
 public class GameManager : MonoBehaviour
 {   
+    private struct TurnSnapshot
+    {
+        public int money;
+        public int experience;
+        public int success;
+        public int volounteer;
+        public int science;
+        public int art;
+        public int media;
+        public int business;
+        public int sport;
+        public int tourism;
+        public int it;
+        public int activeGrants;
+    }
 
 
     [Header("Card Visual")]
@@ -56,6 +72,7 @@ public class GameManager : MonoBehaviour
     private List<string> playerIds = new List<string>();
 
     private static readonly string[] allStats = { "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
+    private readonly Dictionary<PlayerController, string> lastValidSphereByPlayer = new Dictionary<PlayerController, string>();
 
     private void Awake()
 {
@@ -175,10 +192,13 @@ public class GameManager : MonoBehaviour
         if (isMoving) { LogGame("Нельзя бросить кубик во время движения фишки."); return; }
         if (hasRolledThisTurn) { LogGame("Кубик уже брошен. Выберите точку назначения."); return; }
 
-    if (players[currentPlayerIndex].skipTurns > 0)
+    PlayerController currentPlayer = players[currentPlayerIndex];
+    RememberLastSphereFromNode(currentPlayer, currentPlayer.currentNode != null ? currentPlayer.currentNode.nodeStat : BoardNode.NodeType.None);
+    if (currentPlayer.skipTurns > 0)
     {
-        players[currentPlayerIndex].skipTurns--;
-        LogPlayerEvent(players[currentPlayerIndex], $"пропускает ход. Осталось пропусков: {players[currentPlayerIndex].skipTurns}.");
+        TurnSnapshot turnStart = CaptureTurnSnapshot(currentPlayer);
+        currentPlayer.skipTurns--;
+        LogPlayerEvent(currentPlayer, $"пропускает ход. Осталось пропусков: {currentPlayer.skipTurns}.");
         ShowCard(
     "TURN SKIPPED",
     "You must skip this turn.",
@@ -186,14 +206,15 @@ public class GameManager : MonoBehaviour
     "none"
 );
         hasRolledThisTurn = true; // чтобы конец хода отработал
-        StartCoroutine(EndTurnAfterDelay());
+        StartCoroutine(EndTurnAfterDelay(currentPlayer, turnStart));
         return;
     }
         dice.RollDice();
     }
-private IEnumerator EndTurnAfterDelay()
+private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turnStart)
 {
     yield return new WaitForSeconds(2f);
+    ShowTurnSummary(player, turnStart);
     hasRolledThisTurn = false;
     currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
     UpdatePlayersVisuals();
@@ -237,6 +258,7 @@ private IEnumerator EndTurnAfterDelay()
         clickableNodes.Clear();
 
         PlayerController currentPlayer = players[currentPlayerIndex];
+        TurnSnapshot turnStart = CaptureTurnSnapshot(currentPlayer);
 
         if (path != null)
         {
@@ -312,6 +334,7 @@ private IEnumerator EndTurnAfterDelay()
         }
 
         CheckVictory(currentPlayer);
+        RememberLastSphereFromNode(currentPlayer, currentPlayer.currentNode != null ? currentPlayer.currentNode.nodeStat : BoardNode.NodeType.None);
         if (isMoving && hasRolledThisTurn && currentPlayer.success >= 12)
 {
     table.UpdateTablePositions();
@@ -319,6 +342,7 @@ private IEnumerator EndTurnAfterDelay()
     yield break;
 }
         table.UpdateTablePositions();
+        ShowTurnSummary(currentPlayer, turnStart);
         isMoving = false;
         hasRolledThisTurn = false;
         currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
@@ -516,7 +540,7 @@ private void PullTravelCard(PlayerController player)
 {
     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
     CardData travelCard = CardDatabase.GetRandomBySphere("travel");
-    ApplyGenericEffects(player, travelCard.effects);
+    ApplyGenericEffects(player, travelCard.effects, LastSphere(player));
 
     LogPlayerEvent(player, "вытянул карту путешествия.");
     CardVisual travelDeck = deckManager.GetCardForNode(BoardNode.NodeType.Travel);
@@ -664,7 +688,7 @@ private bool ApplyGenericEffects(
                 break;
             case CardEffect.GainStat:
                 {
-                string statToGain = ResolveEffectStatName(eff.statName, defaultStat);
+                string statToGain = ResolveEffectStatName(eff.statName, defaultStat, player);
                 if (!string.IsNullOrEmpty(statToGain))
                 {
                     player.ChangeStat(statToGain, eff.amount);
@@ -674,7 +698,7 @@ private bool ApplyGenericEffects(
                 }
             case CardEffect.LoseStat:
                 {
-                string statToLose = ResolveEffectStatName(eff.statName, defaultStat);
+                string statToLose = ResolveEffectStatName(eff.statName, defaultStat, player);
                 if (!string.IsNullOrEmpty(statToLose))
                 {
                     player.ChangeStat(statToLose, -eff.amount);
@@ -691,11 +715,12 @@ private bool ApplyGenericEffects(
 
     return shouldDrawNextCard;
 }
-private string ResolveEffectStatName(CardStat stat, string fallback)
+private string ResolveEffectStatName(CardStat stat, string fallback, PlayerController player = null)
 {
     return stat switch
     {
         CardStat.CurrentSphere => fallback,
+        CardStat.LastSphere => LastSphere(player),
         CardStat.Money => "money",
         CardStat.Experience => "experience",
         CardStat.Success => "success",
@@ -708,6 +733,41 @@ private string ResolveEffectStatName(CardStat stat, string fallback)
         CardStat.Tourism => "tourism",
         CardStat.IT => "it",
         _ => fallback
+    };
+}
+
+private void RememberLastSphereFromNode(PlayerController player, BoardNode.NodeType nodeType)
+{
+    string sphere = GetSphereStatFromNode(nodeType);
+    if (string.IsNullOrEmpty(sphere)) return;
+    RememberLastSphere(player, sphere);
+}
+
+private void RememberLastSphere(PlayerController player, string sphere)
+{
+    if (player == null || string.IsNullOrWhiteSpace(sphere)) return;
+    lastValidSphereByPlayer[player] = sphere;
+}
+
+private string LastSphere(PlayerController player)
+{
+    if (player == null) return "";
+    return lastValidSphereByPlayer.TryGetValue(player, out string sphere) ? sphere : "";
+}
+
+private string GetSphereStatFromNode(BoardNode.NodeType nodeType)
+{
+    return nodeType switch
+    {
+        BoardNode.NodeType.Volounteer => "volounteer",
+        BoardNode.NodeType.Science => "science",
+        BoardNode.NodeType.Art => "art",
+        BoardNode.NodeType.Media => "media",
+        BoardNode.NodeType.Business => "business",
+        BoardNode.NodeType.Sport => "sport",
+        BoardNode.NodeType.Tourism => "tourism",
+        BoardNode.NodeType.IT => "it",
+        _ => ""
     };
 }
 
@@ -808,19 +868,19 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
     CardEffectData coopPartnerEff = coopEffects.Count > 1 ? coopEffects[1] : null;
 
     string soloLeaderStat = soloLeaderEff != null
-        ? ResolveEffectStatName(soloLeaderEff.statName, statName)
+        ? ResolveEffectStatName(soloLeaderEff.statName, statName, player)
         : statName;
     string soloPartnerStat = soloPartnerEff != null
-        ? ResolveEffectStatName(soloPartnerEff.statName, statName)
+        ? ResolveEffectStatName(soloPartnerEff.statName, statName, player)
         : statName;
     int soloLeaderBonus = soloLeaderEff != null ? soloLeaderEff.amount : 0;
     int soloPartnerBonus = soloPartnerEff != null ? soloPartnerEff.amount : 0;
 
     string coopLeaderStat = coopLeaderEff != null
-        ? ResolveEffectStatName(coopLeaderEff.statName, statName)
+        ? ResolveEffectStatName(coopLeaderEff.statName, statName, player)
         : statName;
     string coopPartnerStat = coopPartnerEff != null
-        ? ResolveEffectStatName(coopPartnerEff.statName, statName)
+        ? ResolveEffectStatName(coopPartnerEff.statName, statName, player)
         : statName;
     int coopLeaderBonus = coopLeaderEff != null ? coopLeaderEff.amount : 0;
     int coopPartnerBonus = coopPartnerEff != null ? coopPartnerEff.amount : 0;
@@ -875,6 +935,65 @@ private void ShowCard(string title, string desc, CardType type, string stat)
     string message = string.IsNullOrWhiteSpace(desc) ? title : $"{title}\n{desc}";
     LogGame($"Системное уведомление: {message.Replace('\n', ' ')}");
     uiManager?.ShowNotification(message);
+}
+
+private TurnSnapshot CaptureTurnSnapshot(PlayerController player)
+{
+    return new TurnSnapshot
+    {
+        money = player.money,
+        experience = player.experience,
+        success = player.success,
+        volounteer = player.volounteer,
+        science = player.science,
+        art = player.art,
+        media = player.media,
+        business = player.business,
+        sport = player.sport,
+        tourism = player.tourism,
+        it = player.IT,
+        activeGrants = player.earnedGrants != null ? player.earnedGrants.Count : 0
+    };
+}
+
+private void ShowTurnSummary(PlayerController player, TurnSnapshot start)
+{
+    if (player == null || uiManager == null) return;
+
+    List<string> changes = new List<string>();
+    AppendDelta(changes, "Money", player.money - start.money);
+    AppendDelta(changes, "XP", player.experience - start.experience);
+    AppendDelta(changes, "Success", player.success - start.success);
+    AppendDelta(changes, "Volunteer", player.volounteer - start.volounteer);
+    AppendDelta(changes, "Science", player.science - start.science);
+    AppendDelta(changes, "Art", player.art - start.art);
+    AppendDelta(changes, "Media", player.media - start.media);
+    AppendDelta(changes, "Business", player.business - start.business);
+    AppendDelta(changes, "Sport", player.sport - start.sport);
+    AppendDelta(changes, "Tourism", player.tourism - start.tourism);
+    AppendDelta(changes, "IT", player.IT - start.it);
+    AppendDelta(changes, "Grants", (player.earnedGrants != null ? player.earnedGrants.Count : 0) - start.activeGrants);
+
+    StringBuilder builder = new StringBuilder();
+    builder.Append("Turn result");
+    if (changes.Count == 0)
+    {
+        builder.Append("\nNo stat changes.");
+    }
+    else
+    {
+        builder.Append(": ");
+        builder.Append(string.Join(", ", changes));
+    }
+
+    uiManager.ShowNotification(builder.ToString(), 3.5f);
+}
+
+private void AppendDelta(List<string> changes, string label, int delta)
+{
+    if (delta == 0) return;
+    string sign = delta > 0 ? "+" : "";
+    changes.Add($"{label} {sign}{delta}");
 }
 
 private void PlayNodeSound(BoardNode.NodeType nodeType)
