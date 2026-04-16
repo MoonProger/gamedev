@@ -5,6 +5,11 @@ using System.Collections.Generic;
 
 public class UIManager : MonoBehaviour
 {
+    private struct NotificationEntry
+    {
+        public string message;
+        public float duration;
+    }
 
     [Header("Card Visual")]
     public CardVisual cardVisual;
@@ -32,6 +37,7 @@ public class UIManager : MonoBehaviour
     public float notificationDuration = 2f;
 
     private Coroutine notificationRoutine;
+    private readonly Queue<NotificationEntry> notificationQueue = new Queue<NotificationEntry>();
 
     private void Start()
     {
@@ -69,26 +75,34 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        if (notificationRoutine != null)
-            StopCoroutine(notificationRoutine);
+        notificationQueue.Enqueue(new NotificationEntry
+        {
+            message = message,
+            duration = duration ?? notificationDuration
+        });
 
-        notificationRoutine = StartCoroutine(ShowNotificationRoutine(message, duration ?? notificationDuration));
+        if (notificationRoutine == null)
+            notificationRoutine = StartCoroutine(ProcessNotificationQueue());
     }
 
-    private IEnumerator ShowNotificationRoutine(string message, float duration)
+    private IEnumerator ProcessNotificationQueue()
     {
-        notificationText.text = message;
-        if (notificationRoot != null)
-            notificationRoot.SetActive(true);
-        else
-            notificationText.gameObject.SetActive(true);
+        while (notificationQueue.Count > 0)
+        {
+            NotificationEntry entry = notificationQueue.Dequeue();
+            notificationText.text = entry.message;
+            if (notificationRoot != null)
+                notificationRoot.SetActive(true);
+            else
+                notificationText.gameObject.SetActive(true);
 
-        yield return new WaitForSeconds(duration);
+            yield return new WaitForSeconds(entry.duration);
 
-        if (notificationRoot != null)
-            notificationRoot.SetActive(false);
-        else
-            notificationText.gameObject.SetActive(false);
+            if (notificationRoot != null)
+                notificationRoot.SetActive(false);
+            else
+                notificationText.gameObject.SetActive(false);
+        }
 
         notificationRoutine = null;
     }

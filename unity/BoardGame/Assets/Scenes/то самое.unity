@@ -4471,7 +4471,7 @@ MonoBehaviour:
   itText: {fileID: 1253823936}
   notificationRoot: {fileID: 0}
   notificationText: {fileID: 430618977}
-  notificationDuration: 4
+  notificationDuration: 3
 --- !u!4 &206523209
 Transform:
   m_ObjectHideFlags: 0

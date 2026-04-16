@@ -184,6 +184,7 @@ public class GameManager : MonoBehaviour
         }
 
         UpdatePlayersVisuals();
+        ShowCurrentTurnInLog();
         LogGame("Подготовка завершена. Игра готова к старту.");
     }
 
@@ -200,8 +201,8 @@ public class GameManager : MonoBehaviour
         currentPlayer.skipTurns--;
         LogPlayerEvent(currentPlayer, $"пропускает ход. Осталось пропусков: {currentPlayer.skipTurns}.");
         ShowCard(
-    "TURN SKIPPED",
-    "You must skip this turn.",
+    "ХОД ПРОПУЩЕН",
+    "Вы должны пропустить этот ход.",
     CardType.Surprise,
     "none"
 );
@@ -218,6 +219,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
     hasRolledThisTurn = false;
     currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
     UpdatePlayersVisuals();
+    ShowCurrentTurnInLog();
 }
     private void RegisterRoll(int result)
     {
@@ -295,8 +297,8 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
                     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
                     LogPlayerEvent(currentPlayer, "не может путешествовать: недостаточно денег.");
                     ShowCard(
-                    "TRAVEL — NO FUNDS",
-                    "Not enough money to travel. Stay here.",
+                    "ПУТЕШЕСТВИЕ — НЕДОСТАТОЧНО СРЕДСТВ",
+                    "Недостаточно денег для путешествия. Останьтесь на месте.",
                     CardType.Surprise,
                     "travel"
                     );
@@ -312,8 +314,8 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
                 {
                 if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
                 ShowCard(
-                "GRANT — NOT AVAILABLE",
-                "You need level 10 in at least one sphere\nto apply for a grant.",
+                "ГРАНТ — НЕДОСТУПЕН",
+                "Нужен 10-й уровень хотя бы в одной сфере,\nчтобы подать заявку на грант.",
                 CardType.Surprise,
                 "grant"
                 );
@@ -348,6 +350,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
         currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
         LogGame($"Ход завершен. Следующий игрок: {players[currentPlayerIndex].playerName}.");
         UpdatePlayersVisuals();
+        ShowCurrentTurnInLog();
     }
 
 private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphere = null, int chainDepth = 0)
@@ -574,10 +577,10 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
     {
         if (sadSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
         ShowCard(
-    "GRANT REJECTED! 🎉",
-    $"Sphere: {chosenStat}\n" +
-    $"Roll: {roll} >= Your exp: {expLevel}\n" +
-    $"Grant added to your profile!",
+    "ГРАНТ ОТКЛОНЕН",
+    $"Сфера: {chosenStat}\n" +
+    $"Бросок: {roll} >= Ваш опыт: {expLevel}\n" +
+    $"Заявка отклонена.",
     CardType.Red,
     chosenStat
 );
@@ -598,8 +601,8 @@ private IEnumerator TryDoProject(PlayerController player)
     {
         if (sadSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
         ShowCard(
-    "PROJECT — NOT AVAILABLE",
-    "You need level 10 in at least one sphere\nto start a project.",
+    "ПРОЕКТ — НЕДОСТУПЕН",
+    "Нужен 10-й уровень хотя бы в одной сфере,\nчтобы начать проект.",
     CardType.Surprise,
     "project"
 );
@@ -614,8 +617,8 @@ private IEnumerator TryDoProject(PlayerController player)
     {
         if (sadSound != null && audioSource != null) audioSource.PlayOneShot(sadSound);
         ShowCard(
-    "PROJECT — NO FUNDS",
-    "You need a grant or 5 coins\nto start a project.",
+    "ПРОЕКТ — НЕДОСТАТОЧНО РЕСУРСОВ",
+    "Нужен грант или 5 монет,\nчтобы начать проект.",
     CardType.Surprise,
     "project"
 );
@@ -658,8 +661,8 @@ private IEnumerator TryDoProject(PlayerController player)
     LogPlayerEvent(player, $"завершил проект в сфере '{chosenSphere}', оплата: {paymentMethod}. Награда: +5 успех.");
 
     ShowCard(
-    "PROJECT COMPLETE! 🏆",
-    $"Sphere: {chosenSphere.ToUpper()}\nPaid: {paymentMethod}\n+5 Success",
+    "ПРОЕКТ ЗАВЕРШЕН! 🏆",
+    $"Сфера: {chosenSphere.ToUpper()}\nОплата: {paymentMethod}\n+5 к успеху",
     CardType.Green,
     chosenSphere
     );
@@ -793,8 +796,8 @@ private void CheckVictory(PlayerController player)
         audioSource.PlayOneShot(victorySound);
 
     ShowCard(
-    "🏆 VICTORY!",
-    $"{player.playerName} wins!\nSuccess: {player.success}",
+    "🏆 ПОБЕДА!",
+    $"{player.playerName} побеждает!\nУспех: {player.success}",
     CardType.Red,
     "success"
     );
@@ -961,24 +964,24 @@ private void ShowTurnSummary(PlayerController player, TurnSnapshot start)
     if (player == null || uiManager == null) return;
 
     List<string> changes = new List<string>();
-    AppendDelta(changes, "Money", player.money - start.money);
-    AppendDelta(changes, "XP", player.experience - start.experience);
-    AppendDelta(changes, "Success", player.success - start.success);
-    AppendDelta(changes, "Volunteer", player.volounteer - start.volounteer);
-    AppendDelta(changes, "Science", player.science - start.science);
-    AppendDelta(changes, "Art", player.art - start.art);
-    AppendDelta(changes, "Media", player.media - start.media);
-    AppendDelta(changes, "Business", player.business - start.business);
-    AppendDelta(changes, "Sport", player.sport - start.sport);
-    AppendDelta(changes, "Tourism", player.tourism - start.tourism);
+    AppendDelta(changes, "Деньги", player.money - start.money);
+    AppendDelta(changes, "Опыт", player.experience - start.experience);
+    AppendDelta(changes, "Успех", player.success - start.success);
+    AppendDelta(changes, "Волонтерство", player.volounteer - start.volounteer);
+    AppendDelta(changes, "Наука", player.science - start.science);
+    AppendDelta(changes, "Искусство", player.art - start.art);
+    AppendDelta(changes, "Медиа", player.media - start.media);
+    AppendDelta(changes, "Бизнес", player.business - start.business);
+    AppendDelta(changes, "Спорт", player.sport - start.sport);
+    AppendDelta(changes, "Туризм", player.tourism - start.tourism);
     AppendDelta(changes, "IT", player.IT - start.it);
-    AppendDelta(changes, "Grants", (player.earnedGrants != null ? player.earnedGrants.Count : 0) - start.activeGrants);
+    AppendDelta(changes, "Гранты", (player.earnedGrants != null ? player.earnedGrants.Count : 0) - start.activeGrants);
 
     StringBuilder builder = new StringBuilder();
-    builder.Append("Turn result");
+    builder.Append("Итоги хода");
     if (changes.Count == 0)
     {
-        builder.Append("\nNo stat changes.");
+        builder.Append("\nИзменений характеристик нет.");
     }
     else
     {
@@ -994,6 +997,15 @@ private void AppendDelta(List<string> changes, string label, int delta)
     if (delta == 0) return;
     string sign = delta > 0 ? "+" : "";
     changes.Add($"{label} {sign}{delta}");
+}
+
+private void ShowCurrentTurnInLog()
+{
+    if (uiManager == null) return;
+    if (currentPlayerIndex < 0 || currentPlayerIndex >= players.Count) return;
+    PlayerController current = players[currentPlayerIndex];
+    if (current == null) return;
+    uiManager.ShowNotification($"Сейчас ход: {current.playerName}", 2.2f);
 }
 
 private void PlayNodeSound(BoardNode.NodeType nodeType)
