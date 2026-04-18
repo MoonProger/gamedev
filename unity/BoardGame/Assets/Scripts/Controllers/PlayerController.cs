@@ -165,6 +165,32 @@ private void CheckMilestone(ref int stat, int amount)
     Debug.Log($"[СТАТЫ] Игрок {playerName}: стартовые значения сфер сгенерированы.");
 }
 
+    public void ApplyCharacter(CharacterData character)
+    {
+        if (character == null) return;
+
+        money = Mathf.Max(0, character.money);
+        experience = Mathf.Clamp(character.experience, 0, 10);
+        success = Mathf.Clamp(character.success, 0, 12);
+
+        volounteer = Mathf.Clamp(character.volounteer, 0, 10);
+        science = Mathf.Clamp(character.science, 0, 10);
+        art = Mathf.Clamp(character.art, 0, 10);
+        media = Mathf.Clamp(character.media, 0, 10);
+        business = Mathf.Clamp(character.business, 0, 10);
+        sport = Mathf.Clamp(character.sport, 0, 10);
+        tourism = Mathf.Clamp(character.tourism, 0, 10);
+        IT = Mathf.Clamp(character.it, 0, 10);
+
+        skipTurns = 0;
+        appliedGrants.Clear();
+        earnedGrants.Clear();
+        completedProjects.Clear();
+
+        Debug.Log($"[СТАТЫ] Игрок {playerName}: применен персонаж '{character.displayName}'.");
+        OnStatsChanged?.Invoke(this);
+    }
+
     private string NormalizeStatName(string statName)
     {
         if (string.IsNullOrWhiteSpace(statName)) return "";

@@ -49,6 +49,10 @@ public class GameManager : MonoBehaviour
 
     [Header("UI")]
     public GreenCardUI greenCardUI;
+    public CharacterSelectionUI characterSelectionUI;
+
+    [Header("Characters")]
+    public CharacterDatabase characterDatabase;
 
     [Header("Setup")]
     public List<PlayerController> players;
@@ -66,6 +70,7 @@ public class GameManager : MonoBehaviour
     private int lastRoll;
     private bool isMoving = false;
     private bool hasRolledThisTurn = false;
+    private bool isGameInitialized = false;
 
     public int expectedPlayerCount = 0;
     private List<string> playerNames = new List<string>();
@@ -73,6 +78,7 @@ public class GameManager : MonoBehaviour
 
     private static readonly string[] allStats = { "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
     private readonly Dictionary<PlayerController, string> lastValidSphereByPlayer = new Dictionary<PlayerController, string>();
+    private readonly Dictionary<PlayerController, CharacterData> selectedCharacterByPlayer = new Dictionary<PlayerController, CharacterData>();
 
     private void Awake()
 {
@@ -155,6 +161,8 @@ public class GameManager : MonoBehaviour
 
     private void InitializeGameFromReact()
     {
+        isGameInitialized = false;
+        selectedCharacterByPlayer.Clear();
         LogGame($"Инициализация игры. Игроков: {expectedPlayerCount}.");
 
         for (int i = 0; i < players.Count; i++)
@@ -168,16 +176,21 @@ public class GameManager : MonoBehaviour
         TableManager tm = Object.FindFirstObjectByType<TableManager>();
         tm?.InitializeTable();
 
-        InitializePlayers();
+        StartCoroutine(InitializePlayersRoutine());
     }
 
-    private void InitializePlayers()
+    private IEnumerator InitializePlayersRoutine()
     {
+        yield return StartCoroutine(RunCharacterSelectionIfAvailable());
+
         for (int i = 0; i < expectedPlayerCount; i++)
         {
             int prev = currentPlayerIndex;
             currentPlayerIndex = i;
-            players[i].RandomizeStats();
+            if (selectedCharacterByPlayer.TryGetValue(players[i], out CharacterData pickedCharacter) && pickedCharacter != null)
+                players[i].ApplyCharacter(pickedCharacter);
+            else
+                players[i].RandomizeStats();
             players[i].TeleportToNode(startNode);
             players[i].transform.position = GetOffsetPosition(startNode);
             currentPlayerIndex = prev;
@@ -185,11 +198,45 @@ public class GameManager : MonoBehaviour
 
         UpdatePlayersVisuals();
         ShowCurrentTurnInLog();
+        isGameInitialized = true;
         LogGame("Подготовка завершена. Игра готова к старту.");
+    }
+
+    private IEnumerator RunCharacterSelectionIfAvailable()
+    {
+        IReadOnlyList<CharacterData> availableCharacters = characterDatabase != null
+            ? characterDatabase.GetAllCharacters()
+            : null;
+
+        if (characterSelectionUI == null || availableCharacters == null || availableCharacters.Count == 0)
+        {
+            LogGame("Выбор персонажей пропущен (UI или база персонажей не настроены).");
+            yield break;
+        }
+
+        List<PlayerController> activePlayers = new List<PlayerController>();
+        for (int i = 0; i < expectedPlayerCount && i < players.Count; i++)
+        {
+            if (players[i] != null)
+                activePlayers.Add(players[i]);
+        }
+
+        yield return characterSelectionUI.ShowAndPickForPlayers(
+            activePlayers,
+            availableCharacters,
+            (player, character) =>
+            {
+                if (player != null && character != null)
+                {
+                    selectedCharacterByPlayer[player] = character;
+                    LogGame($"Игрок {player.playerName} выбрал персонажа '{character.displayName}'.");
+                }
+            });
     }
 
     public void TryRollDice()
     {
+        if (!isGameInitialized) { LogGame("Игра еще не готова. Сначала завершите выбор персонажей."); return; }
         if (isMoving) { LogGame("Нельзя бросить кубик во время движения фишки."); return; }
         if (hasRolledThisTurn) { LogGame("Кубик уже брошен. Выберите точку назначения."); return; }
 
