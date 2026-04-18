@@ -20,7 +20,9 @@ public class CharacterSelectionUI : MonoBehaviour
     public float spacingX = 2.4f;
     public float spacingY = 3.2f;
     public Vector3 cardsLocalOffset = Vector3.zero;
+    public bool overrideCardScale = false;
     public Vector3 cardLocalScale = Vector3.one;
+    public Vector3 cardLocalEulerOffset = new Vector3(90f, 0f, 0f);
     public bool autoAlignToSelectionCamera = true;
     public float cardsDistanceFromCamera = 8f;
     public Vector2 viewportCenter = new Vector2(0.5f, 0.5f);
@@ -134,8 +136,9 @@ public class CharacterSelectionUI : MonoBehaviour
         float y = (totalHeight * 0.5f) - row * spacingY;
 
         cardTransform.localPosition = cardsLocalOffset + new Vector3(x, y, 0f);
-        cardTransform.localRotation = Quaternion.identity;
-        cardTransform.localScale = cardLocalScale;
+        cardTransform.localRotation = Quaternion.Euler(cardLocalEulerOffset);
+        if (overrideCardScale)
+            cardTransform.localScale = cardLocalScale;
     }
 
     private void ClearCards()
@@ -157,7 +160,7 @@ public class CharacterSelectionUI : MonoBehaviour
 
         Vector3 worldPos = cam.ViewportToWorldPoint(viewportPoint) + containerWorldOffset;
         cardContainer.position = worldPos;
-        cardContainer.forward = cam.transform.forward;
+        cardContainer.rotation = Quaternion.LookRotation(-cam.transform.forward, cam.transform.up);
     }
 
     private void SetSelectionCameraState(bool selectionActive)

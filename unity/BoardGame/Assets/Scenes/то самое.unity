@@ -20339,12 +20339,14 @@ MonoBehaviour:
   cardPrefab: {fileID: 8524645541841239163, guid: 7c6cb51838baff849a16ca9b8dbf2ad8, type: 3}
   use3DLayout: 1
   cardsPerRow: 4
-  spacingX: 2.4
-  spacingY: 3.2
+  spacingX: 40
+  spacingY: 50
   cardsLocalOffset: {x: 0, y: 0, z: 0}
+  overrideCardScale: 0
   cardLocalScale: {x: 1, y: 1, z: 1}
+  cardLocalEulerOffset: {x: 270, y: 0, z: 0}
   autoAlignToSelectionCamera: 1
-  cardsDistanceFromCamera: 8
+  cardsDistanceFromCamera: 80
   viewportCenter: {x: 0.5, y: 0.5}
   containerWorldOffset: {x: 0, y: 0, z: 0}
   selectionCamera: {fileID: 434026008}
