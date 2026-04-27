@@ -1,19 +1,13 @@
 using UnityEngine;
-using TMPro; 
-using System.Collections;
+using TMPro;
 using System.Collections.Generic;
+using System.Text;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
-    private struct NotificationEntry
-    {
-        public string message;
-        public float duration;
-    }
-
     [Header("Card Visual")]
     public CardVisual cardVisual;
-
 
     [Header("Общие данные")]
     public TextMeshProUGUI moneyText;
@@ -31,20 +25,22 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI tourismText;
     public TextMeshProUGUI itText;
 
-    [Header("Уведомления")]
-    public GameObject notificationRoot;
-    public TextMeshProUGUI notificationText;
-    public float notificationDuration = 2f;
+    [Header("Общий лог")]
+    public GameObject logPanel;
+    public GameObject logTextRoot;
+    public TextMeshProUGUI logText;
+    public ScrollRect logScrollRect;
+    public bool autoScrollToLatest = true;
+    public int maxLogEntries = 250;
 
-    private Coroutine notificationRoutine;
-    private readonly Queue<NotificationEntry> notificationQueue = new Queue<NotificationEntry>();
+    private readonly List<string> logEntries = new List<string>();
 
     private void Start()
     {
-        if (notificationRoot != null)
-            notificationRoot.SetActive(false);
-        else if (notificationText != null)
-            notificationText.gameObject.SetActive(false);
+        // Панель можно оставить активной (например, чтобы кнопка всегда была видна),
+        // скрываем только область текста лога.
+        SetLogTextVisible(false);
+        RefreshLogView();
     }
 
     public void UpdateAllStats(PlayerController player)
@@ -67,43 +63,87 @@ public class UIManager : MonoBehaviour
         itText.text = player.IT.ToString();
     }
 
+    // Совместимость со старым API: теперь пишет только в общий лог.
     public void ShowNotification(string message, float? duration = null)
     {
-        if (notificationText == null)
+        AddLog(message);
+    }
+
+    public void AddLog(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return;
+
+        string timestamp = System.DateTime.Now.ToString("HH:mm:ss");
+        logEntries.Add($"[{timestamp}] {message}");
+
+        if (logEntries.Count > maxLogEntries)
+            logEntries.RemoveRange(0, logEntries.Count - maxLogEntries);
+
+        RefreshLogView();
+    }
+
+    public void ToggleLogPanel()
+    {
+        bool makeVisible = !(GetLogTextRoot()?.activeSelf ?? false);
+        SetLogTextVisible(makeVisible);
+        if (makeVisible)
+            RefreshLogView();
+    }
+
+    public void OpenLogPanel()
+    {
+        SetLogTextVisible(true);
+        RefreshLogView();
+    }
+
+    public void CloseLogPanel()
+    {
+        SetLogTextVisible(false);
+    }
+
+    public void ClearLog()
+    {
+        logEntries.Clear();
+        RefreshLogView();
+    }
+
+    private void RefreshLogView()
+    {
+        if (logText == null) return;
+
+        if (logEntries.Count == 0)
         {
-            Debug.LogWarning("UIManager: notificationText is not assigned.");
+            logText.text = "Лог пуст.";
             return;
         }
 
-        notificationQueue.Enqueue(new NotificationEntry
+        StringBuilder sb = new StringBuilder(logEntries.Count * 48);
+        for (int i = 0; i < logEntries.Count; i++)
         {
-            message = message,
-            duration = duration ?? notificationDuration
-        });
+            sb.Append(logEntries[i]);
+            if (i < logEntries.Count - 1) sb.Append('\n');
+        }
+        logText.text = sb.ToString();
 
-        if (notificationRoutine == null)
-            notificationRoutine = StartCoroutine(ProcessNotificationQueue());
+        if (autoScrollToLatest && logScrollRect != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            // Для вертикального ScrollRect: 0 = низ (последние записи), 1 = верх.
+            logScrollRect.verticalNormalizedPosition = 0f;
+        }
     }
 
-    private IEnumerator ProcessNotificationQueue()
+    private GameObject GetLogTextRoot()
     {
-        while (notificationQueue.Count > 0)
-        {
-            NotificationEntry entry = notificationQueue.Dequeue();
-            notificationText.text = entry.message;
-            if (notificationRoot != null)
-                notificationRoot.SetActive(true);
-            else
-                notificationText.gameObject.SetActive(true);
+        if (logTextRoot != null) return logTextRoot;
+        return logText != null ? logText.gameObject : null;
+    }
 
-            yield return new WaitForSeconds(entry.duration);
-
-            if (notificationRoot != null)
-                notificationRoot.SetActive(false);
-            else
-                notificationText.gameObject.SetActive(false);
-        }
-
-        notificationRoutine = null;
+    private void SetLogTextVisible(bool visible)
+    {
+        GameObject root = GetLogTextRoot();
+        if (root != null)
+            root.SetActive(visible);
     }
 }

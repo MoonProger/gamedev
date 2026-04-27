@@ -33,6 +33,11 @@ public class CharacterSelectionUI : MonoBehaviour
     public Camera gameplayCamera;
     public bool switchToSelectionCamera = true;
 
+    [Header("Временно скрыть на время выбора")]
+    public List<GameObject> hideObjectsDuringSelection = new List<GameObject>();
+
+    private readonly Dictionary<GameObject, bool> cachedActiveStates = new Dictionary<GameObject, bool>();
+
     public IEnumerator ShowAndPickForPlayers(
         List<PlayerController> activePlayers,
         IReadOnlyList<CharacterData> availableCharacters,
@@ -56,6 +61,7 @@ public class CharacterSelectionUI : MonoBehaviour
         if (autoAlignToSelectionCamera)
             AlignCardContainerToCamera();
 
+        SetHiddenObjectsState(true);
         panel.SetActive(true);
         try
         {
@@ -75,6 +81,7 @@ public class CharacterSelectionUI : MonoBehaviour
         {
             ClearCards();
             panel.SetActive(false);
+            SetHiddenObjectsState(false);
             if (switchToSelectionCamera)
                 SetSelectionCameraState(false);
         }
@@ -169,5 +176,27 @@ public class CharacterSelectionUI : MonoBehaviour
             selectionCamera.enabled = selectionActive;
         if (gameplayCamera != null)
             gameplayCamera.enabled = !selectionActive;
+    }
+
+    private void SetHiddenObjectsState(bool hide)
+    {
+        if (hide)
+        {
+            cachedActiveStates.Clear();
+            foreach (GameObject obj in hideObjectsDuringSelection)
+            {
+                if (obj == null || obj == panel) continue;
+                cachedActiveStates[obj] = obj.activeSelf;
+                obj.SetActive(false);
+            }
+            return;
+        }
+
+        foreach (var kv in cachedActiveStates)
+        {
+            if (kv.Key == null) continue;
+            kv.Key.SetActive(kv.Value);
+        }
+        cachedActiveStates.Clear();
     }
 }

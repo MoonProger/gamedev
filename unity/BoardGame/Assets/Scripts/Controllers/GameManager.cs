@@ -64,6 +64,7 @@ public class GameManager : MonoBehaviour
     public float jumpHeight = 5;
     public float jumpDuration = 0.7f;
     public float stepDelay = 0.25f;
+    public float nextTurnNotificationDelay = 0.8f;
 
     private List<BoardNode> clickableNodes = new List<BoardNode>();
     private int currentPlayerIndex = 0;
@@ -266,7 +267,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
     hasRolledThisTurn = false;
     currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
     UpdatePlayersVisuals();
-    ShowCurrentTurnInLog();
+    StartCoroutine(ShowCurrentTurnInLogDelayed());
 }
     private void RegisterRoll(int result)
     {
@@ -397,7 +398,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
         currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
         LogGame($"Ход завершен. Следующий игрок: {players[currentPlayerIndex].playerName}.");
         UpdatePlayersVisuals();
-        ShowCurrentTurnInLog();
+        StartCoroutine(ShowCurrentTurnInLogDelayed());
     }
 
 private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphere = null, int chainDepth = 0)
@@ -1053,6 +1054,13 @@ private void ShowCurrentTurnInLog()
     PlayerController current = players[currentPlayerIndex];
     if (current == null) return;
     uiManager.ShowNotification($"Сейчас ход: {current.playerName}", 2.2f);
+}
+
+private IEnumerator ShowCurrentTurnInLogDelayed()
+{
+    if (nextTurnNotificationDelay > 0f)
+        yield return new WaitForSeconds(nextTurnNotificationDelay);
+    ShowCurrentTurnInLog();
 }
 
 private void PlayNodeSound(BoardNode.NodeType nodeType)
