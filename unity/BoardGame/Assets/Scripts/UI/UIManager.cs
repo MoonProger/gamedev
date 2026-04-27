@@ -31,15 +31,24 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI logText;
     public ScrollRect logScrollRect;
     public bool autoScrollToLatest = true;
+    public bool autoScrollOnlyWhenNearBottom = true;
+    [Range(0f, 1f)] public float autoScrollBottomThreshold = 0.08f;
     public int maxLogEntries = 250;
 
     private readonly List<string> logEntries = new List<string>();
+    private int currentLogTurn = 1;
 
     private void Start()
     {
         // Панель можно оставить активной (например, чтобы кнопка всегда была видна),
         // скрываем только область текста лога.
         SetLogTextVisible(false);
+        if (logText != null)
+        {
+            logText.alignment = TextAlignmentOptions.BottomLeft;
+            // Иначе колесо мыши часто "съедается" самим текстом, а не ScrollRect.
+            logText.raycastTarget = false;
+        }
         RefreshLogView();
     }
 
@@ -74,13 +83,18 @@ public class UIManager : MonoBehaviour
         if (string.IsNullOrWhiteSpace(message))
             return;
 
-        string timestamp = System.DateTime.Now.ToString("HH:mm:ss");
-        logEntries.Add($"[{timestamp}] {message}");
+        int safeTurn = Mathf.Max(1, currentLogTurn);
+        logEntries.Add($"[Ход {safeTurn}] {message}");
 
         if (logEntries.Count > maxLogEntries)
             logEntries.RemoveRange(0, logEntries.Count - maxLogEntries);
 
         RefreshLogView();
+    }
+
+    public void SetCurrentTurnNumber(int turnNumber)
+    {
+        currentLogTurn = Mathf.Max(1, turnNumber);
     }
 
     public void ToggleLogPanel()
@@ -111,10 +125,13 @@ public class UIManager : MonoBehaviour
     private void RefreshLogView()
     {
         if (logText == null) return;
+        bool shouldScrollToBottom = ShouldAutoScrollToBottom();
 
         if (logEntries.Count == 0)
         {
             logText.text = "Лог пуст.";
+            if (shouldScrollToBottom && logScrollRect != null)
+                logScrollRect.verticalNormalizedPosition = 0f;
             return;
         }
 
@@ -126,7 +143,7 @@ public class UIManager : MonoBehaviour
         }
         logText.text = sb.ToString();
 
-        if (autoScrollToLatest && logScrollRect != null)
+        if (shouldScrollToBottom && logScrollRect != null)
         {
             Canvas.ForceUpdateCanvases();
             // Для вертикального ScrollRect: 0 = низ (последние записи), 1 = верх.
@@ -145,5 +162,14 @@ public class UIManager : MonoBehaviour
         GameObject root = GetLogTextRoot();
         if (root != null)
             root.SetActive(visible);
+    }
+
+    private bool ShouldAutoScrollToBottom()
+    {
+        if (!autoScrollToLatest || logScrollRect == null)
+            return false;
+        if (!autoScrollOnlyWhenNearBottom)
+            return true;
+        return logScrollRect.verticalNormalizedPosition <= Mathf.Clamp01(autoScrollBottomThreshold);
     }
 }

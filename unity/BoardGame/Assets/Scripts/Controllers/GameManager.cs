@@ -66,12 +66,22 @@ public class GameManager : MonoBehaviour
     public float stepDelay = 0.25f;
     public float nextTurnNotificationDelay = 0.8f;
 
+    [Header("Log Style")]
+    public Color player1LogColor = new Color(0.95f, 0.45f, 0.45f);
+    public Color player2LogColor = new Color(0.45f, 0.65f, 1f);
+    public Color player3LogColor = new Color(0.45f, 0.85f, 0.5f);
+    public Color player4LogColor = new Color(1f, 0.85f, 0.35f);
+    [Range(0f, 1f)] public float logPaleAmount = 0.35f;
+    [Range(0f, 1f)] public float summaryDarkenAmount = 0.2f;
+    [Range(0f, 1f)] public float summarySaturationBoost = 0.4f;
+
     private List<BoardNode> clickableNodes = new List<BoardNode>();
     private int currentPlayerIndex = 0;
     private int lastRoll;
     private bool isMoving = false;
     private bool hasRolledThisTurn = false;
     private bool isGameInitialized = false;
+    private int currentTurnNumber = 1;
 
     public int expectedPlayerCount = 0;
     private List<string> playerNames = new List<string>();
@@ -80,6 +90,7 @@ public class GameManager : MonoBehaviour
     private static readonly string[] allStats = { "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
     private readonly Dictionary<PlayerController, string> lastValidSphereByPlayer = new Dictionary<PlayerController, string>();
     private readonly Dictionary<PlayerController, CharacterData> selectedCharacterByPlayer = new Dictionary<PlayerController, CharacterData>();
+    private readonly List<string> pendingPartnerTurnChanges = new List<string>();
 
     private void Awake()
 {
@@ -164,6 +175,8 @@ public class GameManager : MonoBehaviour
     {
         isGameInitialized = false;
         selectedCharacterByPlayer.Clear();
+        currentTurnNumber = 1;
+        SyncLogTurnNumber();
         LogGame($"Инициализация игры. Игроков: {expectedPlayerCount}.");
 
         for (int i = 0; i < players.Count; i++)
@@ -245,6 +258,7 @@ public class GameManager : MonoBehaviour
     RememberLastSphereFromNode(currentPlayer, currentPlayer.currentNode != null ? currentPlayer.currentNode.nodeStat : BoardNode.NodeType.None);
     if (currentPlayer.skipTurns > 0)
     {
+        pendingPartnerTurnChanges.Clear();
         TurnSnapshot turnStart = CaptureTurnSnapshot(currentPlayer);
         currentPlayer.skipTurns--;
         LogPlayerEvent(currentPlayer, $"пропускает ход. Осталось пропусков: {currentPlayer.skipTurns}.");
@@ -266,6 +280,8 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
     ShowTurnSummary(player, turnStart);
     hasRolledThisTurn = false;
     currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
+    currentTurnNumber++;
+    SyncLogTurnNumber();
     UpdatePlayersVisuals();
     StartCoroutine(ShowCurrentTurnInLogDelayed());
 }
@@ -308,6 +324,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
         clickableNodes.Clear();
 
         PlayerController currentPlayer = players[currentPlayerIndex];
+        pendingPartnerTurnChanges.Clear();
         TurnSnapshot turnStart = CaptureTurnSnapshot(currentPlayer);
 
         if (path != null)
@@ -396,6 +413,8 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
         isMoving = false;
         hasRolledThisTurn = false;
         currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
+        currentTurnNumber++;
+        SyncLogTurnNumber();
         LogGame($"Ход завершен. Следующий игрок: {players[currentPlayerIndex].playerName}.");
         UpdatePlayersVisuals();
         StartCoroutine(ShowCurrentTurnInLogDelayed());
@@ -414,6 +433,7 @@ private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphe
     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(drawCardSound);
     CardData card = CardDatabase.GetRandomBySphere(statName);
     LogPlayerEvent(player, $"тянет карту сферы '{statName}' типа '{card.cardType}'.");
+    WriteLog($"{player.playerName} вытянул {GetCardTypeLabel(card.cardType)} из сферы «{GetSphereLabel(statName)}».", player);
 
     CardVisual deck = deckManager.GetCardForNode(node.nodeStat);
     bool shouldDrawNextCard = false;
@@ -594,6 +614,7 @@ private void PullTravelCard(PlayerController player)
     ApplyGenericEffects(player, travelCard.effects, LastSphere(player));
 
     LogPlayerEvent(player, "вытянул карту путешествия.");
+    WriteLog($"{player.playerName} вытянул карту путешествия ({GetCardTypeLabel(travelCard.cardType)}).", player);
     CardVisual travelDeck = deckManager.GetCardForNode(BoardNode.NodeType.Travel);
     travelDeck?.Show(travelCard, "travel");
 }
@@ -615,6 +636,7 @@ private IEnumerator TryApplyGrant(PlayerController player, List<string> availabl
         player.earnedGrants.Add(chosenStat);
         player.ChangeStat("success", 1);
         CardData grantCard = CardDatabase.GetRandomBySphere("grant_success");
+        WriteLog($"{player.playerName} вытянул карту гранта в сфере «{GetSphereLabel(chosenStat)}».", player);
 
         CardVisual grantDeck = deckManager.GetCardForNode(BoardNode.NodeType.Grant);
         grantDeck?.Show(grantCard, chosenStat);
@@ -695,12 +717,12 @@ private IEnumerator TryDoProject(PlayerController player)
             ? chosenSphere
             : player.earnedGrants[0];
         player.earnedGrants.Remove(grantToUse);
-        paymentMethod = $"grant ({grantToUse})";
+        paymentMethod = $"грант ({GetSphereLabel(grantToUse)})";
     }
     else
     {
         player.ChangeStat("money", -5);
-        paymentMethod = "5 coins";
+        paymentMethod = "5 монет";
     }
 
     player.completedProjects.Add(chosenSphere);
@@ -736,6 +758,7 @@ private bool ApplyGenericEffects(
             case CardEffect.SkipNextTurn:
                 player.skipTurns += eff.amount;
                 LogPlayerEvent(player, $"эффект карты: пропуск ходов +{eff.amount}. Теперь пропусков: {player.skipTurns}.");
+                WriteLog($"{player.playerName}: эффект карты — пропуск хода +{eff.amount}.", player);
                 break;
             case CardEffect.GainStat:
                 {
@@ -744,6 +767,7 @@ private bool ApplyGenericEffects(
                 {
                     player.ChangeStat(statToGain, eff.amount);
                     LogPlayerEvent(player, $"эффект карты: +{eff.amount} к стату '{statToGain}'.");
+                    WriteLog($"{player.playerName}: эффект карты — +{eff.amount} к «{GetSphereLabel(statToGain)}».", player);
                 }
                 break;
                 }
@@ -754,12 +778,14 @@ private bool ApplyGenericEffects(
                 {
                     player.ChangeStat(statToLose, -eff.amount);
                     LogPlayerEvent(player, $"эффект карты: -{eff.amount} к стату '{statToLose}'.");
+                    WriteLog($"{player.playerName}: эффект карты — -{eff.amount} к «{GetSphereLabel(statToLose)}».", player);
                 }
                 break;
                 }
             case CardEffect.DrawNextCardFromSameSphere:
                 shouldDrawNextCard = true;
                 LogPlayerEvent(player, "эффект карты: добор следующей карты из этой же сферы.");
+                WriteLog($"{player.playerName}: эффект карты — добор следующей карты из той же сферы.", player);
                 break;
         }
     }
@@ -871,6 +897,10 @@ private bool HandleBlueCard(PlayerController player, CardData card, string statN
 {
     int diceSum = UnityEngine.Random.Range(1, 7) + UnityEngine.Random.Range(1, 7);
     bool success = expLevel > diceSum;
+    WriteLog(
+        $"Условие синей карты ({GetSphereLabel("experience")} > сумма кубиков): " +
+        $"{(success ? "выполнено" : "не выполнено")} ({expLevel} {(success ? ">" : "<=")} {diceSum}).",
+        player);
 
     bool shouldDrawNextCard = ApplyGenericEffects(
         player,
@@ -891,6 +921,10 @@ private bool HandleBlueCard(PlayerController player, CardData card, string statN
 private bool HandleRedCard(PlayerController player, CardData card, string statName, int statLevel)
 {
     bool success = statLevel >= 5;
+    WriteLog(
+        $"Условие красной карты ({GetSphereLabel(statName)} >= 5): " +
+        $"{(success ? "выполнено" : "не выполнено")} ({statLevel} {(success ? ">=" : "<")} 5).",
+        player);
 
     bool shouldDrawNextCard = ApplyGenericEffects(
         player,
@@ -967,17 +1001,40 @@ private IEnumerator HandleGreenCard(PlayerController player, CardData card, stri
 
     if (chosenPartner == player)
     {
+        List<string> greenEffects = new List<string>();
+        WriteLog("Условие зелёной карты (кооперация с подходящим партнером): не выполнено. Применен соло-режим.", player);
         if (!string.IsNullOrEmpty(soloLeaderStat) && soloLeaderBonus != 0)
+        {
             player.ChangeStat(soloLeaderStat, soloLeaderBonus);
+            greenEffects.Add($"+{soloLeaderBonus} к «{GetSphereLabel(soloLeaderStat)}» игроку {player.playerName}");
+        }
         if (!string.IsNullOrEmpty(soloPartnerStat) && soloPartnerBonus != 0)
+        {
             player.ChangeStat(soloPartnerStat, soloPartnerBonus);
+            greenEffects.Add($"+{soloPartnerBonus} к «{GetSphereLabel(soloPartnerStat)}» игроку {player.playerName}");
+        }
+        WriteLog(greenEffects.Count > 0
+            ? $"Зелёная карта (соло): {string.Join(", ", greenEffects)}."
+            : "Зелёная карта (соло): эффекты не изменили характеристики.", player);
     }
     else
     {
+        List<string> greenEffects = new List<string>();
+        WriteLog($"Условие зелёной карты (кооперация с подходящим партнером): выполнено. Партнер: {chosenPartner.playerName}.", player);
         if (!string.IsNullOrEmpty(coopLeaderStat) && coopLeaderBonus != 0)
+        {
             player.ChangeStat(coopLeaderStat, coopLeaderBonus);
+            greenEffects.Add($"+{coopLeaderBonus} к «{GetSphereLabel(coopLeaderStat)}» игроку {player.playerName}");
+        }
         if (!string.IsNullOrEmpty(coopPartnerStat) && coopPartnerBonus != 0)
+        {
             chosenPartner.ChangeStat(coopPartnerStat, coopPartnerBonus);
+            greenEffects.Add($"+{coopPartnerBonus} к «{GetSphereLabel(coopPartnerStat)}» игроку {chosenPartner.playerName}");
+            pendingPartnerTurnChanges.Add($"{chosenPartner.playerName}: +{coopPartnerBonus} к «{GetSphereLabel(coopPartnerStat)}»");
+        }
+        WriteLog(greenEffects.Count > 0
+            ? $"Зелёная карта (кооперация): {string.Join(", ", greenEffects)}."
+            : "Зелёная карта (кооперация): эффекты не изменили характеристики.", player);
     }
 }
 
@@ -985,7 +1042,7 @@ private void ShowCard(string title, string desc, CardType type, string stat)
 {   
     string message = string.IsNullOrWhiteSpace(desc) ? title : $"{title}\n{desc}";
     LogGame($"Системное уведомление: {message.Replace('\n', ' ')}");
-    uiManager?.ShowNotification(message);
+    WriteLog(message);
 }
 
 private TurnSnapshot CaptureTurnSnapshot(PlayerController player)
@@ -1022,7 +1079,7 @@ private void ShowTurnSummary(PlayerController player, TurnSnapshot start)
     AppendDelta(changes, "Бизнес", player.business - start.business);
     AppendDelta(changes, "Спорт", player.sport - start.sport);
     AppendDelta(changes, "Туризм", player.tourism - start.tourism);
-    AppendDelta(changes, "IT", player.IT - start.it);
+    AppendDelta(changes, "ИТ", player.IT - start.it);
     AppendDelta(changes, "Гранты", (player.earnedGrants != null ? player.earnedGrants.Count : 0) - start.activeGrants);
 
     StringBuilder builder = new StringBuilder();
@@ -1037,7 +1094,13 @@ private void ShowTurnSummary(PlayerController player, TurnSnapshot start)
         builder.Append(string.Join(", ", changes));
     }
 
-    uiManager.ShowNotification(builder.ToString(), 3.5f);
+    if (pendingPartnerTurnChanges.Count > 0)
+    {
+        builder.Append("\nКооперация (партнер): ");
+        builder.Append(string.Join(", ", pendingPartnerTurnChanges));
+    }
+
+    WriteLog(builder.ToString(), player, true);
 }
 
 private void AppendDelta(List<string> changes, string label, int delta)
@@ -1053,7 +1116,65 @@ private void ShowCurrentTurnInLog()
     if (currentPlayerIndex < 0 || currentPlayerIndex >= players.Count) return;
     PlayerController current = players[currentPlayerIndex];
     if (current == null) return;
-    uiManager.ShowNotification($"Сейчас ход: {current.playerName}", 2.2f);
+    WriteLog($"Сейчас ход: {current.playerName}", current);
+}
+
+private void SyncLogTurnNumber()
+{
+    uiManager?.SetCurrentTurnNumber(currentTurnNumber);
+}
+
+private void WriteLog(string message, PlayerController sourcePlayer = null, bool summary = false)
+{
+    if (uiManager == null || string.IsNullOrWhiteSpace(message)) return;
+    SyncLogTurnNumber();
+
+    PlayerController fallbackPlayer = sourcePlayer;
+    if (fallbackPlayer == null && players != null && currentPlayerIndex >= 0 && currentPlayerIndex < players.Count)
+        fallbackPlayer = players[currentPlayerIndex];
+
+    Color baseColor = GetLogColorForPlayer(fallbackPlayer);
+    Color color = summary
+        ? SaturateColor(DarkenColor(baseColor, summaryDarkenAmount), summarySaturationBoost)
+        : MakeColorPale(baseColor, logPaleAmount);
+    string hex = ColorUtility.ToHtmlStringRGB(color);
+    string formatted = summary
+        ? $"<b><color=#{hex}>{message}</color></b>"
+        : $"<color=#{hex}>{message}</color>";
+
+    uiManager.ShowNotification(formatted);
+}
+
+private Color GetLogColorForPlayer(PlayerController player)
+{
+    int idx = players != null && player != null ? players.IndexOf(player) : -1;
+    return idx switch
+    {
+        0 => player1LogColor,
+        1 => player2LogColor,
+        2 => player3LogColor,
+        3 => player4LogColor,
+        _ => Color.white
+    };
+}
+
+private Color MakeColorPale(Color source, float amount)
+{
+    float t = Mathf.Clamp01(amount);
+    return Color.Lerp(source, Color.gray, t);
+}
+
+private Color DarkenColor(Color source, float amount)
+{
+    float t = Mathf.Clamp01(amount);
+    return Color.Lerp(source, Color.black, t);
+}
+
+private Color SaturateColor(Color source, float amount)
+{
+    Color.RGBToHSV(source, out float h, out float s, out float v);
+    float boostedS = Mathf.Clamp01(s + Mathf.Clamp01(amount) * (1f - s));
+    return Color.HSVToRGB(h, boostedS, v);
 }
 
 private IEnumerator ShowCurrentTurnInLogDelayed()
@@ -1061,6 +1182,44 @@ private IEnumerator ShowCurrentTurnInLogDelayed()
     if (nextTurnNotificationDelay > 0f)
         yield return new WaitForSeconds(nextTurnNotificationDelay);
     ShowCurrentTurnInLog();
+}
+
+private string GetSphereLabel(string statKey)
+{
+    if (string.IsNullOrWhiteSpace(statKey)) return "неизвестная сфера";
+    return statKey.Trim().ToLower() switch
+    {
+        "volounteer" => "Волонтерство",
+        "science" => "Наука",
+        "art" => "Искусство",
+        "media" => "Медиа",
+        "business" => "Бизнес",
+        "sport" => "Спорт",
+        "tourism" => "Туризм",
+        "it" => "ИТ",
+        "money" => "Деньги",
+        "experience" => "Опыт",
+        "success" => "Успех",
+        "travel" => "Путешествие",
+        "grant" => "Грант",
+        "project" => "Проект",
+        _ => statKey
+    };
+}
+
+private string GetCardTypeLabel(CardType type)
+{
+    return type switch
+    {
+        CardType.Surprise => "карту-сюрприз",
+        CardType.Yellow => "жёлтую карту",
+        CardType.Blue => "синюю карту",
+        CardType.Red => "красную карту",
+        CardType.Green => "зелёную карту",
+        CardType.Travel => "карту путешествия",
+        CardType.Grant => "карту гранта",
+        _ => "карту"
+    };
 }
 
 private void PlayNodeSound(BoardNode.NodeType nodeType)
