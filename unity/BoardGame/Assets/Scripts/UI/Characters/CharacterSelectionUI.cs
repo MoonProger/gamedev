@@ -14,8 +14,20 @@ public class CharacterSelectionUI : MonoBehaviour
     public Transform cardContainer;
     public GameObject cardPrefab;
 
-    [Header("3D раскладка карточек")]
+    [Header("Режим раскладки")]
+    public bool useCarouselLayout = true;
     public bool use3DLayout = true;
+
+    [Header("3D карусель")]
+    public float carouselArcDegrees = 120f;
+    public float carouselRadius = 5f;
+    public float carouselVerticalOffset = 0f;
+    public float carouselDepthOffset = 0.5f;
+    public float carouselDragSensitivity = 0.2f;
+    public bool carouselScaleByDepth = true;
+    public float carouselCenterScaleBoost = 0.2f;
+
+    [Header("Сетка (fallback)")]
     public int cardsPerRow = 4;
     public float spacingX = 2.4f;
     public float spacingY = 3.2f;
@@ -37,6 +49,11 @@ public class CharacterSelectionUI : MonoBehaviour
     public List<GameObject> hideObjectsDuringSelection = new List<GameObject>();
 
     private readonly Dictionary<GameObject, bool> cachedActiveStates = new Dictionary<GameObject, bool>();
+    private readonly List<Transform> spawnedCardTransforms = new List<Transform>();
+    private readonly List<Vector3> spawnedCardBaseScales = new List<Vector3>();
+    private float carouselAngleOffset;
+    private bool isSelectionActive;
+    private Vector3 lastMousePosition;
 
     public IEnumerator ShowAndPickForPlayers(
         List<PlayerController> activePlayers,
@@ -63,6 +80,7 @@ public class CharacterSelectionUI : MonoBehaviour
 
         SetHiddenObjectsState(true);
         panel.SetActive(true);
+        isSelectionActive = true;
         try
         {
             foreach (PlayerController player in activePlayers)
@@ -71,7 +89,7 @@ public class CharacterSelectionUI : MonoBehaviour
                 BuildCharacterCards(availableCharacters, selected => picked = selected);
 
                 if (titleText != null)
-                    titleText.text = $"Выбор персонажа: {player.playerName}";
+                    titleText.text = $"Игрок \"{GetPlayerColorNameByIndex(activePlayers.IndexOf(player))}\", выберите персонажа";
 
                 yield return new WaitUntil(() => picked != null);
                 onPicked?.Invoke(player, picked);
@@ -79,6 +97,7 @@ public class CharacterSelectionUI : MonoBehaviour
         }
         finally
         {
+            isSelectionActive = false;
             ClearCards();
             panel.SetActive(false);
             SetHiddenObjectsState(false);
@@ -94,7 +113,11 @@ public class CharacterSelectionUI : MonoBehaviour
         foreach (CharacterData character in characters)
         {
             GameObject cardObj = Instantiate(cardPrefab, cardContainer);
-            if (use3DLayout)
+            spawnedCardTransforms.Add(cardObj.transform);
+            spawnedCardBaseScales.Add(cardObj.transform.localScale);
+            if (useCarouselLayout)
+                ApplyCarouselLayout(characters.Count);
+            else if (use3DLayout)
                 Apply3DCardLayout(cardObj.transform, index, characters.Count);
 
             CharacterPickCard pickCard = cardObj.GetComponent<CharacterPickCard>();
@@ -126,6 +149,88 @@ public class CharacterSelectionUI : MonoBehaviour
 
             index++;
         }
+        if (useCarouselLayout)
+            ApplyCarouselLayout(characters.Count);
+    }
+
+    private void Update()
+    {
+        if (!isSelectionActive || !useCarouselLayout || cardContainer == null || spawnedCardTransforms.Count == 0)
+            return;
+
+        if (Input.GetMouseButtonDown(0))
+            lastMousePosition = Input.mousePosition;
+
+        if (Input.GetMouseButton(0))
+        {
+            Vector3 current = Input.mousePosition;
+            float deltaX = current.x - lastMousePosition.x;
+            lastMousePosition = current;
+
+            if (Mathf.Abs(deltaX) > 0.001f)
+            {
+                carouselAngleOffset += deltaX * carouselDragSensitivity;
+                ApplyCarouselLayout(spawnedCardTransforms.Count);
+            }
+        }
+    }
+
+    private void ApplyCarouselLayout(int totalCount)
+    {
+        if (totalCount <= 0) return;
+
+        float arc = Mathf.Max(5f, carouselArcDegrees);
+        bool fullCircle = arc >= 359.9f;
+        float step = fullCircle
+            ? (arc / totalCount)
+            : (totalCount > 1 ? arc / (totalCount - 1) : 0f);
+        float start = -arc * 0.5f + carouselAngleOffset;
+        float safeRadius = Mathf.Max(0.5f, carouselRadius);
+        float safeDepthOffset = carouselDepthOffset;
+
+        for (int i = 0; i < spawnedCardTransforms.Count; i++)
+        {
+            Transform card = spawnedCardTransforms[i];
+            if (card == null) continue;
+
+            float aDeg = start + step * i;
+            float aRad = aDeg * Mathf.Deg2Rad;
+            float x = Mathf.Sin(aRad) * safeRadius;
+            float z = Mathf.Cos(aRad) * safeRadius - safeRadius + safeDepthOffset;
+
+            card.localPosition = cardsLocalOffset + new Vector3(x, carouselVerticalOffset, z);
+            card.localRotation = Quaternion.Euler(cardLocalEulerOffset);
+
+            Vector3 baseScale = i < spawnedCardBaseScales.Count ? spawnedCardBaseScales[i] : card.localScale;
+            Vector3 targetScale = baseScale;
+            if (overrideCardScale)
+            {
+                targetScale = cardLocalScale;
+            }
+            else if (carouselScaleByDepth)
+            {
+                float depth01 = Mathf.InverseLerp(-safeRadius + safeDepthOffset, safeDepthOffset, z);
+                float boost = 1f + carouselCenterScaleBoost * Mathf.Clamp01(depth01);
+                targetScale = baseScale * boost;
+            }
+            card.localScale = targetScale;
+
+            CharacterPickCard pickCard = card.GetComponent<CharacterPickCard>();
+            if (pickCard != null)
+                pickCard.SetBaseTransformFromLayout(card.localPosition, card.localScale);
+        }
+    }
+
+    private string GetPlayerColorNameByIndex(int playerIndex)
+    {
+        return playerIndex switch
+        {
+            0 => "Красный",
+            1 => "Синий",
+            2 => "Зелёный",
+            3 => "Жёлтый",
+            _ => "Игрок"
+        };
     }
 
     private void Apply3DCardLayout(Transform cardTransform, int index, int totalCount)
@@ -144,12 +249,20 @@ public class CharacterSelectionUI : MonoBehaviour
 
         cardTransform.localPosition = cardsLocalOffset + new Vector3(x, y, 0f);
         cardTransform.localRotation = Quaternion.Euler(cardLocalEulerOffset);
+        Vector3 targetScale = cardTransform.localScale;
         if (overrideCardScale)
-            cardTransform.localScale = cardLocalScale;
+            targetScale = cardLocalScale;
+        cardTransform.localScale = targetScale;
+
+        CharacterPickCard pickCard = cardTransform.GetComponent<CharacterPickCard>();
+        if (pickCard != null)
+            pickCard.SetBaseTransformFromLayout(cardTransform.localPosition, cardTransform.localScale);
     }
 
     private void ClearCards()
     {
+        spawnedCardTransforms.Clear();
+        spawnedCardBaseScales.Clear();
         for (int i = cardContainer.childCount - 1; i >= 0; i--)
             Destroy(cardContainer.GetChild(i).gameObject);
     }
