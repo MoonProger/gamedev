@@ -47,7 +47,7 @@ export async function handleGameMessage(ctx: {
     }
 
     const players = room.players;
-    const allReady = players.length >= 1 && players.every((p) => p.isReady);
+    const allReady = players.length >= 3 && players.every((p) => p.isReady);
 
     if (!allReady) {
       broadcast(roomId, { type: "error", payload: { message: "NOT_ALL_READY_OR_TOO_FEW_PLAYERS" } });
@@ -274,6 +274,14 @@ export async function handleGameMessage(ctx: {
       game.lastDice = null;
 
       await saveGameState(roomId, game);
+
+      broadcast(roomId, {
+        type: "game.finished",
+        payload: {
+          winnerUserId: userId,
+          finalScores: game.scores,
+        },
+      } as any);
 
       broadcast(roomId, {
         type: "game.state",

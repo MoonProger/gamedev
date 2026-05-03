@@ -37,6 +37,7 @@ export type WsOut =
   | { type: "game.move"; payload: { playerId: string; fromSector: number; toSector: number; dice: number } }
   | { type: "game.card"; payload: any }
   | { type: "game.project"; payload: any }
+  | { type: "game.finished"; payload: { winnerUserId: string; finalScores: any } }
   | { type: "game.token_moved"; payload: any }
   | { type: "game.turn_changed"; payload: { activePlayerId: string } }
   | { type: "game.state"; payload: any }

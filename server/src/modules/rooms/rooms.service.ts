@@ -42,6 +42,95 @@ export async function listRooms() {
   }));
 }
 
+export async function listRoomsPaginated(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  hasPassword?: boolean;
+}) {
+  const page = Math.max(1, Number(params.page ?? 1));
+  const limit = Math.min(50, Math.max(1, Number(params.limit ?? 10)));
+  const skip = (page - 1) * limit;
+
+  const where: any = {};
+
+  if (params.status) {
+    where.status = params.status;
+  }
+
+  if (params.search) {
+    where.title = {
+      contains: params.search,
+    };
+  }
+
+  if (params.hasPassword === true) {
+    where.password = {
+      not: null,
+    };
+  }
+
+  if (params.hasPassword === false) {
+    where.password = null;
+  }
+
+  const [rooms, total] = await Promise.all([
+    prisma.room.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        players: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    }),
+    prisma.room.count({ where }),
+  ]);
+
+  return {
+    rooms: rooms.map((room) => ({
+      id: room.id,
+      title: room.title,
+      status: room.status,
+      settings: safeJsonParse(room.settings, {}),
+      hasPassword: Boolean(room.password),
+      createdAt: room.createdAt,
+      creator: room.creator,
+      playersCount: room.players.length,
+      players: room.players.map((player) => ({
+        userId: player.userId,
+        username: player.user?.username ?? null,
+        isReady: player.isReady,
+        joinedAt: player.joinedAt,
+      })),
+    })),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
 export async function getRoom(roomId: string) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
