@@ -24,7 +24,7 @@ public class GreenCardUI : MonoBehaviour
         {
             PlayerController captured = candidate;
             GameObject btn = Instantiate(partnerButtonPrefab, partnerButtonContainer);
-            string label = captured == selfPlayer ? "Solo" : captured.playerName;
+            string label = captured == selfPlayer ? "Соло" : captured.playerName;
             btn.GetComponentInChildren<TextMeshProUGUI>().text = label;
             btn.GetComponent<Button>().onClick.AddListener(() => ChoosePartner(captured));
         }

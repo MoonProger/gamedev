@@ -25,6 +25,9 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI tourismText;
     public TextMeshProUGUI itText;
 
+    [Header("Небольшой статус хода")]
+    public TextMeshProUGUI currentTurnStatusText;
+
     [Header("Общий лог")]
     public GameObject logPanel;
     public GameObject logTextRoot;
@@ -49,6 +52,8 @@ public class UIManager : MonoBehaviour
             // Иначе колесо мыши часто "съедается" самим текстом, а не ScrollRect.
             logText.raycastTarget = false;
         }
+        if (currentTurnStatusText != null)
+            currentTurnStatusText.gameObject.SetActive(false);
         RefreshLogView();
     }
 
@@ -95,6 +100,13 @@ public class UIManager : MonoBehaviour
     public void SetCurrentTurnNumber(int turnNumber)
     {
         currentLogTurn = Mathf.Max(1, turnNumber);
+    }
+
+    public void SetCurrentTurnStatus(string status)
+    {
+        if (currentTurnStatusText == null) return;
+        currentTurnStatusText.text = status;
+        currentTurnStatusText.gameObject.SetActive(!string.IsNullOrWhiteSpace(status));
     }
 
     public void ToggleLogPanel()

@@ -355,7 +355,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
                     currentPlayer.ChangeStat("money", -1);
                     LogPlayerEvent(currentPlayer, "оплатил 1 деньги за путешествие.");
                     if (drawCardSound != null && audioSource != null) audioSource.PlayOneShot(travelSound);
-                    yield return StartCoroutine(ChooseTravelDestination(currentPlayer));
+                    PullTravelCard(currentPlayer);
                 }
                 else
                 {
@@ -1116,7 +1116,8 @@ private void ShowCurrentTurnInLog()
     if (currentPlayerIndex < 0 || currentPlayerIndex >= players.Count) return;
     PlayerController current = players[currentPlayerIndex];
     if (current == null) return;
-    WriteLog($"Сейчас ход: {current.playerName}", current);
+    string colorHex = ColorUtility.ToHtmlStringRGB(GetLogColorForPlayer(current));
+    uiManager.SetCurrentTurnStatus($"<b>Сейчас ход: <color=#{colorHex}>{current.playerName}</color></b>");
 }
 
 private void SyncLogTurnNumber()
