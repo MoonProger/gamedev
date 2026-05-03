@@ -64,7 +64,16 @@ public class GameManager : MonoBehaviour
     public float jumpHeight = 5;
     public float jumpDuration = 0.7f;
     public float stepDelay = 0.25f;
-    public float nextTurnNotificationDelay = 0.8f;
+
+    [Header("Token Slot Offsets On Node")]
+    public List<Vector3> playerNodeOffsets = new List<Vector3>
+    {
+        new Vector3(0f, 0f, 2.6f),
+        new Vector3(2.6f, 0f, 0f),
+        new Vector3(0f, 0f, -2.6f),
+        new Vector3(-2.6f, 0f, 0f)
+    };
+    public float fallbackOffsetRadius = 2.6f;
 
     [Header("Log Style")]
     public Color player1LogColor = new Color(0.95f, 0.45f, 0.45f);
@@ -206,7 +215,7 @@ public class GameManager : MonoBehaviour
             else
                 players[i].RandomizeStats();
             players[i].TeleportToNode(startNode);
-            players[i].transform.position = GetOffsetPosition(startNode);
+            players[i].transform.position = GetPlayerNodePosition(startNode, i);
             currentPlayerIndex = prev;
         }
 
@@ -277,13 +286,14 @@ public class GameManager : MonoBehaviour
 private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turnStart)
 {
     yield return new WaitForSeconds(2f);
+    yield return WaitForAllCardsHidden(60f);
     ShowTurnSummary(player, turnStart);
     hasRolledThisTurn = false;
     currentPlayerIndex = (currentPlayerIndex + 1) % expectedPlayerCount;
     currentTurnNumber++;
     SyncLogTurnNumber();
     UpdatePlayersVisuals();
-    StartCoroutine(ShowCurrentTurnInLogDelayed());
+    ShowCurrentTurnInLog();
 }
     private void RegisterRoll(int result)
     {
@@ -331,7 +341,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
         {
             foreach (BoardNode stepNode in path)
             {
-                Vector3 targetPos = stepNode == target ? GetOffsetPosition(target) : stepNode.transform.position;
+                Vector3 targetPos = GetPlayerNodePosition(stepNode, currentPlayerIndex);
                 yield return StartCoroutine(JumpToNode(currentPlayer, targetPos));
                 currentPlayer.currentNode = stepNode;
                 yield return new WaitForSeconds(stepDelay);
@@ -409,6 +419,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
     yield break;
 }
         table.UpdateTablePositions();
+        yield return WaitForAllCardsHidden(60f);
         ShowTurnSummary(currentPlayer, turnStart);
         isMoving = false;
         hasRolledThisTurn = false;
@@ -417,7 +428,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
         SyncLogTurnNumber();
         LogGame($"Ход завершен. Следующий игрок: {players[currentPlayerIndex].playerName}.");
         UpdatePlayersVisuals();
-        StartCoroutine(ShowCurrentTurnInLogDelayed());
+        ShowCurrentTurnInLog();
     }
 
 private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphere = null, int chainDepth = 0)
@@ -560,16 +571,26 @@ private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphe
         uiManager?.UpdateAllStats(players[currentPlayerIndex]);
     }
 
-    private Vector3 GetOffsetPosition(BoardNode node)
+    private Vector3 GetPlayerNodePosition(BoardNode node, int playerIndex)
     {
-        int count = 0;
-        for (int i = 0; i < expectedPlayerCount; i++)
-            if (players[i].currentNode == node && i != currentPlayerIndex) count++;
+        if (node == null)
+            return Vector3.zero;
 
-        if (count == 0) return node.transform.position;
+        Vector3 localOffset = GetPlayerSlotOffset(playerIndex);
+        return node.transform.TransformPoint(localOffset);
+    }
 
-        float angle = count * 90f * Mathf.Deg2Rad;
-        return node.transform.position + new Vector3(Mathf.Cos(angle) * 5f, 0, Mathf.Sin(angle) * 5f);
+    private Vector3 GetPlayerSlotOffset(int playerIndex)
+    {
+        if (playerIndex >= 0 && playerIndex < playerNodeOffsets.Count)
+            return playerNodeOffsets[playerIndex];
+
+        // fallback для случая, если игроков больше, чем заранее заданных слотов
+        float radius = Mathf.Max(0.1f, fallbackOffsetRadius);
+        int safeCount = Mathf.Max(expectedPlayerCount, playerIndex + 1, 1);
+        float angleDeg = (360f / safeCount) * Mathf.Max(0, playerIndex);
+        float angleRad = angleDeg * Mathf.Deg2Rad;
+        return new Vector3(Mathf.Cos(angleRad) * radius, 0f, Mathf.Sin(angleRad) * radius);
     }
     private IEnumerator ChooseTravelDestination(PlayerController player)
 {
@@ -600,7 +621,8 @@ private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphe
     foreach (var node in allNodes) node.SetHighlight(false);
 
     // Прыгаем напрямую
-    yield return StartCoroutine(JumpToNode(player, GetOffsetPosition(chosen)));
+    int playerIndex = players.IndexOf(player);
+    yield return StartCoroutine(JumpToNode(player, GetPlayerNodePosition(chosen, playerIndex)));
     player.currentNode = chosen;
     LogPlayerEvent(player, $"переместился путешествием на узел {chosen.nodeName}.");
 
@@ -858,6 +880,44 @@ private IEnumerator WaitForCardHidden(CardVisual deck, float timeoutSeconds)
         timer -= Time.deltaTime;
         yield return null;
     }
+}
+
+private IEnumerator WaitForAllCardsHidden(float timeoutSeconds)
+{
+    float timer = Mathf.Max(0.1f, timeoutSeconds);
+    while (timer > 0f)
+    {
+        bool anyVisible = false;
+        foreach (CardVisual card in EnumerateDeckCards())
+        {
+            if (card != null && (card.IsShown || card.IsAnimating))
+            {
+                anyVisible = true;
+                break;
+            }
+        }
+
+        if (!anyVisible)
+            yield break;
+
+        timer -= Time.deltaTime;
+        yield return null;
+    }
+}
+
+private IEnumerable<CardVisual> EnumerateDeckCards()
+{
+    if (deckManager == null)
+        yield break;
+
+    if (deckManager.sphereDecks != null)
+    {
+        foreach (CardVisual sphereDeck in deckManager.sphereDecks)
+            if (sphereDeck != null) yield return sphereDeck;
+    }
+
+    if (deckManager.travelDeck != null) yield return deckManager.travelDeck;
+    if (deckManager.grantDeck != null) yield return deckManager.grantDeck;
 }
 
 private void CheckVictory(PlayerController player)
@@ -1176,13 +1236,6 @@ private Color SaturateColor(Color source, float amount)
     Color.RGBToHSV(source, out float h, out float s, out float v);
     float boostedS = Mathf.Clamp01(s + Mathf.Clamp01(amount) * (1f - s));
     return Color.HSVToRGB(h, boostedS, v);
-}
-
-private IEnumerator ShowCurrentTurnInLogDelayed()
-{
-    if (nextTurnNotificationDelay > 0f)
-        yield return new WaitForSeconds(nextTurnNotificationDelay);
-    ShowCurrentTurnInLog();
 }
 
 private string GetSphereLabel(string statKey)
