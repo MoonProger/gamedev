@@ -27,6 +27,7 @@ public class BoardNode : MonoBehaviour
     public float hoverScaleMultiplier = 1.12f;
 
     private Renderer highlightRenderer;
+    private Material runtimeHighlightMaterial;
     private Vector3 baseHighlightScale = Vector3.one;
     private bool highlightActive;
 
@@ -101,6 +102,7 @@ public class BoardNode : MonoBehaviour
             : new Material(Shader.Find("Standard"));
 
         ConfigureTransparentGlowMaterial(mat);
+        runtimeHighlightMaterial = mat;
         highlightRenderer.material = mat;
         baseHighlightScale = highlightVisual.localScale;
     }
@@ -137,10 +139,10 @@ public class BoardNode : MonoBehaviour
         if (!highlightVisual.gameObject.activeSelf) return;
 
         float emissionMul = hovered ? Mathf.Max(1f, hoverEmissionMultiplier) : 1f;
-        if (highlightRenderer.material.HasProperty("_EmissionColor"))
+        if (runtimeHighlightMaterial != null && runtimeHighlightMaterial.HasProperty("_EmissionColor"))
         {
             Color emissionColor = new Color(highlightColor.r, highlightColor.g, highlightColor.b) * (highlightEmission * emissionMul);
-            highlightRenderer.material.SetColor("_EmissionColor", emissionColor);
+            runtimeHighlightMaterial.SetColor("_EmissionColor", emissionColor);
         }
 
         float scaleMul = hovered ? Mathf.Max(1f, hoverScaleMultiplier) : 1f;

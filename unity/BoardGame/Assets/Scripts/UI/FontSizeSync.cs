@@ -4,10 +4,24 @@ using TMPro;
 public class FontSizeSync : MonoBehaviour
 {
     private TextMeshProUGUI[] texts;
+    private bool needsRefresh = true;
+
+    void Awake()
+    {
+        RefreshTexts();
+    }
+
+    void OnTransformChildrenChanged()
+    {
+        needsRefresh = true;
+    }
 
     void LateUpdate()
     {
-        texts = GetComponentsInChildren<TextMeshProUGUI>();
+        if (needsRefresh || texts == null)
+            RefreshTexts();
+        if (texts == null || texts.Length == 0)
+            return;
         
         float minPointSize = float.MaxValue;
 
@@ -22,5 +36,11 @@ public class FontSizeSync : MonoBehaviour
             txt.enableAutoSizing = false;
             txt.fontSize = minPointSize;
         }
+    }
+
+    private void RefreshTexts()
+    {
+        texts = GetComponentsInChildren<TextMeshProUGUI>();
+        needsRefresh = false;
     }
 }

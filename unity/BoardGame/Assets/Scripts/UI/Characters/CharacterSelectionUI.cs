@@ -83,13 +83,14 @@ public class CharacterSelectionUI : MonoBehaviour
         isSelectionActive = true;
         try
         {
-            foreach (PlayerController player in activePlayers)
+            for (int playerIdx = 0; playerIdx < activePlayers.Count; playerIdx++)
             {
+                PlayerController player = activePlayers[playerIdx];
                 CharacterData picked = null;
                 BuildCharacterCards(availableCharacters, selected => picked = selected);
 
                 if (titleText != null)
-                    titleText.text = $"Игрок \"{GetPlayerColorNameByIndex(activePlayers.IndexOf(player))}\", выберите персонажа";
+                    titleText.text = $"Игрок \"{GetPlayerColorNameByIndex(playerIdx)}\", выберите персонажа";
 
                 yield return new WaitUntil(() => picked != null);
                 onPicked?.Invoke(player, picked);
@@ -115,9 +116,7 @@ public class CharacterSelectionUI : MonoBehaviour
             GameObject cardObj = Instantiate(cardPrefab, cardContainer);
             spawnedCardTransforms.Add(cardObj.transform);
             spawnedCardBaseScales.Add(cardObj.transform.localScale);
-            if (useCarouselLayout)
-                ApplyCarouselLayout(characters.Count);
-            else if (use3DLayout)
+            if (!useCarouselLayout && use3DLayout)
                 Apply3DCardLayout(cardObj.transform, index, characters.Count);
 
             CharacterPickCard pickCard = cardObj.GetComponent<CharacterPickCard>();

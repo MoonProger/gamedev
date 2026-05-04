@@ -99,10 +99,16 @@ public class GameManager : MonoBehaviour
     private static readonly string[] allStats = { "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
     private readonly Dictionary<PlayerController, string> lastValidSphereByPlayer = new Dictionary<PlayerController, string>();
     private readonly Dictionary<PlayerController, CharacterData> selectedCharacterByPlayer = new Dictionary<PlayerController, CharacterData>();
+    private readonly Dictionary<PlayerController, int> playerIndexLookup = new Dictionary<PlayerController, int>();
     private readonly List<string> pendingPartnerTurnChanges = new List<string>();
+    private readonly List<CardVisual> cachedDeckCards = new List<CardVisual>();
+    private bool deckCardCacheInitialized;
+    private TableManager cachedTableManager;
 
     private void Awake()
 {
+    RebuildPlayerIndexLookup();
+    deckCardCacheInitialized = false;
     dice.OnDiceRolled += RegisterRoll;
     foreach (var player in players)
     {
@@ -185,6 +191,8 @@ public class GameManager : MonoBehaviour
         isGameInitialized = false;
         selectedCharacterByPlayer.Clear();
         currentTurnNumber = 1;
+        RebuildPlayerIndexLookup();
+        cachedTableManager = Object.FindFirstObjectByType<TableManager>();
         SyncLogTurnNumber();
         LogGame($"Инициализация игры. Игроков: {expectedPlayerCount}.");
 
@@ -196,8 +204,7 @@ public class GameManager : MonoBehaviour
                 : $"Отключен лишний токен {i + 1}.");
         }
 
-        TableManager tm = Object.FindFirstObjectByType<TableManager>();
-        tm?.InitializeTable();
+        cachedTableManager?.InitializeTable();
 
         StartCoroutine(InitializePlayersRoutine());
     }
@@ -349,7 +356,7 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
         }
 
         PlayNodeSound(currentPlayer.currentNode.nodeStat);
-        TableManager table = FindObjectOfType<TableManager>();
+        TableManager table = GetTableManager();
         yield return new WaitForSeconds(0.5f);
 
         switch (currentPlayer.currentNode.nodeStat)
@@ -621,7 +628,7 @@ private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphe
     foreach (var node in allNodes) node.SetHighlight(false);
 
     // Прыгаем напрямую
-    int playerIndex = players.IndexOf(player);
+    int playerIndex = GetPlayerIndex(player);
     yield return StartCoroutine(JumpToNode(player, GetPlayerNodePosition(chosen, playerIndex)));
     player.currentNode = chosen;
     LogPlayerEvent(player, $"переместился путешествием на узел {chosen.nodeName}.");
@@ -907,17 +914,9 @@ private IEnumerator WaitForAllCardsHidden(float timeoutSeconds)
 
 private IEnumerable<CardVisual> EnumerateDeckCards()
 {
-    if (deckManager == null)
-        yield break;
-
-    if (deckManager.sphereDecks != null)
-    {
-        foreach (CardVisual sphereDeck in deckManager.sphereDecks)
-            if (sphereDeck != null) yield return sphereDeck;
-    }
-
-    if (deckManager.travelDeck != null) yield return deckManager.travelDeck;
-    if (deckManager.grantDeck != null) yield return deckManager.grantDeck;
+    RebuildDeckCardCacheIfNeeded();
+    for (int i = 0; i < cachedDeckCards.Count; i++)
+        yield return cachedDeckCards[i];
 }
 
 private void CheckVictory(PlayerController player)
@@ -1208,7 +1207,7 @@ private void WriteLog(string message, PlayerController sourcePlayer = null, bool
 
 private Color GetLogColorForPlayer(PlayerController player)
 {
-    int idx = players != null && player != null ? players.IndexOf(player) : -1;
+    int idx = GetPlayerIndex(player);
     return idx switch
     {
         0 => player1LogColor,
@@ -1217,6 +1216,62 @@ private Color GetLogColorForPlayer(PlayerController player)
         3 => player4LogColor,
         _ => Color.white
     };
+}
+
+private void RebuildPlayerIndexLookup()
+{
+    playerIndexLookup.Clear();
+    if (players == null) return;
+    for (int i = 0; i < players.Count; i++)
+    {
+        PlayerController p = players[i];
+        if (p != null && !playerIndexLookup.ContainsKey(p))
+            playerIndexLookup.Add(p, i);
+    }
+}
+
+private int GetPlayerIndex(PlayerController player)
+{
+    if (player == null) return -1;
+    if (playerIndexLookup.TryGetValue(player, out int idx))
+        return idx;
+    int fallback = players != null ? players.IndexOf(player) : -1;
+    if (fallback >= 0)
+        playerIndexLookup[player] = fallback;
+    return fallback;
+}
+
+private TableManager GetTableManager()
+{
+    if (cachedTableManager == null)
+        cachedTableManager = Object.FindFirstObjectByType<TableManager>();
+    return cachedTableManager;
+}
+
+private void RebuildDeckCardCacheIfNeeded()
+{
+    if (deckManager == null)
+    {
+        cachedDeckCards.Clear();
+        deckCardCacheInitialized = false;
+        return;
+    }
+
+    if (deckCardCacheInitialized)
+        return;
+
+    cachedDeckCards.Clear();
+    if (deckManager.sphereDecks != null)
+    {
+        for (int i = 0; i < deckManager.sphereDecks.Length; i++)
+        {
+            CardVisual sphereDeck = deckManager.sphereDecks[i];
+            if (sphereDeck != null) cachedDeckCards.Add(sphereDeck);
+        }
+    }
+    if (deckManager.travelDeck != null) cachedDeckCards.Add(deckManager.travelDeck);
+    if (deckManager.grantDeck != null) cachedDeckCards.Add(deckManager.grantDeck);
+    deckCardCacheInitialized = true;
 }
 
 private Color MakeColorPale(Color source, float amount)

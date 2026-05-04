@@ -39,6 +39,7 @@ public class UIManager : MonoBehaviour
     public int maxLogEntries = 250;
 
     private readonly List<string> logEntries = new List<string>();
+    private readonly StringBuilder logBuilder = new StringBuilder(8192);
     private int currentLogTurn = 1;
 
     private void Start()
@@ -147,13 +148,14 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        StringBuilder sb = new StringBuilder(logEntries.Count * 48);
+        logBuilder.Clear();
+        logBuilder.EnsureCapacity(Mathf.Max(logBuilder.Capacity, logEntries.Count * 48));
         for (int i = 0; i < logEntries.Count; i++)
         {
-            sb.Append(logEntries[i]);
-            if (i < logEntries.Count - 1) sb.Append('\n');
+            logBuilder.Append(logEntries[i]);
+            if (i < logEntries.Count - 1) logBuilder.Append('\n');
         }
-        logText.text = sb.ToString();
+        logText.text = logBuilder.ToString();
 
         if (shouldScrollToBottom && logScrollRect != null)
         {

@@ -81,7 +81,7 @@ public int skipTurns = 0;
     public void ChangeStat(string statName, int amount)
 {
     string normalizedStat = NormalizeStatName(statName);
-    int before = GetStatValue(normalizedStat);
+    int before = GetStatValueNormalized(normalizedStat);
 
     switch (normalizedStat)
     {
@@ -103,7 +103,7 @@ public int skipTurns = 0;
             break;
     }
 
-    int after = GetStatValue(normalizedStat);
+    int after = GetStatValueNormalized(normalizedStat);
     int appliedDelta = after - before;
     string operation = appliedDelta >= 0 ? "+" : "";
     string clampedSuffix = appliedDelta != amount ? " (ограничено границами)" : "";
@@ -134,21 +134,7 @@ private void CheckMilestone(ref int stat, int amount)
 
     public int GetStatValue(string statName)
     {
-        switch (statName.ToLower())
-        {
-            case "money": return money;
-            case "experience": case "exp": return experience;
-            case "success": return success;
-            case "volounteer": return volounteer;
-            case "science": return science;
-            case "art": return art;
-            case "media": return media;
-            case "business": return business;
-            case "sport": return sport;
-            case "tourism": return tourism;
-            case "it": return IT;
-            default: return 0;
-        }
+        return GetStatValueNormalized(NormalizeStatName(statName));
     }
 
     public void RandomizeStats()
@@ -214,6 +200,26 @@ private void CheckMilestone(ref int stat, int amount)
             "it" => "IT",
             _ => normalizedStatName
         };
+    }
+
+    private int GetStatValueNormalized(string normalizedStatName)
+    {
+        switch (normalizedStatName)
+        {
+            case "money": return money;
+            case "experience":
+            case "exp": return experience;
+            case "success": return success;
+            case "volounteer": return volounteer;
+            case "science": return science;
+            case "art": return art;
+            case "media": return media;
+            case "business": return business;
+            case "sport": return sport;
+            case "tourism": return tourism;
+            case "it": return IT;
+            default: return 0;
+        }
     }
 
     #endregion
