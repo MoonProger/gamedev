@@ -8,6 +8,7 @@ import {
 import {
   createRoom,
   listRooms,
+  listRoomsPaginated,
   getRoom,
   joinRoom,
   joinPrivateRoom,
@@ -27,6 +28,33 @@ function getRoomId(req: any): string {
 roomsRoutes.get("/", async (_req, res) => {
   const rooms = await listRooms();
   res.json({ rooms });
+});
+
+roomsRoutes.get("/list", async (req, res) => {
+  const page = Number(req.query.page ?? 1);
+  const limit = Number(req.query.limit ?? 10);
+  const search = typeof req.query.search === "string" ? req.query.search : undefined;
+  const status = typeof req.query.status === "string" ? req.query.status : undefined;
+
+  let hasPassword: boolean | undefined = undefined;
+
+  if (req.query.hasPassword === "true") {
+    hasPassword = true;
+  }
+
+  if (req.query.hasPassword === "false") {
+    hasPassword = false;
+  }
+
+  const result = await listRoomsPaginated({
+    page,
+    limit,
+    search,
+    status,
+    hasPassword,
+  });
+
+  res.json(result);
 });
 
 roomsRoutes.get("/:id", async (req, res) => {
