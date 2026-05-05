@@ -4,13 +4,13 @@ using System.Collections.Generic;
 public class BoardNode : MonoBehaviour
 {
     public string nodeName;
-    public List<BoardNode> neighbors; 
+    public List<BoardNode> neighbors;
     private Renderer rend;
 
     public enum NodeType { Media, Business, Sport, IT, Art, Science, Volounteer, Tourism, Money, Travel, Project, Grant, None }
-    
+
     [Header("Reward Settings")]
-    public NodeType nodeStat = NodeType.None; 
+    public NodeType nodeStat = NodeType.None;
 
     [Header("Highlight Visual")]
     public bool autoCreateHighlightSphere = true;
@@ -22,16 +22,35 @@ public class BoardNode : MonoBehaviour
     public float minHighlightScale = 0.2f;
     public float maxHighlightScale = 1.6f;
     public float highlightYOffset = 0.7f;
+    public float highlightThickness = 0.03f;
+
+    [Header("Outline Visual")]
+    public bool useOutline = true;
+    public bool autoCreateOutlineSphere = true;
+    public Transform outlineVisual;
+    public Material outlineMaterial;
+    public Color outlineColor = new Color(0.45f, 1f, 0.55f, 0.08f);
+    public float outlineEmission = 2.5f;
+    public float outlineScaleMultiplier = 1.2f;
+    public float outlineYOffset = 0.005f;
+    [Range(16, 128)] public int outlineRingSegments = 48;
+    public float outlineRingWidth = 0.08f;
+    public float outlineHoverEmissionMultiplier = 1.7f;
+
     [Header("Hover highlight")]
     public float hoverEmissionMultiplier = 1.8f;
     public float hoverScaleMultiplier = 1.12f;
 
     private Renderer highlightRenderer;
     private Material runtimeHighlightMaterial;
+    private Renderer outlineRenderer;
+    private Material runtimeOutlineMaterial;
+    private LineRenderer outlineLineRenderer;
     private Vector3 baseHighlightScale = Vector3.one;
+    private Vector3 baseOutlineScale = Vector3.one;
     private bool highlightActive;
 
-    void Awake()
+    private void Awake()
     {
         rend = GetComponent<Renderer>();
         EnsureHighlightVisual();
@@ -43,6 +62,8 @@ public class BoardNode : MonoBehaviour
         highlightActive = side;
         if (highlightVisual != null)
             highlightVisual.gameObject.SetActive(side);
+        if (outlineVisual != null)
+            outlineVisual.gameObject.SetActive(side && useOutline);
         ApplyHighlightHoverState(false);
     }
 
@@ -58,10 +79,12 @@ public class BoardNode : MonoBehaviour
         ApplyHighlightHoverState(false);
     }
 
-    void OnDrawGizmos() {
+    private void OnDrawGizmos()
+    {
         Gizmos.color = Color.green;
         if (neighbors == null) return;
-        foreach (var n in neighbors) {
+        foreach (var n in neighbors)
+        {
             if (n != null) Gizmos.DrawLine(transform.position, n.transform.position);
         }
     }
@@ -70,14 +93,14 @@ public class BoardNode : MonoBehaviour
     {
         if (highlightVisual == null && autoCreateHighlightSphere)
         {
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = "MoveHighlightSphere";
-            sphere.transform.SetParent(transform, false);
-            sphere.transform.localPosition = Vector3.up * highlightYOffset;
+            GameObject circle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            circle.name = "MoveHighlightCircle";
+            circle.transform.SetParent(transform, false);
+            circle.transform.localPosition = Vector3.up * highlightYOffset;
 
-            Collider sphereCollider = sphere.GetComponent<Collider>();
-            if (sphereCollider != null)
-                Destroy(sphereCollider);
+            Collider circleCollider = circle.GetComponent<Collider>();
+            if (circleCollider != null)
+                Destroy(circleCollider);
 
             float baseScale = 1f;
             if (rend != null)
@@ -86,8 +109,9 @@ public class BoardNode : MonoBehaviour
                 baseScale = Mathf.Max(size.x, size.z);
             }
             float clampedScale = Mathf.Clamp(baseScale * highlightScaleMultiplier, minHighlightScale, maxHighlightScale);
-            sphere.transform.localScale = Vector3.one * clampedScale;
-            highlightVisual = sphere.transform;
+            float thickness = Mathf.Max(0.001f, highlightThickness);
+            circle.transform.localScale = new Vector3(clampedScale, thickness, clampedScale);
+            highlightVisual = circle.transform;
         }
 
         if (highlightVisual == null)
@@ -101,20 +125,89 @@ public class BoardNode : MonoBehaviour
             ? new Material(highlightMaterial)
             : new Material(Shader.Find("Standard"));
 
-        ConfigureTransparentGlowMaterial(mat);
+        ConfigureTransparentGlowMaterial(mat, highlightColor, highlightEmission);
         runtimeHighlightMaterial = mat;
         highlightRenderer.material = mat;
         baseHighlightScale = highlightVisual.localScale;
+
+        EnsureOutlineVisual();
     }
 
-    private void ConfigureTransparentGlowMaterial(Material mat)
+    private void EnsureOutlineVisual()
+    {
+        if (!useOutline)
+            return;
+
+        if (outlineVisual == null && autoCreateOutlineSphere && highlightVisual != null)
+        {
+            GameObject ringObject = new GameObject("MoveHighlightOutlineRing");
+            ringObject.transform.SetParent(highlightVisual.parent, false);
+            ringObject.transform.localPosition = highlightVisual.localPosition + Vector3.up * outlineYOffset;
+            ringObject.transform.localRotation = highlightVisual.localRotation;
+
+            outlineLineRenderer = ringObject.AddComponent<LineRenderer>();
+            outlineLineRenderer.useWorldSpace = false;
+            outlineLineRenderer.loop = true;
+            outlineLineRenderer.alignment = LineAlignment.View;
+            outlineLineRenderer.textureMode = LineTextureMode.Stretch;
+            outlineLineRenderer.numCornerVertices = 4;
+            outlineLineRenderer.numCapVertices = 4;
+            outlineLineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            outlineLineRenderer.receiveShadows = false;
+            outlineLineRenderer.widthMultiplier = Mathf.Max(0.001f, outlineRingWidth);
+
+            int segments = Mathf.Max(16, outlineRingSegments);
+            outlineLineRenderer.positionCount = segments;
+            float radius = 0.5f;
+            for (int i = 0; i < segments; i++)
+            {
+                float t = (float)i / segments;
+                float angle = t * Mathf.PI * 2f;
+                float x = Mathf.Cos(angle) * radius;
+                float z = Mathf.Sin(angle) * radius;
+                outlineLineRenderer.SetPosition(i, new Vector3(x, 0f, z));
+            }
+
+            float outlineScale = Mathf.Max(1f, outlineScaleMultiplier);
+            ringObject.transform.localScale = new Vector3(
+                highlightVisual.localScale.x * outlineScale,
+                1f,
+                highlightVisual.localScale.z * outlineScale);
+
+            outlineVisual = ringObject.transform;
+        }
+
+        if (outlineVisual == null)
+            return;
+
+        if (outlineLineRenderer == null)
+            outlineLineRenderer = outlineVisual.GetComponent<LineRenderer>();
+
+        outlineRenderer = outlineVisual.GetComponent<Renderer>();
+        if (outlineRenderer == null)
+            return;
+
+        Material mat = outlineMaterial != null
+            ? new Material(outlineMaterial)
+            : new Material(Shader.Find("Standard"));
+
+        ConfigureTransparentGlowMaterial(mat, outlineColor, outlineEmission);
+        runtimeOutlineMaterial = mat;
+        if (outlineLineRenderer != null)
+            outlineLineRenderer.material = mat;
+        else
+            outlineRenderer.material = mat;
+        baseOutlineScale = outlineVisual.localScale;
+    }
+
+    private void ConfigureTransparentGlowMaterial(Material mat, Color color, float emission)
     {
         if (mat == null) return;
 
-        mat.color = highlightColor;
+        mat.color = color;
         if (mat.HasProperty("_EmissionColor"))
         {
-            Color emissionColor = new Color(highlightColor.r, highlightColor.g, highlightColor.b) * highlightEmission;
+            Color emissionColor = new Color(color.r, color.g, color.b) * emission;
             mat.EnableKeyword("_EMISSION");
             mat.SetColor("_EmissionColor", emissionColor);
         }
@@ -147,5 +240,16 @@ public class BoardNode : MonoBehaviour
 
         float scaleMul = hovered ? Mathf.Max(1f, hoverScaleMultiplier) : 1f;
         highlightVisual.localScale = baseHighlightScale * scaleMul;
+
+        if (useOutline && outlineVisual != null)
+        {
+            outlineVisual.localScale = baseOutlineScale * scaleMul;
+            if (runtimeOutlineMaterial != null && runtimeOutlineMaterial.HasProperty("_EmissionColor"))
+            {
+                float outlineEmissionMul = hovered ? Mathf.Max(1f, outlineHoverEmissionMultiplier) : 1f;
+                Color emissionColor = new Color(outlineColor.r, outlineColor.g, outlineColor.b) * (outlineEmission * outlineEmissionMul);
+                runtimeOutlineMaterial.SetColor("_EmissionColor", emissionColor);
+            }
+        }
     }
 }

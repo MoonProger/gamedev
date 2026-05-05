@@ -90,6 +90,9 @@ public class GameManager : MonoBehaviour
     private bool isMoving = false;
     private bool hasRolledThisTurn = false;
     private bool isGameInitialized = false;
+    private bool hasGameEnded = false;
+    private PlayerController pendingVictoryPlayer = null;
+    private Coroutine pendingVictoryRoutine = null;
     private int currentTurnNumber = 1;
 
     public int expectedPlayerCount = 0;
@@ -139,9 +142,16 @@ public class GameManager : MonoBehaviour
 
     private void HandlePlayerStatsChanged(PlayerController changedPlayer)
     {
-        if (changedPlayer == null || expectedPlayerCount <= 0) return;
-        if (currentPlayerIndex < 0 || currentPlayerIndex >= players.Count) return;
-        if (players[currentPlayerIndex] != changedPlayer) return;
+        if (changedPlayer == null || expectedPlayerCount <= 0)
+            return;
+
+        // Важно: победа может произойти в чужой ход (например, от зелёной карты).
+        CheckVictory(changedPlayer);
+
+        if (currentPlayerIndex < 0 || currentPlayerIndex >= players.Count)
+            return;
+        if (players[currentPlayerIndex] != changedPlayer)
+            return;
 
         uiManager?.UpdateAllStats(changedPlayer);
     }
@@ -189,6 +199,13 @@ public class GameManager : MonoBehaviour
     private void InitializeGameFromReact()
     {
         isGameInitialized = false;
+        hasGameEnded = false;
+        pendingVictoryPlayer = null;
+        if (pendingVictoryRoutine != null)
+        {
+            StopCoroutine(pendingVictoryRoutine);
+            pendingVictoryRoutine = null;
+        }
         selectedCharacterByPlayer.Clear();
         currentTurnNumber = 1;
         RebuildPlayerIndexLookup();
@@ -266,6 +283,7 @@ public class GameManager : MonoBehaviour
 
     public void TryRollDice()
     {
+        if (hasGameEnded) { LogGame("Игра уже завершена."); return; }
         if (!isGameInitialized) { LogGame("Игра еще не готова. Сначала завершите выбор персонажей."); return; }
         if (isMoving) { LogGame("Нельзя бросить кубик во время движения фишки."); return; }
         if (hasRolledThisTurn) { LogGame("Кубик уже брошен. Выберите точку назначения."); return; }
@@ -921,12 +939,40 @@ private IEnumerable<CardVisual> EnumerateDeckCards()
 
 private void CheckVictory(PlayerController player)
 {
-    if (player.success < 12) return;
+    if (hasGameEnded) return;
+    if (player == null || player.success < 12) return;
 
+    // Победу показываем только когда все карты уже закрыты.
+    if (pendingVictoryPlayer == null || pendingVictoryPlayer.success < 12)
+        pendingVictoryPlayer = player;
+
+    if (pendingVictoryRoutine == null)
+        pendingVictoryRoutine = StartCoroutine(ResolveVictoryWhenCardsHidden());
+}
+
+private IEnumerator ResolveVictoryWhenCardsHidden()
+{
+    yield return WaitForAllCardsHidden(60f);
+
+    PlayerController winner = pendingVictoryPlayer;
+    pendingVictoryPlayer = null;
+    pendingVictoryRoutine = null;
+
+    if (hasGameEnded) yield break;
+    if (winner == null || winner.success < 12) yield break;
+
+    FinalizeVictory(winner);
+}
+
+private void FinalizeVictory(PlayerController player)
+{
+    hasGameEnded = true;
     LogPlayerEvent(player, $"победил! Очки успеха: {player.success}.");
 
     if (victorySound != null)
         audioSource.PlayOneShot(victorySound);
+    if (bgMusicSource != null)
+        bgMusicSource.Stop();
 
     ShowCard(
     "🏆 ПОБЕДА!",
@@ -934,9 +980,11 @@ private void CheckVictory(PlayerController player)
     CardType.Red,
     "success"
     );
+    uiManager?.ShowVictoryScreen(player.playerName, GetLogColorForPlayer(player));
 
     isMoving = true;
     hasRolledThisTurn = true;
+    isGameInitialized = false;
 }
 
 //хендлеры карточек

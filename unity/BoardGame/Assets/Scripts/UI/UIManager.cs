@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using UnityEngine.UI;
 
@@ -38,9 +39,15 @@ public class UIManager : MonoBehaviour
     [Range(0f, 1f)] public float autoScrollBottomThreshold = 0.08f;
     public int maxLogEntries = 250;
 
+    [Header("Экран победы")]
+    public CanvasGroup victoryOverlay;
+    public TextMeshProUGUI victoryText;
+    public float victoryFadeDuration = 0.45f;
+
     private readonly List<string> logEntries = new List<string>();
     private readonly StringBuilder logBuilder = new StringBuilder(8192);
     private int currentLogTurn = 1;
+    private Coroutine victoryFadeRoutine;
 
     private void Start()
     {
@@ -55,6 +62,13 @@ public class UIManager : MonoBehaviour
         }
         if (currentTurnStatusText != null)
             currentTurnStatusText.gameObject.SetActive(false);
+        if (victoryOverlay != null)
+        {
+            victoryOverlay.alpha = 0f;
+            victoryOverlay.gameObject.SetActive(false);
+            victoryOverlay.blocksRaycasts = false;
+            victoryOverlay.interactable = false;
+        }
         RefreshLogView();
     }
 
@@ -135,6 +149,23 @@ public class UIManager : MonoBehaviour
         RefreshLogView();
     }
 
+    public void ShowVictoryScreen(string winnerName, Color winnerColor)
+    {
+        if (victoryOverlay == null)
+            return;
+
+        if (victoryText != null)
+        {
+            string safeName = string.IsNullOrWhiteSpace(winnerName) ? "Игрок" : winnerName;
+            string colorHex = ColorUtility.ToHtmlStringRGB(winnerColor);
+            victoryText.text = $"<b>Победил <color=#{colorHex}>{safeName}</color></b>";
+        }
+
+        if (victoryFadeRoutine != null)
+            StopCoroutine(victoryFadeRoutine);
+        victoryFadeRoutine = StartCoroutine(FadeInVictoryOverlay());
+    }
+
     private void RefreshLogView()
     {
         if (logText == null) return;
@@ -185,5 +216,26 @@ public class UIManager : MonoBehaviour
         if (!autoScrollOnlyWhenNearBottom)
             return true;
         return logScrollRect.verticalNormalizedPosition <= Mathf.Clamp01(autoScrollBottomThreshold);
+    }
+
+    private IEnumerator FadeInVictoryOverlay()
+    {
+        victoryOverlay.gameObject.SetActive(true);
+        victoryOverlay.blocksRaycasts = true;
+        victoryOverlay.interactable = true;
+
+        float duration = Mathf.Max(0.01f, victoryFadeDuration);
+        float startAlpha = victoryOverlay.alpha;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            victoryOverlay.alpha = Mathf.Lerp(startAlpha, 1f, t);
+            yield return null;
+        }
+
+        victoryOverlay.alpha = 1f;
+        victoryFadeRoutine = null;
     }
 }
