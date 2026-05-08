@@ -425,23 +425,13 @@ export function attachWs(server: HttpServer) {
         return;
       }
 
-      if (msg.type === "game.card_closed") {
-        broadcast(meta.roomId, {
-          type: "game.card_closed",
-          payload: {
-            playerId: msg.payload.playerId,
-            cardId: msg.payload.cardId,
-          },
-        } as any);
-        return;
-      }
-
       touchRoom(meta.roomId);
       await handleGameMessage({
         roomId: meta.roomId,
         userId: meta.userId,
         msg,
         broadcast,
+        reply: (outMsg) => safeSend(ws, outMsg),
       });
     });
 

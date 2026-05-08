@@ -45,6 +45,49 @@ const INITIAL_DEV_DELTAS: DevDeltaState = {
   grants: 0,
 };
 
+const SERVER_ERROR_RU: Record<string, string> = {
+  ROOM_NOT_FOUND: 'Комната не найдена',
+  GAME_ALREADY_STARTED: 'Игра уже началась',
+  NOT_ALL_READY_OR_TOO_FEW_PLAYERS: 'Не все игроки готовы или игроков недостаточно для старта',
+  GAME_NOT_STARTED: 'Игра еще не началась',
+  GAME_PAUSED: 'Игра на паузе',
+  INVALID_CARD_CLOSE_EVENT: 'Некорректное закрытие карточки',
+  NO_PENDING_GREEN_CHOICE: 'Сейчас нет ожидаемого выбора по зеленой карте',
+  NOT_YOUR_GREEN_CHOICE: 'Это не ваш выбор по зеленой карте',
+  GREEN_CHOICE_CARD_MISMATCH: 'Выбор сделан не для той зеленой карты',
+  GAME_FINISH_PENDING_CARD_CLOSE: 'Сначала закройте победную карту',
+  GREEN_CHOICE_REQUIRED: 'Сначала выберите цель по зеленой карте',
+  TARGET_PLAYER_NOT_IN_ROOM: 'Выбранный игрок не находится в комнате',
+  NOT_YOUR_TURN: 'Сейчас не ваш ход',
+  WRONG_PHASE: 'Сейчас это действие недоступно',
+  ROLL_DICE_FIRST: 'Сначала бросьте кубик',
+  INVALID_STEPS: 'Некорректное количество шагов',
+  STEPS_MUST_EQUAL_DICE: 'Количество шагов должно совпадать с броском кубика',
+  MOVE_TARGET_REQUIRED: 'Не выбрана целевая клетка для хода',
+  INVALID_MOVE_PATH: 'Нельзя перейти на эту клетку по правилам доски',
+  WRONG_PHASE_FOR_CARD: 'Сейчас нельзя тянуть карту',
+  CARD_DECK_NOT_FOUND_FOR_SECTOR: 'Для этой клетки нет соответствующей колоды',
+  GRANT_REQUIRES_LEVEL_10_SPHERE: 'Для заявки на грант нужен 10-й уровень хотя бы в одной сфере',
+  TRAVEL_NOT_ENOUGH_MONEY: 'Недостаточно денег для путешествия',
+  CARD_DECK_EMPTY: 'Колода пуста',
+  WRONG_PHASE_FOR_PROJECT: 'Сейчас нельзя выполнять проект',
+  PROJECT_ACTION_NOT_ALLOWED_ON_THIS_SECTOR: 'На этой клетке нельзя выполнять проект',
+  NO_AVAILABLE_PROJECTS: 'Нет доступных проектов',
+  NOT_ENOUGH_RESOURCES_FOR_PROJECT: 'Недостаточно ресурсов для проекта',
+};
+
+const SAD_SOUND_ERROR_CODES = new Set([
+  'GRANT_REQUIRES_LEVEL_10_SPHERE',
+  'NOT_ENOUGH_RESOURCES_FOR_PROJECT',
+  'NO_AVAILABLE_PROJECTS',
+  'TRAVEL_NOT_ENOUGH_MONEY',
+]);
+
+function translateServerError(message: string): string {
+  const key = String(message ?? '');
+  return SERVER_ERROR_RU[key] ?? key;
+}
+
 function normalizeRoomPlayers(rawRoom: any): Player[] {
   if (!Array.isArray(rawRoom?.players)) return [];
   return rawRoom.players.map((p: any) => ({
@@ -63,6 +106,7 @@ type UnityPlayerState = {
   userId: string;
   position: number;
   grants: number;
+  selectedCharacterId?: string;
   completedProjects: string[];
   playerState: {
     money: number;
@@ -105,6 +149,10 @@ function toUnityGameStatePayload(raw: any, knownPlayers: Player[]): UnityGameSta
       userId,
       position: Number(raw?.positions?.[userId] ?? 0),
       grants: Number(deckState.grants ?? 0),
+      selectedCharacterId:
+        typeof deckState?.selectedCharacter?.characterId === 'string'
+          ? deckState.selectedCharacter.characterId
+          : undefined,
       completedProjects,
       playerState: {
         money: Number(raw?.money?.[userId] ?? 0),
@@ -371,7 +419,22 @@ const Game: React.FC = () => {
             }
             break;
           case 'error':
-            showToast(data.payload.message, 'error');
+            {
+              const code = String(data.payload?.message ?? '');
+              const localizedMessage = translateServerError(code);
+              showToast(localizedMessage, 'error');
+              if (isLoadedRef.current) {
+                sendMessage(
+                  'GameManager',
+                  'OnServerError',
+                  JSON.stringify({
+                    code,
+                    message: localizedMessage,
+                    playSadSound: SAD_SOUND_ERROR_CODES.has(code) || code.includes('TRAVEL'),
+                  }),
+                );
+              }
+            }
             break;
         }
       } catch (e) {
@@ -407,6 +470,8 @@ const Game: React.FC = () => {
   // - ws.game.move(jsonPayload)
   // - ws.game.card(jsonPayload)
   // - ws.game.project(jsonPayload)
+  // - ws.game.character_select(jsonPayload)
+  // - ws.game.green_choice(jsonPayload)
   useEffect(() => {
     const onRollDice = () => {
       sendWsMessage({ type: 'game.roll_dice', payload: {} });
@@ -513,11 +578,78 @@ const Game: React.FC = () => {
       }
     };
 
+    const onCharacterSelect = (rawPayload?: string) => {
+      try {
+        const payload = rawPayload ? JSON.parse(rawPayload) : {};
+        const characterId =
+          typeof payload.characterId === 'string' && payload.characterId.trim().length > 0
+            ? payload.characterId
+            : undefined;
+        const statsRaw = payload.stats ?? {};
+        const toInt = (value: unknown) => {
+          const n = Number(value);
+          return Number.isFinite(n) ? Math.trunc(n) : 0;
+        };
+        sendWsMessage({
+          type: 'game.character_select',
+          payload: {
+            characterId,
+            stats: {
+              money: toInt(statsRaw.money),
+              experience: toInt(statsRaw.experience),
+              success: toInt(statsRaw.success),
+              volounteer: toInt(statsRaw.volounteer),
+              science: toInt(statsRaw.science),
+              art: toInt(statsRaw.art),
+              media: toInt(statsRaw.media),
+              business: toInt(statsRaw.business),
+              sport: toInt(statsRaw.sport),
+              tourism: toInt(statsRaw.tourism),
+              it: toInt(statsRaw.it),
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Invalid Unity character_select payload', error);
+        showToast('Unity прислал невалидный JSON для game.character_select', 'error');
+      }
+    };
+
+    const onGreenChoice = (rawPayload?: string) => {
+      try {
+        const payload = rawPayload ? JSON.parse(rawPayload) : {};
+        const cardId =
+          typeof payload.cardId === 'string' && payload.cardId.trim().length > 0
+            ? payload.cardId
+            : undefined;
+        const partnerUserId =
+          typeof payload.partnerUserId === 'string' && payload.partnerUserId.trim().length > 0
+            ? payload.partnerUserId
+            : undefined;
+        if (!cardId) {
+          showToast('Unity прислал некорректный game.green_choice (cardId)', 'error');
+          return;
+        }
+        sendWsMessage({
+          type: 'game.green_choice',
+          payload: {
+            cardId,
+            partnerUserId,
+          },
+        });
+      } catch (error) {
+        console.error('Invalid Unity green_choice payload', error);
+        showToast('Unity прислал невалидный JSON для game.green_choice', 'error');
+      }
+    };
+
     addEventListener('ws.game.roll_dice', onRollDice);
     addEventListener('ws.game.move', onMove);
     addEventListener('ws.game.card', onCard);
     addEventListener('ws.game.project', onProject);
     addEventListener('ws.game.card_closed', onCardClosed);
+    addEventListener('ws.game.character_select', onCharacterSelect);
+    addEventListener('ws.game.green_choice', onGreenChoice);
 
     return () => {
       removeEventListener('ws.game.roll_dice', onRollDice);
@@ -525,6 +657,8 @@ const Game: React.FC = () => {
       removeEventListener('ws.game.card', onCard);
       removeEventListener('ws.game.project', onProject);
       removeEventListener('ws.game.card_closed', onCardClosed);
+      removeEventListener('ws.game.character_select', onCharacterSelect);
+      removeEventListener('ws.game.green_choice', onGreenChoice);
     };
   }, [addEventListener, removeEventListener, sendWsMessage, showToast]);
 

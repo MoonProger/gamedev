@@ -59,6 +59,32 @@ export type WsIn =
           grants?: number;
         };
       };
+    }
+  | {
+      type: "game.character_select";
+      payload: {
+        characterId?: string;
+        stats?: {
+          money?: number;
+          experience?: number;
+          success?: number;
+          volounteer?: number;
+          science?: number;
+          art?: number;
+          media?: number;
+          business?: number;
+          sport?: number;
+          tourism?: number;
+          it?: number;
+        };
+      };
+    }
+  | {
+      type: "game.green_choice";
+      payload: {
+        cardId: string;
+        partnerUserId?: string;
+      };
     };
 
 export type WsOut =

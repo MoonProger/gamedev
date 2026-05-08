@@ -171,13 +171,38 @@ function applySphereMilestonesForUser(game: any, userId: string): number {
   return 0;
 }
 
+function getGreenChoiceCandidates(
+  game: any,
+  roomPlayers: { userId: string }[],
+  userId: string,
+  card: ServerCard,
+  currentDeckKey: string
+) {
+  const soloLeader = card.soloEffects[0];
+  const soloPartner = card.soloEffects[1];
+  const coopLeader = card.coopEffects[0];
+  const coopPartner = card.coopEffects[1];
+
+  const resolve = (eff: any) => (eff ? mapStatEnumToKey(eff.statName, currentDeckKey) : null);
+  const coopPartnerStat = resolve(coopPartner);
+
+  const myPartnerLevel = coopPartnerStat ? getStatValue(game, userId, coopPartnerStat) : 0;
+  const candidates = roomPlayers
+    .map((p, idx) => ({ userId: p.userId, idx }))
+    .filter((p) => p.userId !== userId && coopPartnerStat && getStatValue(game, p.userId, coopPartnerStat) >= myPartnerLevel);
+
+  const orderedIds = [userId, ...candidates.map((c) => c.userId)];
+  return Array.from(new Set(orderedIds));
+}
+
 function applyGreenCardServerSide(
   game: any,
   roomPlayers: { userId: string }[],
   userId: string,
   card: ServerCard,
   currentDeckKey: string,
-  deltasByUser: Map<string, Array<{ stat: string; delta: number }>>
+  deltasByUser: Map<string, Array<{ stat: string; delta: number }>>,
+  partnerChoiceUserId?: string
 ) {
   const soloLeader = card.soloEffects[0];
   const soloPartner = card.soloEffects[1];
@@ -190,21 +215,11 @@ function applyGreenCardServerSide(
   const coopLeaderStat = resolve(coopLeader);
   const coopPartnerStat = resolve(coopPartner);
 
-  const myPartnerLevel = coopPartnerStat ? getStatValue(game, userId, coopPartnerStat) : 0;
-  const candidates = roomPlayers
-    .map((p, idx) => ({ userId: p.userId, idx }))
-    .filter((p) => p.userId !== userId && coopPartnerStat && getStatValue(game, p.userId, coopPartnerStat) >= myPartnerLevel);
-
-  let chosenPartnerId: string | null = null;
-  if (candidates.length > 0 && coopPartnerStat) {
-    candidates.sort((a, b) => {
-      const lvA = getStatValue(game, a.userId, coopPartnerStat);
-      const lvB = getStatValue(game, b.userId, coopPartnerStat);
-      if (lvA !== lvB) return lvB - lvA;
-      return a.idx - b.idx;
-    });
-    chosenPartnerId = candidates[0].userId;
-  }
+  const candidateIds = getGreenChoiceCandidates(game, roomPlayers, userId, card, currentDeckKey);
+  const chosenPartnerId =
+    partnerChoiceUserId && candidateIds.includes(partnerChoiceUserId) && partnerChoiceUserId !== userId
+      ? partnerChoiceUserId
+      : null;
 
   if (!chosenPartnerId) {
     if (soloLeader && soloLeaderStat)
@@ -218,7 +233,7 @@ function applyGreenCardServerSide(
     applyStatDeltaTracked(game, userId, coopLeaderStat, Number(coopLeader.amount) || 0, deltasByUser);
   if (coopPartner && coopPartnerStat)
     applyStatDeltaTracked(game, chosenPartnerId, coopPartnerStat, Number(coopPartner.amount) || 0, deltasByUser);
-  return { mode: "coop", partnerId: chosenPartnerId };
+  return { mode: "coop", partnerId: chosenPartnerId, candidateIds };
 }
 
 function applyCardAndCollectDeltas(
@@ -226,7 +241,8 @@ function applyCardAndCollectDeltas(
   roomPlayers: { userId: string }[],
   userId: string,
   card: ServerCard,
-  currentDeckKey: string
+  currentDeckKey: string,
+  greenPartnerChoiceUserId?: string
 ) {
   const deltasByUser = new Map<string, Array<{ stat: string; delta: number }>>();
   const dice2d6 = randDice() + randDice();
@@ -236,7 +252,15 @@ function applyCardAndCollectDeltas(
   let greenResolution: { mode: string; partnerId: string | null } | null = null;
 
   if (card.cardType === 4) {
-    greenResolution = applyGreenCardServerSide(game, roomPlayers, userId, card, currentDeckKey, deltasByUser);
+    greenResolution = applyGreenCardServerSide(
+      game,
+      roomPlayers,
+      userId,
+      card,
+      currentDeckKey,
+      deltasByUser,
+      greenPartnerChoiceUserId
+    );
   } else {
     const effectsToApply = card.effects;
 
@@ -280,6 +304,11 @@ function getPlayerDeckState(game: any, userId: string): {
   grants: number;
   completedProjects: Record<string, boolean>;
   milestoneClaims: Record<string, boolean>;
+  selectedCharacter?: {
+    characterId: string;
+    selectedAt: string;
+    byUserId: string;
+  };
 } {
   ensurePlayerState(game, userId);
   if (!game.deckState[userId].milestoneClaims) game.deckState[userId].milestoneClaims = {};
@@ -326,6 +355,76 @@ function buildAffectedPlayersSnapshot(game: any, affectedPlayerIds: string[]) {
   }));
 }
 
+type PendingCardWin = {
+  winnerUserId: string;
+  ownerUserId: string;
+  cardId: string;
+};
+
+type PendingGreenChoice = {
+  ownerUserId: string;
+  cardId: string;
+  deckKey: string;
+  card: ServerCard;
+  candidateUserIds: string[];
+};
+
+function getMetaDeckState(game: any): any {
+  if (!game.deckState) game.deckState = {};
+  if (!game.deckState.__meta) game.deckState.__meta = {};
+  return game.deckState.__meta;
+}
+
+function getPendingCardWin(game: any): PendingCardWin | null {
+  const meta = getMetaDeckState(game);
+  const pending = meta.pendingCardWin;
+  if (!pending) return null;
+  if (
+    typeof pending.winnerUserId !== "string" ||
+    typeof pending.ownerUserId !== "string" ||
+    typeof pending.cardId !== "string"
+  ) {
+    return null;
+  }
+  return pending as PendingCardWin;
+}
+
+function setPendingCardWin(game: any, pending: PendingCardWin) {
+  const meta = getMetaDeckState(game);
+  meta.pendingCardWin = pending;
+}
+
+function clearPendingCardWin(game: any) {
+  const meta = getMetaDeckState(game);
+  delete meta.pendingCardWin;
+}
+
+function getPendingGreenChoice(game: any): PendingGreenChoice | null {
+  const meta = getMetaDeckState(game);
+  const pending = meta.pendingGreenChoice;
+  if (!pending) return null;
+  if (
+    typeof pending.ownerUserId !== "string" ||
+    typeof pending.cardId !== "string" ||
+    typeof pending.deckKey !== "string" ||
+    typeof pending.card !== "object" ||
+    !Array.isArray(pending.candidateUserIds)
+  ) {
+    return null;
+  }
+  return pending as PendingGreenChoice;
+}
+
+function setPendingGreenChoice(game: any, pending: PendingGreenChoice) {
+  const meta = getMetaDeckState(game);
+  meta.pendingGreenChoice = pending;
+}
+
+function clearPendingGreenChoice(game: any) {
+  const meta = getMetaDeckState(game);
+  delete meta.pendingGreenChoice;
+}
+
 function pickWinnerAtSuccess12(roomPlayers: { userId: string }[], game: any): string | null {
   for (const p of roomPlayers) {
     const success = Number(game.scores?.[p.userId]?.success ?? 0);
@@ -340,6 +439,8 @@ async function finalizeAndBroadcastWin(
   game: any,
   broadcast: (roomId: string, msg: WsOut) => void
 ) {
+  clearPendingCardWin(game);
+  clearPendingGreenChoice(game);
   await finalizeGame(roomId, winnerUserId, game);
 
   game.started = false;
@@ -396,8 +497,12 @@ export async function handleGameMessage(ctx: {
   userId: string;
   msg: WsIn;
   broadcast: (roomId: string, msg: WsOut) => void;
+  reply: (msg: WsOut) => void;
 }) {
-  const { roomId, userId, msg, broadcast } = ctx;
+  const { roomId, userId, msg, broadcast, reply } = ctx;
+  const sendError = (message: string) => {
+    reply({ type: "error", payload: { message } } as any);
+  };
 
   const room = await prisma.room.findUnique({
     where: { id: roomId },
@@ -405,7 +510,7 @@ export async function handleGameMessage(ctx: {
   });
 
   if (!room) {
-    broadcast(roomId, { type: "error", payload: { message: "ROOM_NOT_FOUND" } });
+    sendError("ROOM_NOT_FOUND");
     return;
   }
 
@@ -413,7 +518,7 @@ export async function handleGameMessage(ctx: {
 
   if (msg.type === "game.start") {
     if (game.started) {
-      broadcast(roomId, { type: "error", payload: { message: "GAME_ALREADY_STARTED" } });
+      sendError("GAME_ALREADY_STARTED");
       return;
     }
 
@@ -421,7 +526,7 @@ export async function handleGameMessage(ctx: {
     const allReady = players.length >= 2 && players.every((p) => p.isReady);
 
     if (!allReady) {
-      broadcast(roomId, { type: "error", payload: { message: "NOT_ALL_READY_OR_TOO_FEW_PLAYERS" } });
+      sendError("NOT_ALL_READY_OR_TOO_FEW_PLAYERS");
       return;
     }
 
@@ -430,6 +535,8 @@ export async function handleGameMessage(ctx: {
     game.activePlayerId = players[0].userId;
     game.lastDice = null;
     game.phase = "WAITING_ROLL";
+    clearPendingCardWin(game);
+    clearPendingGreenChoice(game);
 
     for (const p of players) {
       ensurePlayerState(game, p.userId);
@@ -447,12 +554,201 @@ export async function handleGameMessage(ctx: {
   }
 
   if (!game.started) {
-    broadcast(roomId, { type: "error", payload: { message: "GAME_NOT_STARTED" } });
+    sendError("GAME_NOT_STARTED");
     return;
   }
 
   if (game.isPaused) {
-    broadcast(roomId, { type: "error", payload: { message: "GAME_PAUSED" } });
+    sendError("GAME_PAUSED");
+    return;
+  }
+
+  if (msg.type === "game.character_select") {
+    ensurePlayerState(game, userId);
+    const toInt = (value: unknown) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? Math.trunc(n) : 0;
+    };
+    const stats = msg.payload.stats ?? {};
+    const selected = {
+      characterId:
+        typeof msg.payload.characterId === "string" && msg.payload.characterId.trim().length > 0
+          ? msg.payload.characterId
+          : "client_character",
+      selectedAt: new Date().toISOString(),
+      byUserId: userId,
+    };
+    const deckState = getPlayerDeckState(game, userId);
+    deckState.selectedCharacter = selected;
+    deckState.grants = 0;
+    deckState.completedProjects = {};
+    deckState.milestoneClaims = {};
+
+    game.money[userId] = clampByStat("money", toInt(stats.money));
+    game.experience[userId] = clampByStat("experience", toInt(stats.experience));
+    game.scores[userId]["success"] = clampByStat("success", toInt(stats.success));
+    game.scores[userId]["volounteer"] = clampByStat("volounteer", toInt(stats.volounteer));
+    game.scores[userId]["science"] = clampByStat("science", toInt(stats.science));
+    game.scores[userId]["art"] = clampByStat("art", toInt(stats.art));
+    game.scores[userId]["media"] = clampByStat("media", toInt(stats.media));
+    game.scores[userId]["business"] = clampByStat("business", toInt(stats.business));
+    game.scores[userId]["sport"] = clampByStat("sport", toInt(stats.sport));
+    game.scores[userId]["tourism"] = clampByStat("tourism", toInt(stats.tourism));
+    game.scores[userId]["it"] = clampByStat("it", toInt(stats.it));
+
+    game.history.push({
+      type: "character_select",
+      playerId: userId,
+      characterId: selected.characterId,
+      at: selected.selectedAt,
+    });
+
+    await saveGameState(roomId, game);
+    broadcast(roomId, { type: "game.state", payload: game } as any);
+    return;
+  }
+
+  if (msg.type === "game.card_closed") {
+    const pending = getPendingCardWin(game);
+    broadcast(roomId, {
+      type: "game.card_closed",
+      payload: {
+        playerId: msg.payload.playerId,
+        cardId: msg.payload.cardId,
+      },
+    } as any);
+
+    if (!pending) {
+      return;
+    }
+    if (
+      msg.payload.playerId !== pending.ownerUserId ||
+      msg.payload.cardId !== pending.cardId ||
+      userId !== pending.ownerUserId
+    ) {
+      sendError("INVALID_CARD_CLOSE_EVENT");
+      return;
+    }
+
+    await finalizeAndBroadcastWin(roomId, pending.winnerUserId, game, broadcast);
+    return;
+  }
+
+  if (msg.type === "game.green_choice") {
+    const pendingGreen = getPendingGreenChoice(game);
+    if (!pendingGreen) {
+      sendError("NO_PENDING_GREEN_CHOICE");
+      return;
+    }
+    if (userId !== pendingGreen.ownerUserId) {
+      sendError("NOT_YOUR_GREEN_CHOICE");
+      return;
+    }
+    if (msg.payload.cardId !== pendingGreen.cardId) {
+      sendError("GREEN_CHOICE_CARD_MISMATCH");
+      return;
+    }
+
+    const partnerUserId =
+      typeof msg.payload.partnerUserId === "string" ? msg.payload.partnerUserId : undefined;
+    const primaryResult = applyCardAndCollectDeltas(
+      game,
+      room.players,
+      userId,
+      pendingGreen.card,
+      pendingGreen.deckKey,
+      partnerUserId
+    );
+    clearPendingGreenChoice(game);
+
+    const affectedPlayerIds = Array.from(primaryResult.deltasByUser.keys());
+    if (!affectedPlayerIds.includes(userId)) affectedPlayerIds.push(userId);
+    const playerDeckState = getPlayerDeckState(game, userId);
+
+    game.history.push({
+      type: "card",
+      playerId: userId,
+      resolvedCardId: pendingGreen.card.id,
+      deckKey: pendingGreen.deckKey,
+      deltas: primaryResult.deltas,
+      affectedPlayers: affectedPlayerIds,
+      chainedCards: [],
+      grants: playerDeckState.grants,
+      at: new Date().toISOString(),
+    });
+
+    const winnerUserId = pickWinnerAtSuccess12(room.players, game);
+    if (winnerUserId) {
+      setPendingCardWin(game, {
+        winnerUserId,
+        ownerUserId: userId,
+        cardId: pendingGreen.card.id,
+      });
+      await saveGameState(roomId, game);
+      broadcast(roomId, {
+        type: "game.card",
+        payload: {
+          playerId: userId,
+          cardId: pendingGreen.card.id,
+          cardType: pendingGreen.card.cardType,
+          imageGuid: pendingGreen.card.imageGuid,
+          deckKey: pendingGreen.deckKey,
+          deltas: primaryResult.deltas,
+          chainedCards: [],
+          checks: primaryResult.checks,
+          affectedPlayers: buildAffectedPlayersSnapshot(game, affectedPlayerIds),
+          grants: playerDeckState.grants,
+          scores: game.scores[userId],
+          money: game.money[userId],
+          experience: game.experience[userId],
+          playerState: buildPlayerStateSnapshot(game, userId),
+        },
+      } as any);
+      return;
+    }
+
+    const next = nextTurn(room.players, userId);
+    game.activePlayerId = next;
+    game.lastDice = null;
+    game.phase = "WAITING_ROLL";
+
+    await saveGameState(roomId, game);
+    broadcast(roomId, {
+      type: "game.card",
+      payload: {
+        playerId: userId,
+        cardId: pendingGreen.card.id,
+        cardType: pendingGreen.card.cardType,
+        imageGuid: pendingGreen.card.imageGuid,
+        deckKey: pendingGreen.deckKey,
+        deltas: primaryResult.deltas,
+        chainedCards: [],
+        checks: primaryResult.checks,
+        affectedPlayers: buildAffectedPlayersSnapshot(game, affectedPlayerIds),
+        grants: playerDeckState.grants,
+        scores: game.scores[userId],
+        money: game.money[userId],
+        experience: game.experience[userId],
+        playerState: buildPlayerStateSnapshot(game, userId),
+      },
+    } as any);
+    broadcast(roomId, {
+      type: "game.turn_changed",
+      payload: { activePlayerId: next },
+    } as any);
+    broadcast(roomId, { type: "game.state", payload: game } as any);
+    return;
+  }
+
+  const pendingCardWin = getPendingCardWin(game);
+  if (pendingCardWin) {
+    sendError("GAME_FINISH_PENDING_CARD_CLOSE");
+    return;
+  }
+
+  const pendingGreenChoice = getPendingGreenChoice(game);
+  if (pendingGreenChoice) {
+    sendError("GREEN_CHOICE_REQUIRED");
     return;
   }
 
@@ -463,7 +759,7 @@ export async function handleGameMessage(ctx: {
         : userId;
     const targetInRoom = room.players.some((p) => p.userId === targetUserId);
     if (!targetInRoom) {
-      broadcast(roomId, { type: "error", payload: { message: "TARGET_PLAYER_NOT_IN_ROOM" } });
+      sendError("TARGET_PLAYER_NOT_IN_ROOM");
       return;
     }
 
@@ -545,7 +841,7 @@ export async function handleGameMessage(ctx: {
   }
 
   if (game.activePlayerId !== userId) {
-    broadcast(roomId, { type: "error", payload: { message: "NOT_YOUR_TURN" } });
+    sendError("NOT_YOUR_TURN");
     return;
   }
 
@@ -553,7 +849,7 @@ export async function handleGameMessage(ctx: {
 
   if (msg.type === "game.roll_dice") {
     if (game.phase !== "WAITING_ROLL") {
-      broadcast(roomId, { type: "error", payload: { message: "WRONG_PHASE" } });
+      sendError("WRONG_PHASE");
       return;
     }
 
@@ -577,34 +873,38 @@ export async function handleGameMessage(ctx: {
 
   if (msg.type === "game.move") {
     if (game.phase !== "WAITING_MOVE" || !game.lastDice) {
-      broadcast(roomId, { type: "error", payload: { message: "ROLL_DICE_FIRST" } });
+      sendError("ROLL_DICE_FIRST");
       return;
     }
 
     const steps = Number(msg.payload.steps);
     if (!Number.isFinite(steps) || steps < 1 || steps > 6) {
-      broadcast(roomId, { type: "error", payload: { message: "INVALID_STEPS" } });
+      sendError("INVALID_STEPS");
       return;
     }
 
     if (steps !== game.lastDice) {
-      broadcast(roomId, { type: "error", payload: { message: "STEPS_MUST_EQUAL_DICE" } });
+      sendError("STEPS_MUST_EQUAL_DICE");
       return;
     }
 
     const fromSector = game.positions[userId] ?? getBoardStartSector();
+    const rolledDice = Number(game.lastDice);
     let toSector = fromSector + steps;
 
     if (isStrictBoardValidationEnabled()) {
       const requestedToSector = Number(msg.payload.toSector);
       if (!Number.isInteger(requestedToSector) || requestedToSector < 0) {
-        broadcast(roomId, { type: "error", payload: { message: "MOVE_TARGET_REQUIRED" } });
+        sendError("MOVE_TARGET_REQUIRED");
         return;
       }
 
-      const valid = isMoveReachable(fromSector, requestedToSector, steps);
+      const fromSectorType = normalizeNodeType(getBoardSectorById(fromSector)?.nodeType);
+      const isMoneyStayMove =
+        fromSectorType === "money" && requestedToSector === fromSector && steps === rolledDice;
+      const valid = isMoneyStayMove || isMoveReachable(fromSector, requestedToSector, steps);
       if (!valid) {
-        broadcast(roomId, { type: "error", payload: { message: "INVALID_MOVE_PATH" } });
+        sendError("INVALID_MOVE_PATH");
         return;
       }
 
@@ -658,7 +958,7 @@ export async function handleGameMessage(ctx: {
         playerId: userId,
         fromSector,
         toSector,
-        dice: game.lastDice,
+        dice: rolledDice,
       },
     } as any);
 
@@ -680,7 +980,7 @@ export async function handleGameMessage(ctx: {
 
   if (msg.type === "game.card") {
     if (game.phase !== "WAITING_ACTION") {
-      broadcast(roomId, { type: "error", payload: { message: "WRONG_PHASE_FOR_CARD" } });
+      sendError("WRONG_PHASE_FOR_CARD");
       return;
     }
 
@@ -722,7 +1022,7 @@ export async function handleGameMessage(ctx: {
         broadcast(roomId, { type: "game.state", payload: game } as any);
         return;
       }
-      broadcast(roomId, { type: "error", payload: { message: "CARD_DECK_NOT_FOUND_FOR_SECTOR" } });
+      sendError("CARD_DECK_NOT_FOUND_FOR_SECTOR");
       return;
     }
 
@@ -741,10 +1041,7 @@ export async function handleGameMessage(ctx: {
 
       await saveGameState(roomId, game);
 
-      broadcast(roomId, {
-        type: "error",
-        payload: { message: "GRANT_REQUIRES_LEVEL_10_SPHERE" },
-      });
+      sendError("GRANT_REQUIRES_LEVEL_10_SPHERE");
 
       broadcast(roomId, {
         type: "game.turn_changed",
@@ -757,11 +1054,97 @@ export async function handleGameMessage(ctx: {
 
     const card = drawRandomCard(deckKey);
     if (!card) {
-      broadcast(roomId, { type: "error", payload: { message: "CARD_DECK_EMPTY" } });
+      sendError("CARD_DECK_EMPTY");
+      return;
+    }
+
+    let travelPaymentDelta = 0;
+    if (deckKey === "travel") {
+      const currentMoney = Number(game.money[userId] ?? 0);
+      if (currentMoney < 1) {
+        const { next } = await advanceTurnWithActionError(
+          roomId,
+          room.players,
+          game,
+          userId,
+          "TRAVEL_NOT_ENOUGH_MONEY",
+          "travel_unavailable"
+        );
+        sendError("TRAVEL_NOT_ENOUGH_MONEY");
+        broadcast(roomId, {
+          type: "game.turn_changed",
+          payload: { activePlayerId: next },
+        } as any);
+        broadcast(roomId, { type: "game.state", payload: game } as any);
+        return;
+      }
+
+      travelPaymentDelta = applyStatDelta(game, userId, "money", -1);
+      game.history.push({
+        type: "travel_paid",
+        playerId: userId,
+        amount: travelPaymentDelta,
+        at: new Date().toISOString(),
+      });
+    }
+
+    if (card.cardType === 4) {
+      const candidateUserIds = getGreenChoiceCandidates(game, room.players, userId, card, deckKey);
+      setPendingGreenChoice(game, {
+        ownerUserId: userId,
+        cardId: card.id,
+        deckKey,
+        card,
+        candidateUserIds,
+      });
+
+      game.history.push({
+        type: "card_green_pending",
+        playerId: userId,
+        requestedCardId: msg.payload.cardId,
+        resolvedCardId: card.id,
+        deckKey,
+        candidates: candidateUserIds,
+        at: new Date().toISOString(),
+      });
+
+      await saveGameState(roomId, game);
+      broadcast(roomId, {
+        type: "game.card",
+        payload: {
+          playerId: userId,
+          cardId: card.id,
+          cardType: card.cardType,
+          imageGuid: card.imageGuid,
+          deckKey,
+          deltas: travelPaymentDelta !== 0 ? [{ stat: "money", delta: travelPaymentDelta }] : [],
+          chainedCards: [],
+          checks: {
+            greenMode: "pending",
+          },
+          greenChoiceRequired: true,
+          affectedPlayers: buildAffectedPlayersSnapshot(game, candidateUserIds),
+          grants: getPlayerDeckState(game, userId).grants,
+          scores: game.scores[userId],
+          money: game.money[userId],
+          experience: game.experience[userId],
+          playerState: buildPlayerStateSnapshot(game, userId),
+        },
+      } as any);
+      broadcast(roomId, { type: "game.state", payload: game } as any);
       return;
     }
 
     let primaryResult = applyCardAndCollectDeltas(game, room.players, userId, card, deckKey);
+    if (travelPaymentDelta !== 0) {
+      const existing = primaryResult.deltasByUser.get(userId) ?? [];
+      const nextDeltas = [{ stat: "money", delta: travelPaymentDelta }, ...existing];
+      primaryResult.deltasByUser.set(userId, nextDeltas);
+      primaryResult = {
+        ...primaryResult,
+        deltas: nextDeltas,
+      };
+    }
     const chainedCards: Array<{
       cardId: string;
       cardType: number;
@@ -832,6 +1215,11 @@ export async function handleGameMessage(ctx: {
 
     const winnerUserId = pickWinnerAtSuccess12(room.players, game);
     if (winnerUserId) {
+      setPendingCardWin(game, {
+        winnerUserId,
+        ownerUserId: userId,
+        cardId: card.id,
+      });
       await saveGameState(roomId, game);
       broadcast(roomId, {
         type: "game.card",
@@ -852,7 +1240,6 @@ export async function handleGameMessage(ctx: {
           playerState: buildPlayerStateSnapshot(game, userId),
         },
       } as any);
-      await finalizeAndBroadcastWin(roomId, winnerUserId, game, broadcast);
       return;
     }
 
@@ -894,14 +1281,14 @@ export async function handleGameMessage(ctx: {
 
   if (msg.type === "game.project") {
     if (game.phase !== "WAITING_ACTION") {
-      broadcast(roomId, { type: "error", payload: { message: "WRONG_PHASE_FOR_PROJECT" } });
+      sendError("WRONG_PHASE_FOR_PROJECT");
       return;
     }
 
     const currentSector = game.positions[userId] ?? getBoardStartSector();
     const boardSector = getBoardSectorById(currentSector);
     if (!boardSector || boardSector.nodeType?.toLowerCase() !== "project") {
-      broadcast(roomId, { type: "error", payload: { message: "PROJECT_ACTION_NOT_ALLOWED_ON_THIS_SECTOR" } });
+      sendError("PROJECT_ACTION_NOT_ALLOWED_ON_THIS_SECTOR");
       return;
     }
 
@@ -915,7 +1302,7 @@ export async function handleGameMessage(ctx: {
         "NO_AVAILABLE_PROJECTS",
         "project_unavailable"
       );
-      broadcast(roomId, { type: "error", payload: { message: "NO_AVAILABLE_PROJECTS" } });
+      sendError("NO_AVAILABLE_PROJECTS");
       broadcast(roomId, {
         type: "game.turn_changed",
         payload: { activePlayerId: next },
@@ -936,7 +1323,7 @@ export async function handleGameMessage(ctx: {
         "NOT_ENOUGH_RESOURCES_FOR_PROJECT",
         "project_no_resources"
       );
-      broadcast(roomId, { type: "error", payload: { message: "NOT_ENOUGH_RESOURCES_FOR_PROJECT" } });
+      sendError("NOT_ENOUGH_RESOURCES_FOR_PROJECT");
       broadcast(roomId, {
         type: "game.turn_changed",
         payload: { activePlayerId: next },

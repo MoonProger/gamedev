@@ -11755,14 +11755,14 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 48
-  m_fontSizeBase: 48
+  m_fontSize: 36
+  m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -16501,7 +16501,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4308814573318838920, guid: d1bac5103178d6743a93b86d11c753f9, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 61
+      value: 57.4
       objectReference: {fileID: 0}
     - target: {fileID: 4308814573318838920, guid: d1bac5103178d6743a93b86d11c753f9, type: 3}
       propertyPath: m_LocalRotation.w
@@ -21322,6 +21322,9 @@ MonoBehaviour:
   soundSport: {fileID: 8300000, guid: ef08f21803e7dcf47917b12ff09a9156, type: 3}
   soundTourism: {fileID: 8300000, guid: 678bf5bf79ef0304889ded1d5a78f331, type: 3}
   soundVolounteer: {fileID: 8300000, guid: d283ffc05e6f48848a6666a1cfb66e21, type: 3}
+  turnStartSound: {fileID: 0}
+  pauseSound: {fileID: 0}
+  resumeSound: {fileID: 0}
   greenCardUI: {fileID: 206523210}
   characterSelectionUI: {fileID: 1212593671}
   characterDatabase: {fileID: 1408246177}
@@ -21336,6 +21339,7 @@ MonoBehaviour:
   jumpHeight: 5
   jumpDuration: 0.7
   stepDelay: 0.25
+  serverAuthoritativeFlow: 1
   playerNodeOffsets:
   - {x: 0, y: 0, z: 0.2}
   - {x: 0.2, y: 0, z: 0}
