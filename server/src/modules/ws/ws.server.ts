@@ -13,6 +13,7 @@ import {
   getRoom,
   getRawRoom,
   resetGameState,
+  deleteRoomBySystem,
 } from "../rooms/rooms.service";
 import { loadGameState, saveGameState } from "../game/game.persistence";
 import { getOrCreateGame, setGame } from "../game/game.state";
@@ -29,6 +30,12 @@ type ClientMeta = {
 
 const clients = new Map<WebSocket, ClientMeta>();
 const roomSockets = new Map<string, Set<WebSocket>>();
+const disconnectTimers = new Map<WebSocket, NodeJS.Timeout>();
+const replacedSockets = new Set<WebSocket>();
+const roomLastActivityAt = new Map<string, number>();
+
+const ROOM_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+const ROOM_CLEANUP_INTERVAL_MS = 60 * 1000;
 
 function safeSend(ws: WebSocket, msg: WsOut) {
   if (ws.readyState === ws.OPEN) {
@@ -82,6 +89,36 @@ function addSocketToRoom(roomId: string, ws: WebSocket, meta: ClientMeta) {
   roomSockets.get(roomId)!.add(ws);
 }
 
+function touchRoom(roomId?: string) {
+  if (!roomId) return;
+  roomLastActivityAt.set(roomId, Date.now());
+}
+
+function evictDuplicateUserSockets(roomId: string, userId: string, keepWs: WebSocket) {
+  const set = roomSockets.get(roomId);
+  if (!set) return;
+
+  for (const otherWs of Array.from(set)) {
+    if (otherWs === keepWs) continue;
+    const otherMeta = clients.get(otherWs);
+    if (!otherMeta || otherMeta.userId !== userId) continue;
+
+    removeSocketFromRoom(otherWs, roomId);
+    clients.delete(otherWs);
+    const timer = disconnectTimers.get(otherWs);
+    if (timer) {
+      clearTimeout(timer);
+      disconnectTimers.delete(otherWs);
+    }
+    replacedSockets.add(otherWs);
+    try {
+      otherWs.close(1000, "Replaced by newer connection");
+    } catch {
+      // ignore close race
+    }
+  }
+}
+
 function removeSocketFromRoom(ws: WebSocket, roomId: string) {
   const set = roomSockets.get(roomId);
 
@@ -123,27 +160,34 @@ async function areAllRoomPlayersOnline(roomId: string) {
 async function handleRoomJoin(ws: WebSocket, meta: ClientMeta, msg: Extract<WsIn, { type: "room.join" }>) {
   const roomId = msg.payload.roomId;
   const password = msg.payload.password;
+  const alreadyInSameRoom = meta.roomId === roomId && roomSockets.get(roomId)?.has(ws);
 
-  try {
-    if (password) {
-      await joinPrivateRoom(roomId, meta.userId, password);
-    } else {
-      await joinRoom(roomId, meta.userId);
+  if (!alreadyInSameRoom) {
+    try {
+      if (password) {
+        await joinPrivateRoom(roomId, meta.userId, password);
+      } else {
+        await joinRoom(roomId, meta.userId);
+      }
+    } catch (e: any) {
+      safeSend(ws, {
+        type: "error",
+        payload: { message: e.message },
+      });
+      return;
     }
-  } catch (e: any) {
-    safeSend(ws, {
-      type: "error",
-      payload: { message: e.message },
-    });
-    return;
   }
 
   addSocketToRoom(roomId, ws, meta);
+  evictDuplicateUserSockets(roomId, meta.userId, ws);
+  touchRoom(roomId);
 
-  broadcast(roomId, {
-    type: "room.player_joined",
-    payload: { userId: meta.userId },
-  });
+  if (!alreadyInSameRoom) {
+    broadcast(roomId, {
+      type: "room.player_joined",
+      payload: { userId: meta.userId },
+    });
+  }
 
   await pushRoomState(roomId);
 
@@ -157,13 +201,13 @@ async function handleRoomJoin(ws: WebSocket, meta: ClientMeta, msg: Extract<WsIn
 
   if (restored.started) {
     const allOnline = await areAllRoomPlayersOnline(roomId);
-
+    const wasPaused = Boolean(restored.isPaused);
     restored.isPaused = !allOnline;
 
     setGame(roomId, restored as any);
     await saveGameState(roomId, restored as any);
 
-    if (allOnline) {
+    if (allOnline && wasPaused) {
       broadcast(roomId, {
         type: "game.resumed",
         payload: {},
@@ -189,6 +233,7 @@ async function handleRoomLeave(ws: WebSocket, meta: ClientMeta) {
   if (!meta.roomId) return;
 
   const roomId = meta.roomId;
+  touchRoom(roomId);
 
   await leaveRoom(roomId, meta.userId);
   removeSocketFromRoom(ws, roomId);
@@ -224,6 +269,7 @@ async function handleDisconnect(ws: WebSocket) {
   if (!meta?.roomId) return;
 
   const roomId = meta.roomId;
+  touchRoom(roomId);
 
   removeSocketFromRoom(ws, roomId);
 
@@ -232,12 +278,22 @@ async function handleDisconnect(ws: WebSocket) {
     payload: { userId: meta.userId },
   });
 
+  const room = await getRawRoom(roomId);
+  if (!room) {
+    roomLastActivityAt.delete(roomId);
+    return;
+  }
+
   const game = getOrCreateGame(roomId);
 
   if (game.started) {
     game.isPaused = true;
-
-    await saveGameState(roomId, game as any);
+    try {
+      await saveGameState(roomId, game as any);
+    } catch (error: any) {
+      console.warn(`[ws:disconnect] failed to persist game state for room=${roomId}: ${error?.message ?? error}`);
+      return;
+    }
 
     broadcast(roomId, {
       type: "game.paused",
@@ -251,6 +307,34 @@ async function handleDisconnect(ws: WebSocket) {
   }
 
   await pushRoomState(roomId);
+}
+
+async function cleanupIdleRooms() {
+  const now = Date.now();
+  for (const [roomId, lastActivityAt] of roomLastActivityAt.entries()) {
+    if (now - lastActivityAt < ROOM_IDLE_TIMEOUT_MS) continue;
+
+    const sockets = roomSockets.get(roomId);
+    if (sockets && sockets.size > 0) continue;
+
+    const room = await getRawRoom(roomId);
+    if (!room) {
+      roomLastActivityAt.delete(roomId);
+      continue;
+    }
+
+    try {
+      await resetGameState(roomId);
+      const deleted = await deleteRoomBySystem(roomId);
+      if (deleted) {
+        console.log(`[ws:cleanup] removed idle room=${roomId} after 10 minutes inactivity`);
+      }
+    } catch (error: any) {
+      console.error(`[ws:cleanup] failed for room=${roomId}:`, error?.message ?? error);
+    } finally {
+      roomLastActivityAt.delete(roomId);
+    }
+  }
 }
 
 export function attachWs(server: HttpServer) {
@@ -287,6 +371,12 @@ export function attachWs(server: HttpServer) {
     });
 
     ws.on("message", async (raw) => {
+      const pending = disconnectTimers.get(ws);
+      if (pending) {
+        clearTimeout(pending);
+        disconnectTimers.delete(ws);
+      }
+
       let msg: WsIn;
 
       try {
@@ -329,11 +419,24 @@ export function attachWs(server: HttpServer) {
       }
 
       if (msg.type === "room.ready") {
+        touchRoom(meta.roomId);
         await setReady(meta.roomId, meta.userId, msg.payload.ready);
         await pushRoomState(meta.roomId);
         return;
       }
 
+      if (msg.type === "game.card_closed") {
+        broadcast(meta.roomId, {
+          type: "game.card_closed",
+          payload: {
+            playerId: msg.payload.playerId,
+            cardId: msg.payload.cardId,
+          },
+        } as any);
+        return;
+      }
+
+      touchRoom(meta.roomId);
       await handleGameMessage({
         roomId: meta.roomId,
         userId: meta.userId,
@@ -343,11 +446,27 @@ export function attachWs(server: HttpServer) {
     });
 
     ws.on("close", async () => {
-      await handleDisconnect(ws);
+      if (replacedSockets.has(ws)) {
+        replacedSockets.delete(ws);
+        return;
+      }
+      const timer = setTimeout(async () => {
+        disconnectTimers.delete(ws);
+        try {
+          await handleDisconnect(ws);
+        } catch (error: any) {
+          console.error("[ws:disconnect] failed:", error?.message ?? error);
+        }
+      }, 4000);
+      disconnectTimers.set(ws, timer);
     });
 
     ws.on("error", (error) => {
       console.error("[ws:error]", error);
     });
   });
+
+  setInterval(() => {
+    void cleanupIdleRooms();
+  }, ROOM_CLEANUP_INTERVAL_MS);
 }

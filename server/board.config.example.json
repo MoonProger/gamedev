@@ -1,0 +1,12 @@
+{
+  "version": "unity-board-v1",
+  "strictMoveValidation": false,
+  "startSector": 0,
+  "sectors": [
+    { "id": 0, "neighbors": [1], "label": "Start", "nodeType": "None" },
+    { "id": 1, "neighbors": [0, 2], "label": "Node 1", "nodeType": "None" },
+    { "id": 2, "neighbors": [1, 3], "label": "Node 2", "nodeType": "None" },
+    { "id": 3, "neighbors": [2], "label": "Node 3", "nodeType": "None" }
+  ]
+}
+

@@ -20,6 +20,7 @@ public class DiceController : MonoBehaviour
     public event Action<int> OnDiceRolled;
 
     private bool isRolling = false;
+    public bool IsRolling => isRolling;
 
     void Start()
     {
@@ -31,15 +32,21 @@ public class DiceController : MonoBehaviour
     {
         if (isRolling) return;
         
-        StartCoroutine(RollRoutine());
+        int result = UnityEngine.Random.Range(1, 7);
+        StartCoroutine(RollRoutine(result, true));
     }
 
-private IEnumerator RollRoutine()
+    public void RollDiceToValue(int result)
+    {
+        if (isRolling) return;
+        int clamped = Mathf.Clamp(result, 1, 6);
+        StartCoroutine(RollRoutine(clamped, false));
+    }
+
+private IEnumerator RollRoutine(int result, bool emitEvent)
 {
     if (rollSound != null && audioSource != null) audioSource.PlayOneShot(rollSound);
     isRolling = true;
-
-    int result = UnityEngine.Random.Range(1, 7);
 
     Vector3 directionToCamera = (Camera.main.transform.position - transform.position).normalized;
     Vector3 faceToLook = FaceVectors[result - 1];
@@ -65,7 +72,8 @@ private IEnumerator RollRoutine()
 
     transform.rotation = finalRotation;
 
-    OnDiceRolled?.Invoke(result);
+    if (emitEvent)
+        OnDiceRolled?.Invoke(result);
     isRolling = false;
 }
 

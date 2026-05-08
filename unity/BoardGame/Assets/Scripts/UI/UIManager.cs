@@ -48,9 +48,25 @@ public class UIManager : MonoBehaviour
     private readonly StringBuilder logBuilder = new StringBuilder(8192);
     private int currentLogTurn = 1;
     private Coroutine victoryFadeRoutine;
+    private bool isInitialized;
+
+    private void Awake()
+    {
+        InitializeUiState();
+    }
 
     private void Start()
     {
+        InitializeUiState();
+        RefreshLogView();
+    }
+
+    private void InitializeUiState()
+    {
+        if (isInitialized)
+            return;
+        isInitialized = true;
+
         // Панель можно оставить активной (например, чтобы кнопка всегда была видна),
         // скрываем только область текста лога.
         SetLogTextVisible(false);
@@ -69,7 +85,6 @@ public class UIManager : MonoBehaviour
             victoryOverlay.blocksRaycasts = false;
             victoryOverlay.interactable = false;
         }
-        RefreshLogView();
     }
 
     public void UpdateAllStats(PlayerController player)
@@ -164,6 +179,37 @@ public class UIManager : MonoBehaviour
         if (victoryFadeRoutine != null)
             StopCoroutine(victoryFadeRoutine);
         victoryFadeRoutine = StartCoroutine(FadeInVictoryOverlay());
+    }
+
+    public void ShowPauseScreen(string reason)
+    {
+        if (victoryOverlay == null)
+            return;
+
+        if (victoryText != null)
+        {
+            string suffix = string.IsNullOrWhiteSpace(reason) ? "" : $"\n<size=65%>{reason}</size>";
+            victoryText.text = $"<b>Игра на паузе</b>{suffix}";
+        }
+
+        if (victoryFadeRoutine != null)
+            StopCoroutine(victoryFadeRoutine);
+        victoryFadeRoutine = StartCoroutine(FadeInVictoryOverlay());
+    }
+
+    public void HideOverlayScreen()
+    {
+        if (victoryFadeRoutine != null)
+        {
+            StopCoroutine(victoryFadeRoutine);
+            victoryFadeRoutine = null;
+        }
+        if (victoryOverlay == null)
+            return;
+        victoryOverlay.alpha = 0f;
+        victoryOverlay.gameObject.SetActive(false);
+        victoryOverlay.blocksRaycasts = false;
+        victoryOverlay.interactable = false;
     }
 
     private void RefreshLogView()

@@ -122,6 +122,36 @@ public class CardDatabase : MonoBehaviour
         return deck[Random.Range(0, deck.Count)];
     }
 
+    public static CardData GetByDeckAndId(string deckKey, string cardId)
+    {
+        if (Instance == null)
+            return null;
+        if (string.IsNullOrWhiteSpace(deckKey) || string.IsNullOrWhiteSpace(cardId))
+            return null;
+
+        string normalizedDeck = deckKey.Trim().ToLower();
+        if (!Instance.decksByKey.TryGetValue(normalizedDeck, out var deck) || deck == null || deck.Count == 0)
+            return null;
+
+        int colon = cardId.LastIndexOf(':');
+        if (colon >= 0 && colon < cardId.Length - 1)
+        {
+            string indexPart = cardId.Substring(colon + 1);
+            if (int.TryParse(indexPart, out int idx) && idx >= 0 && idx < deck.Count)
+                return deck[idx];
+        }
+
+        // Fallback by sprite name when card id format differs.
+        for (int i = 0; i < deck.Count; i++)
+        {
+            CardData candidate = deck[i];
+            if (candidate?.image != null && candidate.image.name == cardId)
+                return candidate;
+        }
+
+        return null;
+    }
+
     private static CardData CreateFallbackCard()
     {
         return new CardData

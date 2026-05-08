@@ -1,11 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { api } from '../services/api';
+import { WsClientToServer, WsServerToClient } from '../types/ws-protocol';
 
 export const useWebSocket = (
   roomId: string | null,
   roomPassword: string | null,
-  onMessage: (data: any) => void,
-  skipJoin: boolean = false
+  onMessage: (data: WsServerToClient) => void
 ) => {
   const wsRef = useRef<WebSocket | null>(null);
   const roomIdRef = useRef(roomId);
@@ -25,7 +25,7 @@ export const useWebSocket = (
 
     const connect = () => {
       try {
-        const ws = api.connectWebSocket((data) => {
+        const ws = api.connectWebSocket((data: WsServerToClient) => {
           if (isMounted) {
             onMessage(data);
           }
@@ -35,7 +35,7 @@ export const useWebSocket = (
         ws.onopen = () => {
           console.log('WebSocket connected');
           setIsConnected(true);
-          if (isMounted && roomIdRef.current && !isJoinedRef.current && !skipJoin) {
+          if (isMounted && roomIdRef.current && !isJoinedRef.current) {
             console.log('Sending room.join with:', { 
               roomId: roomIdRef.current, 
               password: roomPasswordRef.current 
@@ -48,8 +48,6 @@ export const useWebSocket = (
               }
             }));
             isJoinedRef.current = true;
-          } else {
-            console.log('Skipping room.join (skipJoin=true or already joined)');
           }
         };
 
@@ -77,13 +75,13 @@ export const useWebSocket = (
       setIsConnected(false);
       isJoinedRef.current = false;
     };
-  }, [roomId, onMessage, skipJoin]);
+  }, [roomId, onMessage]);
 
-  const send = useCallback((type: string, payload: any) => {
+  const send = useCallback((message: WsClientToServer) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type, payload }));
+      wsRef.current.send(JSON.stringify(message));
     } else {
-      console.warn('WebSocket not connected, cannot send:', type);
+      console.warn('WebSocket not connected, cannot send:', message.type);
     }
   }, []);
 

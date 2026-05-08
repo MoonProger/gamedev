@@ -8,7 +8,7 @@
     creator: room.creator ? { id: room.creator.id, username: room.creator.username } : null,
     players: (room.players ?? []).map((p: any) => ({
       userId: p.userId,
-      username: p.user?.username ?? null,
+      username: p.username ?? p.user?.username ?? null,
       isReady: p.isReady,
       joinedAt: p.joinedAt,
     })),

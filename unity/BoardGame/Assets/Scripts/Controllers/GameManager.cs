@@ -1,6 +1,8 @@
 using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 public enum CardType { Surprise, Yellow, Blue, Red, Green, Travel, Grant }
@@ -21,6 +23,137 @@ public class GameManager : MonoBehaviour
         public int tourism;
         public int it;
         public int activeGrants;
+    }
+
+    [Serializable]
+    private class MovePayload
+    {
+        public string playerId;
+        public int fromSector;
+        public int toSector;
+        public int dice;
+    }
+
+    [Serializable]
+    private class TokenMovedPayload
+    {
+        public string playerId;
+        public int pos;
+        public int steps;
+    }
+
+    [Serializable]
+    private class FinishedPayload
+    {
+        public string winnerUserId;
+    }
+
+    [Serializable]
+    private class PlayerStatePayload
+    {
+        public int money;
+        public int experience;
+        public int success;
+        public int volounteer;
+        public int science;
+        public int art;
+        public int media;
+        public int business;
+        public int sport;
+        public int tourism;
+        public int it;
+    }
+
+    [Serializable]
+    private class UnityStatePlayerPayload
+    {
+        public string userId;
+        public int position;
+        public int grants;
+        public string[] completedProjects;
+        public PlayerStatePayload playerState;
+    }
+
+    [Serializable]
+    private class UnityGameStatePayload
+    {
+        public bool started;
+        public bool isPaused;
+        public string activePlayerId;
+        public string phase;
+        public bool hasLastDice;
+        public int lastDice;
+        public int currentTurnNumber;
+        public UnityStatePlayerPayload[] players;
+    }
+
+    [Serializable]
+    private class CardPlayedPayload
+    {
+        public string playerId;
+        public string cardId;
+        public string deckKey;
+        public int cardType;
+        public string imageGuid;
+        public int grants = -1;
+        public CardChecksPayload checks;
+        public PlayerStatePayload playerState;
+        public AffectedPlayerPayload[] affectedPlayers;
+        public CardDeltaPayload[] deltas;
+        public ChainedCardPayload[] chainedCards;
+    }
+
+    [Serializable]
+    private class CardChecksPayload
+    {
+        public int blueDiceSum = -1;
+        public bool blueSuccess;
+        public bool redSuccess;
+        public int grantDiceSum = -1;
+        public bool grantSuccess;
+        public string greenMode;
+        public string greenPartnerId;
+    }
+
+    [Serializable]
+    private class CardDeltaPayload
+    {
+        public string stat;
+        public int delta;
+    }
+
+    [Serializable]
+    private class ChainedCardPayload
+    {
+        public string cardId;
+        public int cardType;
+        public string imageGuid;
+        public CardDeltaPayload[] deltas;
+    }
+
+    [Serializable]
+    private class AffectedPlayerPayload
+    {
+        public string playerId;
+        public PlayerStatePayload playerState;
+    }
+
+    [Serializable]
+    private class ProjectCompletedPayload
+    {
+        public string playerId;
+        public string projectId;
+        public int successPoints;
+        public int totalSuccess;
+        public string payment;
+        public PlayerStatePayload playerState;
+    }
+
+    [Serializable]
+    private class CardClosedPayload
+    {
+        public string playerId;
+        public string cardId;
     }
 
 
@@ -46,6 +179,9 @@ public class GameManager : MonoBehaviour
     public AudioClip soundSport;
     public AudioClip soundTourism;
     public AudioClip soundVolounteer;
+    public AudioClip turnStartSound;
+    public AudioClip pauseSound;
+    public AudioClip resumeSound;
 
     [Header("UI")]
     public GreenCardUI greenCardUI;
@@ -64,6 +200,7 @@ public class GameManager : MonoBehaviour
     public float jumpHeight = 5;
     public float jumpDuration = 0.7f;
     public float stepDelay = 0.25f;
+    public bool serverAuthoritativeFlow = true;
 
     [Header("Token Slot Offsets On Node")]
     public List<Vector3> playerNodeOffsets = new List<Vector3>
@@ -98,6 +235,7 @@ public class GameManager : MonoBehaviour
     public int expectedPlayerCount = 0;
     private List<string> playerNames = new List<string>();
     private List<string> playerIds = new List<string>();
+    private string localUserId = "";
 
     private static readonly string[] allStats = { "volounteer", "science", "art", "media", "business", "sport", "tourism", "it" };
     private readonly Dictionary<PlayerController, string> lastValidSphereByPlayer = new Dictionary<PlayerController, string>();
@@ -105,12 +243,19 @@ public class GameManager : MonoBehaviour
     private readonly Dictionary<PlayerController, int> playerIndexLookup = new Dictionary<PlayerController, int>();
     private readonly List<string> pendingPartnerTurnChanges = new List<string>();
     private readonly List<CardVisual> cachedDeckCards = new List<CardVisual>();
+    private readonly Dictionary<BoardNode, int> sectorIdByNode = new Dictionary<BoardNode, int>();
+    private readonly Dictionary<int, BoardNode> nodeBySectorId = new Dictionary<int, BoardNode>();
+    private readonly HashSet<string> ownerClosedCardSignals = new HashSet<string>();
+    private readonly Dictionary<string, TurnSnapshot> turnStartSnapshotByUserId = new Dictionary<string, TurnSnapshot>();
+    private string pendingGameStateJson;
+    private Coroutine serverCardVisualRoutine;
     private bool deckCardCacheInitialized;
     private TableManager cachedTableManager;
 
     private void Awake()
 {
     RebuildPlayerIndexLookup();
+    BuildBoardSectorLookup();
     deckCardCacheInitialized = false;
     dice.OnDiceRolled += RegisterRoll;
     foreach (var player in players)
@@ -148,12 +293,10 @@ public class GameManager : MonoBehaviour
         // Важно: победа может произойти в чужой ход (например, от зелёной карты).
         CheckVictory(changedPlayer);
 
-        if (currentPlayerIndex < 0 || currentPlayerIndex >= players.Count)
+        PlayerController uiPlayer = GetPreferredUiPlayer();
+        if (uiPlayer == null || uiPlayer != changedPlayer)
             return;
-        if (players[currentPlayerIndex] != changedPlayer)
-            return;
-
-        uiManager?.UpdateAllStats(changedPlayer);
+        uiManager?.UpdateAllStats(uiPlayer);
     }
 
     private void LogGame(string message) => Debug.Log($"[ИГРА] {message}");
@@ -179,6 +322,8 @@ public class GameManager : MonoBehaviour
     public void SetPlayerCount(int count)
     {
         expectedPlayerCount = count;
+        playerNames.Clear();
+        playerIds.Clear();
         LogGame($"Ожидаемое количество игроков: {count}.");
     }
 
@@ -194,6 +339,7 @@ public class GameManager : MonoBehaviour
     {
         playerIds.Add(id);
         LogGame($"Получен ID игрока: {id}.");
+        TryApplyPendingGameState();
     }
 
     private void InitializeGameFromReact()
@@ -207,9 +353,10 @@ public class GameManager : MonoBehaviour
             pendingVictoryRoutine = null;
         }
         selectedCharacterByPlayer.Clear();
+        turnStartSnapshotByUserId.Clear();
         currentTurnNumber = 1;
         RebuildPlayerIndexLookup();
-        cachedTableManager = Object.FindFirstObjectByType<TableManager>();
+        cachedTableManager = UnityEngine.Object.FindFirstObjectByType<TableManager>();
         SyncLogTurnNumber();
         LogGame($"Инициализация игры. Игроков: {expectedPlayerCount}.");
 
@@ -236,7 +383,7 @@ public class GameManager : MonoBehaviour
             currentPlayerIndex = i;
             if (selectedCharacterByPlayer.TryGetValue(players[i], out CharacterData pickedCharacter) && pickedCharacter != null)
                 players[i].ApplyCharacter(pickedCharacter);
-            else
+            else if (!serverAuthoritativeFlow)
                 players[i].RandomizeStats();
             players[i].TeleportToNode(startNode);
             players[i].transform.position = GetPlayerNodePosition(startNode, i);
@@ -261,6 +408,40 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
+        // В авторитативном мультиплеере каждый клиент выбирает только своего персонажа.
+        if (serverAuthoritativeFlow)
+        {
+            int localIdx = GetPlayerIndexByUserId(localUserId);
+            float waitLocalSeconds = 3f;
+            while (localIdx < 0 && waitLocalSeconds > 0f)
+            {
+                waitLocalSeconds -= Time.deltaTime;
+                yield return null;
+                localIdx = GetPlayerIndexByUserId(localUserId);
+            }
+            if (localIdx < 0 || localIdx >= players.Count || localIdx >= expectedPlayerCount)
+            {
+                LogGame("Выбор персонажа пропущен: локальный игрок не определен.");
+                yield break;
+            }
+
+            PlayerController localPlayer = players[localIdx];
+            var localOnly = new List<PlayerController> { localPlayer };
+            yield return characterSelectionUI.ShowAndPickForPlayers(
+                localOnly,
+                availableCharacters,
+                (player, character) =>
+                {
+                    if (player != null && character != null)
+                    {
+                        selectedCharacterByPlayer[player] = character;
+                        LogGame($"Игрок {player.playerName} выбрал персонажа '{character.displayName}'.");
+                    }
+                },
+                p => GetPlayerColorTitle(p));
+            yield break;
+        }
+
         List<PlayerController> activePlayers = new List<PlayerController>();
         for (int i = 0; i < expectedPlayerCount && i < players.Count; i++)
         {
@@ -278,7 +459,8 @@ public class GameManager : MonoBehaviour
                     selectedCharacterByPlayer[player] = character;
                     LogGame($"Игрок {player.playerName} выбрал персонажа '{character.displayName}'.");
                 }
-            });
+            },
+            p => GetPlayerColorTitle(p));
     }
 
     public void TryRollDice()
@@ -287,6 +469,13 @@ public class GameManager : MonoBehaviour
         if (!isGameInitialized) { LogGame("Игра еще не готова. Сначала завершите выбор персонажей."); return; }
         if (isMoving) { LogGame("Нельзя бросить кубик во время движения фишки."); return; }
         if (hasRolledThisTurn) { LogGame("Кубик уже брошен. Выберите точку назначения."); return; }
+
+        if (serverAuthoritativeFlow)
+        {
+            hasRolledThisTurn = true;
+            EmitRollDiceIntent();
+            return;
+        }
 
     PlayerController currentPlayer = players[currentPlayerIndex];
     RememberLastSphereFromNode(currentPlayer, currentPlayer.currentNode != null ? currentPlayer.currentNode.nodeStat : BoardNode.NodeType.None);
@@ -330,6 +519,15 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
 
     public void ShowPossibleMoves(int rollResult)
     {
+        if (serverAuthoritativeFlow && !IsLocalPlayersTurn())
+        {
+            if (clickableNodes.Count > 0)
+            {
+                foreach (var node in clickableNodes) node.SetHighlight(false);
+                clickableNodes.Clear();
+            }
+            return;
+        }
         if (isMoving) return;
         clickableNodes = GetPossibleDestinations(players[currentPlayerIndex].currentNode, rollResult);
         foreach (var node in clickableNodes) node.SetHighlight(true);
@@ -344,7 +542,21 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
         {
             BoardNode target = hit.collider.GetComponent<BoardNode>();
             if (target != null && clickableNodes.Contains(target))
+            {
+                if (serverAuthoritativeFlow)
+                {
+                    if (!TryGetSectorId(target, out int toSector))
+                    {
+                        LogGame("Не удалось сопоставить узел с sectorId для отправки game.move.");
+                        return;
+                    }
+                    foreach (var node in clickableNodes) node.SetHighlight(false);
+                    clickableNodes.Clear();
+                    EmitMoveIntent(lastRoll, toSector);
+                    return;
+                }
                 StartCoroutine(MoveSequence(target, lastRoll));
+            }
         }
     }
 
@@ -372,6 +584,9 @@ private IEnumerator EndTurnAfterDelay(PlayerController player, TurnSnapshot turn
                 yield return new WaitForSeconds(stepDelay);
             }
         }
+
+        if (!serverAuthoritativeFlow && TryGetSectorId(target, out int localToSector))
+            EmitMoveIntent(totalRoll, localToSector);
 
         PlayNodeSound(currentPlayer.currentNode.nodeStat);
         TableManager table = GetTableManager();
@@ -507,6 +722,9 @@ private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphe
         yield return WaitForCardHidden(deck, 30f);
         yield return StartCoroutine(PullCardCoroutine(player, statName, chainDepth + 1));
     }
+
+    if (!serverAuthoritativeFlow)
+        EmitCardIntent(card, statName);
     }
 
     private IEnumerator JumpToNode(PlayerController p, Vector3 targetPos)
@@ -591,9 +809,14 @@ private IEnumerator PullCardCoroutine(PlayerController player, string forcedSphe
 
     private void UpdatePlayersVisuals()
     {
+        int highlightedIdx = GetPlayerIndexByUserId(localUserId);
+        if (highlightedIdx < 0 || highlightedIdx >= expectedPlayerCount)
+            highlightedIdx = currentPlayerIndex;
         for (int i = 0; i < expectedPlayerCount; i++)
-            players[i].SetTransparency(i != currentPlayerIndex);
-        uiManager?.UpdateAllStats(players[currentPlayerIndex]);
+            players[i].SetTransparency(i != highlightedIdx);
+        PlayerController uiPlayer = GetPreferredUiPlayer();
+        if (uiPlayer != null)
+            uiManager?.UpdateAllStats(uiPlayer);
     }
 
     private Vector3 GetPlayerNodePosition(BoardNode node, int playerIndex)
@@ -783,6 +1006,9 @@ private IEnumerator TryDoProject(PlayerController player)
     CardType.Green,
     chosenSphere
     );
+
+    if (!serverAuthoritativeFlow)
+        EmitProjectIntent(chosenSphere, 5);
 }
 private bool ApplyGenericEffects(
     PlayerController player,
@@ -1224,7 +1450,11 @@ private void ShowCurrentTurnInLog()
     PlayerController current = players[currentPlayerIndex];
     if (current == null) return;
     string colorHex = ColorUtility.ToHtmlStringRGB(GetLogColorForPlayer(current));
-    uiManager.SetCurrentTurnStatus($"<b>Сейчас ход: <color=#{colorHex}>{current.playerName}</color></b>");
+    int localIdx = GetPlayerIndexByUserId(localUserId);
+    string youLine = localIdx >= 0 && localIdx < players.Count
+        ? $"<b>Вы — <color=#{ColorUtility.ToHtmlStringRGB(GetLogColorForPlayer(players[localIdx]))}>{GetPlayerColorTitle(players[localIdx])}</color></b>"
+        : "<b>Вы — наблюдатель</b>";
+    uiManager.SetCurrentTurnStatus($"{youLine}\n<b>Сейчас ход: <color=#{colorHex}>{current.playerName}</color></b>");
 }
 
 private void SyncLogTurnNumber()
@@ -1292,7 +1522,7 @@ private int GetPlayerIndex(PlayerController player)
 private TableManager GetTableManager()
 {
     if (cachedTableManager == null)
-        cachedTableManager = Object.FindFirstObjectByType<TableManager>();
+        cachedTableManager = UnityEngine.Object.FindFirstObjectByType<TableManager>();
     return cachedTableManager;
 }
 
@@ -1359,6 +1589,7 @@ private string GetSphereLabel(string statKey)
         "success" => "Успех",
         "travel" => "Путешествие",
         "grant" => "Грант",
+        "grant_success" => "Грант",
         "project" => "Проект",
         _ => statKey
     };
@@ -1377,6 +1608,885 @@ private string GetCardTypeLabel(CardType type)
         CardType.Grant => "карту гранта",
         _ => "карту"
     };
+}
+
+public void UpdateGameState(string payloadJson)
+{
+    if (string.IsNullOrWhiteSpace(payloadJson))
+        return;
+
+    if (!CanApplyGameStateNow())
+    {
+        pendingGameStateJson = payloadJson;
+        LogGame("game.state отложен: ждем инициализацию игроков.");
+        return;
+    }
+
+    try
+    {
+        UnityGameStatePayload payload = JsonUtility.FromJson<UnityGameStatePayload>(payloadJson);
+        if (payload == null)
+            return;
+
+        ApplyGameStatePayload(payload);
+        pendingGameStateJson = null;
+        LogGame($"game.state применен: phase={payload.phase}, active={payload.activePlayerId}");
+    }
+    catch (Exception e)
+    {
+        LogGame($"UpdateGameState parse error: {e.Message}");
+    }
+}
+
+private bool CanApplyGameStateNow()
+{
+    return expectedPlayerCount > 0 && playerIds.Count >= expectedPlayerCount && nodeBySectorId.Count > 0;
+}
+
+private void TryApplyPendingGameState()
+{
+    if (string.IsNullOrWhiteSpace(pendingGameStateJson))
+        return;
+    if (!CanApplyGameStateNow())
+        return;
+    string snapshot = pendingGameStateJson;
+    pendingGameStateJson = null;
+    UpdateGameState(snapshot);
+}
+
+private void ApplyGameStatePayload(UnityGameStatePayload payload)
+{
+    if (payload == null)
+        return;
+
+    hasGameEnded = !payload.started;
+    isGameInitialized = true;
+
+    if (payload.currentTurnNumber > 0)
+    {
+        currentTurnNumber = payload.currentTurnNumber;
+        SyncLogTurnNumber();
+    }
+
+    if (payload.players != null)
+    {
+        for (int i = 0; i < payload.players.Length; i++)
+        {
+            UnityStatePlayerPayload p = payload.players[i];
+            int idx = GetPlayerIndexByUserId(p.userId);
+            if (idx < 0 || idx >= players.Count)
+                continue;
+
+            PlayerController controller = players[idx];
+            ApplyServerPlayerState(controller, p.playerState);
+            controller.earnedGrants = CreateGrantTokens(Mathf.Max(0, p.grants));
+            controller.completedProjects = p.completedProjects != null
+                ? new List<string>(p.completedProjects)
+                : new List<string>();
+
+            if (nodeBySectorId.TryGetValue(p.position, out BoardNode node))
+            {
+                controller.currentNode = node;
+                controller.transform.position = GetPlayerNodePosition(node, idx);
+            }
+        }
+    }
+
+    int activeIdx = GetPlayerIndexByUserId(payload.activePlayerId);
+    if (activeIdx >= 0)
+        currentPlayerIndex = activeIdx;
+    StoreAllTurnStartSnapshots();
+
+    if (payload.hasLastDice)
+    {
+        lastRoll = Mathf.Clamp(payload.lastDice, 1, 6);
+        hasRolledThisTurn = payload.phase == "WAITING_MOVE" || payload.phase == "WAITING_ACTION";
+    }
+    else
+    {
+        lastRoll = 0;
+        hasRolledThisTurn = payload.phase == "WAITING_ACTION";
+    }
+
+    if (clickableNodes.Count > 0)
+    {
+        foreach (var node in clickableNodes)
+            node.SetHighlight(false);
+        clickableNodes.Clear();
+    }
+
+    if (payload.phase == "WAITING_MOVE" && payload.hasLastDice && activeIdx >= 0 && activeIdx == currentPlayerIndex && IsLocalPlayersTurn())
+        StartCoroutine(ShowMovesAfterServerDiceAnimation(lastRoll));
+
+    GetTableManager()?.UpdateTablePositions();
+    UpdatePlayersVisuals();
+    ShowCurrentTurnInLog();
+}
+
+private List<string> CreateGrantTokens(int count)
+{
+    var result = new List<string>();
+    for (int i = 0; i < count; i++)
+        result.Add($"server_grant_{i + 1}");
+    return result;
+}
+
+public void OnDiceRolled(int value)
+{
+    if (value < 1 || value > 6)
+        return;
+
+    lastRoll = value;
+    hasRolledThisTurn = true;
+    LogPlayerEvent(players[currentPlayerIndex], $"сервер прислал бросок кубика: {lastRoll}.");
+    PlayerController actor = players[currentPlayerIndex];
+    WriteLog($"{actor.playerName} бросил кубик: {lastRoll}.", actor);
+    dice?.RollDiceToValue(lastRoll);
+    if (IsLocalPlayersTurn())
+        StartCoroutine(ShowMovesAfterServerDiceAnimation(lastRoll));
+}
+
+public void OnPlayerMove(string payloadJson)
+{
+    if (string.IsNullOrWhiteSpace(payloadJson))
+        return;
+
+    try
+    {
+        MovePayload move = JsonUtility.FromJson<MovePayload>(payloadJson);
+        int idx = GetPlayerIndexByUserId(move.playerId);
+        if (idx < 0 || idx >= players.Count)
+            return;
+        PlayerController actor = players[idx];
+        WriteLog($"{actor.playerName} переместился на новую клетку (кубик: {move.dice}).", actor);
+
+        if (nodeBySectorId.TryGetValue(move.toSector, out BoardNode targetNode))
+            StartCoroutine(ApplyServerMove(idx, targetNode, Mathf.Max(1, move.dice), move.playerId));
+    }
+    catch (Exception e)
+    {
+        LogGame($"OnPlayerMove parse error: {e.Message}");
+    }
+}
+
+public void OnTokenMoved(string payloadJson)
+{
+    if (string.IsNullOrWhiteSpace(payloadJson))
+        return;
+
+    try
+    {
+        TokenMovedPayload payload = JsonUtility.FromJson<TokenMovedPayload>(payloadJson);
+        // game.move already carries full movement payload; token_moved is informational.
+        // Avoid duplicate animation.
+        LogGame($"token_moved: player={payload.playerId}, pos={payload.pos}, steps={payload.steps}");
+    }
+    catch (Exception e)
+    {
+        LogGame($"OnTokenMoved parse error: {e.Message}");
+    }
+}
+
+public void OnCardPlayed(string payloadJson)
+{
+    if (string.IsNullOrWhiteSpace(payloadJson))
+        return;
+
+    try
+    {
+        CardPlayedPayload payload = JsonUtility.FromJson<CardPlayedPayload>(payloadJson);
+        if (payload == null)
+            return;
+
+        ApplyAffectedPlayerStates(payload.affectedPlayers);
+        int idx = GetPlayerIndexByUserId(payload.playerId);
+        if (idx >= 0 && idx < players.Count)
+        {
+            ApplyServerPlayerState(players[idx], payload.playerState);
+            if (payload.grants >= 0)
+                players[idx].earnedGrants = CreateGrantTokens(payload.grants);
+        }
+        PlayerController uiPlayer = GetPreferredUiPlayer();
+        if (uiPlayer != null)
+            uiManager?.UpdateAllStats(uiPlayer);
+
+        if (serverCardVisualRoutine != null)
+            StopCoroutine(serverCardVisualRoutine);
+        serverCardVisualRoutine = StartCoroutine(ShowResolvedServerCardSequence(payload));
+
+        PlayerController actingPlayer = (idx >= 0 && idx < players.Count) ? players[idx] : null;
+        if (actingPlayer != null)
+        {
+            CardType type = Enum.IsDefined(typeof(CardType), payload.cardType)
+                ? (CardType)payload.cardType
+                : CardType.Surprise;
+            WriteLog($"{actingPlayer.playerName} вытянул {GetCardTypeLabel(type)} из сферы «{GetSphereLabel(payload.deckKey)}».", actingPlayer);
+        }
+        PlayUiSound(drawCardSound);
+
+        string deltaSummary = BuildDeltaSummary(payload.deltas);
+        if (!string.IsNullOrEmpty(deltaSummary))
+            WriteLog(deltaSummary, actingPlayer);
+        string checkSummary = BuildCardCheckSummary(payload);
+        if (!string.IsNullOrEmpty(checkSummary))
+            WriteLog(checkSummary, actingPlayer);
+        if (payload.chainedCards != null && payload.chainedCards.Length > 0)
+            WriteLog($"Сработал добор: +{payload.chainedCards.Length} карта(ы) из колоды.", actingPlayer);
+
+        if (payload.deckKey != null && payload.deckKey.Trim().ToLower() == "grant_success")
+        {
+            if (payload.checks != null && payload.checks.grantDiceSum >= 0)
+            {
+                string grantResult = payload.checks.grantSuccess ? "одобрена" : "отклонена";
+                WriteLog($"Заявка на грант {grantResult}. Бросок: {payload.checks.grantDiceSum}.", actingPlayer);
+                PlayUiSound(payload.checks.grantSuccess ? moneySound : sadSound);
+            }
+            if (actingPlayer != null)
+                WriteLog($"Активных грантов: {actingPlayer.earnedGrants.Count}.", actingPlayer);
+        }
+
+        LogGame($"Получен game.card: player={payload.playerId}, cardId={payload.cardId}, cardType={payload.cardType}");
+    }
+    catch (Exception e)
+    {
+        LogGame($"OnCardPlayed parse error: {e.Message}");
+    }
+}
+
+private IEnumerator ShowResolvedServerCardSequence(CardPlayedPayload payload)
+{
+    if (payload == null)
+        yield break;
+
+    string closeSignalKey = BuildCardOwnerCloseKey(payload.playerId, payload.cardId);
+    CardVisual firstVisual = ShowResolvedServerCardOnce(payload.deckKey, payload.cardId, payload.cardType, "КАРТА");
+    bool isLocalOwner = !string.IsNullOrWhiteSpace(localUserId) && payload.playerId == localUserId;
+    if (firstVisual != null)
+        firstVisual.SetLocked(!isLocalOwner);
+
+    if (payload.cardType == (int)CardType.Green && greenCardUI != null && !string.IsNullOrWhiteSpace(localUserId) && payload.playerId == localUserId)
+    {
+        int actorIdx = GetPlayerIndexByUserId(payload.playerId);
+        PlayerController selfPlayer = (actorIdx >= 0 && actorIdx < players.Count) ? players[actorIdx] : null;
+        if (selfPlayer != null)
+        {
+            var candidates = new List<PlayerController> { selfPlayer };
+            if (payload.affectedPlayers != null)
+            {
+                for (int i = 0; i < payload.affectedPlayers.Length; i++)
+                {
+                    var affected = payload.affectedPlayers[i];
+                    if (affected == null || string.IsNullOrWhiteSpace(affected.playerId)) continue;
+                    int cIdx = GetPlayerIndexByUserId(affected.playerId);
+                    if (cIdx < 0 || cIdx >= players.Count) continue;
+                    PlayerController candidate = players[cIdx];
+                    if (!candidates.Contains(candidate))
+                        candidates.Add(candidate);
+                }
+            }
+
+            if (candidates.Count > 1)
+            {
+                PlayerController ignored = null;
+                yield return greenCardUI.ShowAndWait("cooperation", candidates, selfPlayer, p => ignored = p);
+            }
+        }
+    }
+
+    if (firstVisual != null)
+    {
+        if (isLocalOwner)
+        {
+            yield return WaitForOwnerManualCloseAndBroadcast(firstVisual, payload.playerId, payload.cardId);
+        }
+        else
+        {
+            yield return WaitForOwnerCloseSignalThenAutoHide(firstVisual, closeSignalKey, 1f);
+        }
+    }
+
+    if (payload.chainedCards == null || payload.chainedCards.Length == 0)
+        yield break;
+
+    for (int i = 0; i < payload.chainedCards.Length; i++)
+    {
+        ChainedCardPayload chained = payload.chainedCards[i];
+        if (chained == null)
+            continue;
+
+        CardVisual chainedVisual = ShowResolvedServerCardOnce(payload.deckKey, chained.cardId, chained.cardType, "ДОП. КАРТА");
+        string chainDeltaSummary = BuildDeltaSummary(chained.deltas);
+        if (!string.IsNullOrEmpty(chainDeltaSummary))
+            WriteLog($"Добор: {chainDeltaSummary}");
+        if (chainedVisual != null)
+            yield return WaitForCardDismissOrAutoHide(chainedVisual, 2f);
+    }
+}
+
+private CardVisual ShowResolvedServerCardOnce(string deckKey, string cardId, int cardType, string title)
+{
+    CardData card = CardDatabase.GetByDeckAndId(deckKey, cardId);
+    CardVisual deckVisual = GetDeckVisualForDeckKey(deckKey);
+    if (card != null && deckVisual != null)
+    {
+        deckVisual.Show(card, deckKey);
+        return deckVisual;
+    }
+
+    CardType fallbackType = Enum.IsDefined(typeof(CardType), cardType)
+        ? (CardType)cardType
+        : CardType.Surprise;
+    utilityCard?.ShowRaw(title, cardId, fallbackType, deckKey ?? "");
+    return utilityCard;
+}
+
+private void ApplyAffectedPlayerStates(AffectedPlayerPayload[] affectedPlayers)
+{
+    if (affectedPlayers == null)
+        return;
+    for (int i = 0; i < affectedPlayers.Length; i++)
+    {
+        AffectedPlayerPayload affected = affectedPlayers[i];
+        if (affected == null)
+            continue;
+        int idx = GetPlayerIndexByUserId(affected.playerId);
+        if (idx < 0 || idx >= players.Count)
+            continue;
+        ApplyServerPlayerState(players[idx], affected.playerState);
+    }
+}
+
+private CardVisual GetDeckVisualForDeckKey(string deckKey)
+{
+    if (deckManager == null || string.IsNullOrWhiteSpace(deckKey))
+        return utilityCard;
+
+    return deckKey.Trim().ToLower() switch
+    {
+        "science" => deckManager.GetCardForNode(BoardNode.NodeType.Science),
+        "art" => deckManager.GetCardForNode(BoardNode.NodeType.Art),
+        "business" => deckManager.GetCardForNode(BoardNode.NodeType.Business),
+        "sport" => deckManager.GetCardForNode(BoardNode.NodeType.Sport),
+        "media" => deckManager.GetCardForNode(BoardNode.NodeType.Media),
+        "volounteer" => deckManager.GetCardForNode(BoardNode.NodeType.Volounteer),
+        "tourism" => deckManager.GetCardForNode(BoardNode.NodeType.Tourism),
+        "it" => deckManager.GetCardForNode(BoardNode.NodeType.IT),
+        "travel" => deckManager.GetCardForNode(BoardNode.NodeType.Travel),
+        "grant_success" => deckManager.GetCardForNode(BoardNode.NodeType.Grant),
+        _ => utilityCard
+    };
+}
+
+private string BuildDeltaSummary(CardDeltaPayload[] deltas)
+{
+    if (deltas == null || deltas.Length == 0)
+        return "";
+
+    var parts = new List<string>();
+    for (int i = 0; i < deltas.Length; i++)
+    {
+        CardDeltaPayload d = deltas[i];
+        if (d == null || string.IsNullOrWhiteSpace(d.stat) || d.delta == 0)
+            continue;
+        string sign = d.delta > 0 ? "+" : "";
+        parts.Add($"{GetSphereLabel(d.stat)} {sign}{d.delta}");
+    }
+    return parts.Count == 0 ? "" : string.Join(", ", parts);
+}
+
+private string BuildCardCheckSummary(CardPlayedPayload payload)
+{
+    if (payload == null || payload.checks == null)
+        return "";
+
+    if (payload.cardType == (int)CardType.Blue && payload.checks.blueDiceSum >= 0)
+        return payload.checks.blueSuccess
+            ? $"Синяя карта: проверка пройдена (сумма кубиков {payload.checks.blueDiceSum})."
+            : $"Синяя карта: проверка не пройдена (сумма кубиков {payload.checks.blueDiceSum}).";
+
+    if (payload.cardType == (int)CardType.Red)
+        return payload.checks.redSuccess
+            ? "Красная карта: проверка пройдена."
+            : "Красная карта: проверка не пройдена.";
+
+    if (payload.cardType == (int)CardType.Green)
+    {
+        string mode = string.IsNullOrWhiteSpace(payload.checks.greenMode) ? "" : payload.checks.greenMode.Trim().ToLower();
+        if (mode == "coop")
+            return "Зелёная карта: режим кооперации с партнером.";
+        if (mode == "solo")
+            return "Зелёная карта: режим соло.";
+    }
+
+    return "";
+}
+
+public void OnProjectCompleted(string payloadJson)
+{
+    if (string.IsNullOrWhiteSpace(payloadJson))
+        return;
+
+    try
+    {
+        ProjectCompletedPayload payload = JsonUtility.FromJson<ProjectCompletedPayload>(payloadJson);
+        int idx = GetPlayerIndexByUserId(payload.playerId);
+        if (idx < 0 || idx >= players.Count)
+            return;
+
+        ApplyServerPlayerState(players[idx], payload.playerState);
+        PlayerController uiPlayer = GetPreferredUiPlayer();
+        if (uiPlayer != null)
+            uiManager?.UpdateAllStats(uiPlayer);
+        PlayerController actor = players[idx];
+        string paymentText = string.IsNullOrWhiteSpace(payload.payment) ? "ресурс" : payload.payment;
+        WriteLog($"{actor.playerName} завершил проект «{GetSphereLabel(payload.projectId)}»: +{payload.successPoints} успех, оплата: {paymentText}, всего успеха: {payload.totalSuccess}.", actor);
+        PlayUiSound(moneySound);
+
+        LogGame($"Получен game.project: player={payload.playerId}, project={payload.projectId}, +{payload.successPoints} success");
+    }
+    catch (Exception e)
+    {
+        LogGame($"OnProjectCompleted parse error: {e.Message}");
+    }
+}
+
+public void OnTurnChanged(string activePlayerId)
+{
+    string previousActiveUserId = GetUserIdByPlayerIndex(currentPlayerIndex);
+    if (serverAuthoritativeFlow)
+        ShowAuthoritativeTurnSummaryFromSnapshots(previousActiveUserId);
+
+    int idx = GetPlayerIndexByUserId(activePlayerId);
+    if (idx >= 0)
+    {
+        currentPlayerIndex = idx;
+        StoreAllTurnStartSnapshots();
+        SyncLogTurnNumber();
+        hasRolledThisTurn = false;
+        UpdatePlayersVisuals();
+        ShowCurrentTurnInLog();
+        if (idx < players.Count)
+            WriteLog($"Начался ход игрока {players[idx].playerName}.", players[idx]);
+        PlayUiSound(turnStartSound);
+        LogGame($"Ход передан игроку {activePlayerId} (index={idx}).");
+    }
+}
+
+public void OnGameFinished(string payloadJson)
+{
+    try
+    {
+        FinishedPayload payload = JsonUtility.FromJson<FinishedPayload>(payloadJson);
+        int idx = GetPlayerIndexByUserId(payload.winnerUserId);
+        if (idx >= 0 && idx < players.Count)
+            FinalizeVictory(players[idx]);
+    }
+    catch (Exception e)
+    {
+        LogGame($"OnGameFinished parse error: {e.Message}");
+    }
+}
+
+public void OnGamePaused(string payloadJson)
+{
+    LogGame($"Игра на паузе: {payloadJson}");
+    string reason = "Ожидание переподключения игроков";
+    try
+    {
+        PausePayload payload = JsonUtility.FromJson<PausePayload>(payloadJson);
+        if (payload != null && !string.IsNullOrWhiteSpace(payload.reason))
+            reason = payload.reason;
+    }
+    catch
+    {
+        // Keep fallback reason.
+    }
+    uiManager?.ShowPauseScreen(reason);
+    PlayUiSound(pauseSound);
+}
+
+public void OnGameResumed(string payloadJson)
+{
+    LogGame("Игра возобновлена.");
+    uiManager?.HideOverlayScreen();
+    PlayUiSound(resumeSound);
+}
+
+public void OnOwnerCardClosed(string payloadJson)
+{
+    if (string.IsNullOrWhiteSpace(payloadJson))
+        return;
+
+    try
+    {
+        CardClosedPayload payload = JsonUtility.FromJson<CardClosedPayload>(payloadJson);
+        if (payload == null || string.IsNullOrWhiteSpace(payload.playerId) || string.IsNullOrWhiteSpace(payload.cardId))
+            return;
+        ownerClosedCardSignals.Add(BuildCardOwnerCloseKey(payload.playerId, payload.cardId));
+    }
+    catch (Exception e)
+    {
+        LogGame($"OnOwnerCardClosed parse error: {e.Message}");
+    }
+}
+
+[Serializable]
+private class PausePayload
+{
+    public string reason;
+}
+
+private IEnumerator ShowMovesAfterServerDiceAnimation(int value)
+{
+    float timeout = 3f;
+    while (dice != null && dice.IsRolling && timeout > 0f)
+    {
+        timeout -= Time.deltaTime;
+        yield return null;
+    }
+    yield return new WaitForSeconds(0.05f);
+    if (IsLocalPlayersTurn())
+        ShowPossibleMoves(value);
+}
+
+private IEnumerator WaitForCardDismissOrAutoHide(CardVisual visual, float secondsBeforeAutoHide)
+{
+    if (visual == null)
+        yield break;
+
+    float timer = Mathf.Max(0f, secondsBeforeAutoHide);
+    while (timer > 0f)
+    {
+        if (!visual.IsShown && !visual.IsAnimating)
+            yield break;
+        timer -= Time.deltaTime;
+        yield return null;
+    }
+
+    if (visual.IsShown)
+        visual.Hide();
+    yield return WaitForCardHidden(visual, 5f);
+}
+
+private IEnumerator WaitForOwnerManualCloseAndBroadcast(CardVisual visual, string ownerPlayerId, string cardId)
+{
+    if (visual == null)
+        yield break;
+
+    float timeout = 120f;
+    while (timeout > 0f)
+    {
+        if (!visual.IsShown && !visual.IsAnimating)
+            break;
+        timeout -= Time.deltaTime;
+        yield return null;
+    }
+
+    if (visual.IsShown)
+        visual.Hide();
+    yield return WaitForCardHidden(visual, 5f);
+    EmitCardClosedByOwner(ownerPlayerId, cardId);
+}
+
+private IEnumerator WaitForOwnerCloseSignalThenAutoHide(CardVisual visual, string closeSignalKey, float autoHideDelaySeconds)
+{
+    if (visual == null)
+        yield break;
+    if (string.IsNullOrWhiteSpace(closeSignalKey))
+        yield break;
+
+    float waitTimeout = 120f;
+    while (waitTimeout > 0f && !ownerClosedCardSignals.Contains(closeSignalKey))
+    {
+        waitTimeout -= Time.deltaTime;
+        if (!visual.IsShown && !visual.IsAnimating)
+            yield break;
+        yield return null;
+    }
+
+    ownerClosedCardSignals.Remove(closeSignalKey);
+    if (!visual.IsShown)
+        yield break;
+
+    yield return new WaitForSeconds(Mathf.Max(0f, autoHideDelaySeconds));
+    if (visual.IsShown)
+        visual.Hide();
+    yield return WaitForCardHidden(visual, 5f);
+}
+
+private string BuildCardOwnerCloseKey(string playerId, string cardId)
+{
+    if (string.IsNullOrWhiteSpace(playerId) || string.IsNullOrWhiteSpace(cardId))
+        return "";
+    return $"{playerId}:{cardId}";
+}
+
+private void EmitCardClosedByOwner(string playerId, string cardId)
+{
+    string safePlayer = EscapeJson(playerId ?? "");
+    string safeCard = EscapeJson(cardId ?? "");
+    if (string.IsNullOrWhiteSpace(safePlayer) || string.IsNullOrWhiteSpace(safeCard))
+        return;
+    string key = BuildCardOwnerCloseKey(playerId, cardId);
+    if (!string.IsNullOrWhiteSpace(key))
+        ownerClosedCardSignals.Add(key);
+    UnityWebBridge.Emit("ws.game.card_closed", $"{{\"playerId\":\"{safePlayer}\",\"cardId\":\"{safeCard}\"}}");
+}
+
+private void PlayUiSound(AudioClip clip)
+{
+    if (clip != null && audioSource != null)
+        audioSource.PlayOneShot(clip);
+}
+
+private IEnumerator ApplyServerMove(int playerIndex, BoardNode targetNode, int steps, string movedPlayerId = "")
+{
+    if (playerIndex < 0 || playerIndex >= players.Count || targetNode == null)
+        yield break;
+
+    PlayerController player = players[playerIndex];
+    BoardNode fromNode = player.currentNode;
+    List<BoardNode> path = fromNode != null ? GetPathToTarget(fromNode, targetNode, steps) : null;
+
+    if (path != null && path.Count > 0)
+    {
+        for (int i = 0; i < path.Count; i++)
+        {
+            BoardNode stepNode = path[i];
+            Vector3 targetPos = GetPlayerNodePosition(stepNode, playerIndex);
+            yield return StartCoroutine(JumpToNode(player, targetPos));
+            player.currentNode = stepNode;
+            yield return new WaitForSeconds(stepDelay);
+        }
+    }
+    else
+    {
+        player.currentNode = targetNode;
+        player.transform.position = GetPlayerNodePosition(targetNode, playerIndex);
+    }
+
+    GetTableManager()?.UpdateTablePositions();
+
+    if (serverAuthoritativeFlow && !string.IsNullOrWhiteSpace(movedPlayerId) && movedPlayerId == localUserId)
+        EmitAutoActionIntentForNode(targetNode);
+}
+
+private void BuildBoardSectorLookup()
+{
+    sectorIdByNode.Clear();
+    nodeBySectorId.Clear();
+
+    BoardNode[] nodes = FindObjectsOfType<BoardNode>();
+    Array.Sort(nodes, (a, b) =>
+    {
+        int byName = string.Compare(a.gameObject.name, b.gameObject.name, StringComparison.Ordinal);
+        if (byName != 0) return byName;
+        return a.GetInstanceID().CompareTo(b.GetInstanceID());
+    });
+
+    for (int i = 0; i < nodes.Length; i++)
+    {
+        sectorIdByNode[nodes[i]] = i;
+        nodeBySectorId[i] = nodes[i];
+    }
+}
+
+private bool TryGetSectorId(BoardNode node, out int sectorId) =>
+    sectorIdByNode.TryGetValue(node, out sectorId);
+
+private int GetPlayerIndexByUserId(string userId)
+{
+    if (string.IsNullOrWhiteSpace(userId))
+        return -1;
+    for (int i = 0; i < playerIds.Count; i++)
+    {
+        if (string.Equals(playerIds[i], userId, StringComparison.Ordinal))
+            return i;
+    }
+    return -1;
+}
+
+private PlayerController GetPreferredUiPlayer()
+{
+    int localIdx = GetPlayerIndexByUserId(localUserId);
+    if (localIdx >= 0 && localIdx < players.Count)
+        return players[localIdx];
+    if (currentPlayerIndex >= 0 && currentPlayerIndex < players.Count)
+        return players[currentPlayerIndex];
+    return null;
+}
+
+private bool IsLocalPlayersTurn()
+{
+    int localIdx = GetPlayerIndexByUserId(localUserId);
+    return localIdx >= 0 && localIdx == currentPlayerIndex;
+}
+
+private string GetPlayerColorTitle(PlayerController player)
+{
+    int idx = GetPlayerIndex(player);
+    return idx switch
+    {
+        0 => "Красный",
+        1 => "Синий",
+        2 => "Зелёный",
+        3 => "Жёлтый",
+        _ => "Игрок"
+    };
+}
+
+private string GetUserIdByPlayerIndex(int idx)
+{
+    if (idx < 0 || idx >= playerIds.Count)
+        return "";
+    return playerIds[idx];
+}
+
+private bool TryGetTurnStartSnapshot(string userId, out TurnSnapshot snapshot)
+{
+    if (string.IsNullOrWhiteSpace(userId))
+    {
+        snapshot = default;
+        return false;
+    }
+    return turnStartSnapshotByUserId.TryGetValue(userId, out snapshot);
+}
+
+private void StoreAllTurnStartSnapshots()
+{
+    if (players == null || playerIds == null)
+        return;
+    int count = Mathf.Min(players.Count, playerIds.Count, expectedPlayerCount > 0 ? expectedPlayerCount : players.Count);
+    for (int i = 0; i < count; i++)
+    {
+        string uid = playerIds[i];
+        PlayerController player = players[i];
+        if (string.IsNullOrWhiteSpace(uid) || player == null)
+            continue;
+        turnStartSnapshotByUserId[uid] = CaptureTurnSnapshot(player);
+    }
+}
+
+private void ShowAuthoritativeTurnSummaryFromSnapshots(string previousActiveUserId)
+{
+    if (players == null || playerIds == null)
+        return;
+
+    bool hasAnyChanges = false;
+    int count = Mathf.Min(players.Count, playerIds.Count, expectedPlayerCount > 0 ? expectedPlayerCount : players.Count);
+    for (int i = 0; i < count; i++)
+    {
+        string uid = playerIds[i];
+        PlayerController player = players[i];
+        if (string.IsNullOrWhiteSpace(uid) || player == null)
+            continue;
+        if (!TryGetTurnStartSnapshot(uid, out TurnSnapshot startSnapshot))
+            continue;
+
+        List<string> changes = BuildTurnDeltaList(player, startSnapshot);
+        if (changes.Count == 0)
+            continue;
+
+        hasAnyChanges = true;
+        string text = $"Итоги хода ({player.playerName}): {string.Join(", ", changes)}";
+        WriteLog(text, player, true);
+    }
+
+    if (hasAnyChanges)
+        return;
+
+    int prevIdx = GetPlayerIndexByUserId(previousActiveUserId);
+    if (prevIdx >= 0 && prevIdx < players.Count && players[prevIdx] != null)
+        WriteLog($"Итоги хода ({players[prevIdx].playerName}): изменений характеристик нет.", players[prevIdx], true);
+}
+
+private List<string> BuildTurnDeltaList(PlayerController player, TurnSnapshot start)
+{
+    List<string> changes = new List<string>();
+    AppendDelta(changes, "Деньги", player.money - start.money);
+    AppendDelta(changes, "Опыт", player.experience - start.experience);
+    AppendDelta(changes, "Успех", player.success - start.success);
+    AppendDelta(changes, "Волонтерство", player.volounteer - start.volounteer);
+    AppendDelta(changes, "Наука", player.science - start.science);
+    AppendDelta(changes, "Искусство", player.art - start.art);
+    AppendDelta(changes, "Медиа", player.media - start.media);
+    AppendDelta(changes, "Бизнес", player.business - start.business);
+    AppendDelta(changes, "Спорт", player.sport - start.sport);
+    AppendDelta(changes, "Туризм", player.tourism - start.tourism);
+    AppendDelta(changes, "ИТ", player.IT - start.it);
+    AppendDelta(changes, "Гранты", (player.earnedGrants != null ? player.earnedGrants.Count : 0) - start.activeGrants);
+    return changes;
+}
+
+public void SetLocalUserId(string userId)
+{
+    localUserId = userId ?? "";
+    LogGame($"Установлен localUserId: {localUserId}");
+}
+
+private void EmitRollDiceIntent()
+{
+    UnityWebBridge.Emit("ws.game.roll_dice", "{}");
+    LogGame("Отправлен intent: game.roll_dice");
+}
+
+private void EmitMoveIntent(int steps, int toSector)
+{
+    UnityWebBridge.Emit("ws.game.move", $"{{\"steps\":{steps},\"toSector\":{toSector}}}");
+    LogGame($"Отправлен intent: game.move steps={steps}, toSector={toSector}.");
+}
+
+private void EmitCardIntent(CardData card, string statName)
+{
+    UnityWebBridge.Emit("ws.game.card", "{}");
+    LogGame("Отправлен intent: game.card");
+}
+
+private void EmitProjectIntent(string projectId, int successPoints)
+{
+    string safeProjectId = string.IsNullOrWhiteSpace(projectId) ? "project" : projectId;
+    UnityWebBridge.Emit("ws.game.project", $"{{\"projectId\":\"{EscapeJson(safeProjectId)}\"}}");
+    LogGame($"Отправлен intent: game.project projectId={safeProjectId}.");
+}
+
+private void EmitAutoActionIntentForNode(BoardNode node)
+{
+    if (node == null) return;
+
+    switch (node.nodeStat)
+    {
+        case BoardNode.NodeType.Project:
+            EmitProjectIntent("project", 5);
+            break;
+        case BoardNode.NodeType.None:
+        case BoardNode.NodeType.Money:
+            break;
+        default:
+            UnityWebBridge.Emit("ws.game.card", "{}");
+            LogGame($"Авто intent после хода: game.card, node={node.nodeStat}");
+            break;
+    }
+}
+
+private static string EscapeJson(string value) =>
+    string.IsNullOrEmpty(value) ? "" : value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+private void ApplyServerPlayerState(PlayerController player, PlayerStatePayload state)
+{
+    if (player == null || state == null)
+        return;
+
+    player.money = Mathf.Max(0, state.money);
+    player.experience = Mathf.Clamp(state.experience, 0, 10);
+    player.success = Mathf.Clamp(state.success, 0, 12);
+    player.volounteer = Mathf.Clamp(state.volounteer, 0, 10);
+    player.science = Mathf.Clamp(state.science, 0, 10);
+    player.art = Mathf.Clamp(state.art, 0, 10);
+    player.media = Mathf.Clamp(state.media, 0, 10);
+    player.business = Mathf.Clamp(state.business, 0, 10);
+    player.sport = Mathf.Clamp(state.sport, 0, 10);
+    player.tourism = Mathf.Clamp(state.tourism, 0, 10);
+    player.IT = Mathf.Clamp(state.it, 0, 10);
 }
 
 private void PlayNodeSound(BoardNode.NodeType nodeType)

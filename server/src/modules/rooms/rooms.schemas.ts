@@ -5,11 +5,11 @@ export const CreateRoomSchema = z.object({
   password: z.string().min(1).max(64).optional(),
   settings: z
     .object({
-      maxPlayers: z.number().int().min(3).max(5).default(5),
+      maxPlayers: z.number().int().min(2).max(4).default(4),
       timerSeconds: z.number().int().min(10).max(300).optional(),
     })
     .passthrough()
-    .default({ maxPlayers: 5 }),
+    .default({ maxPlayers: 4 }),
 });
 
 export const ReadySchema = z.object({

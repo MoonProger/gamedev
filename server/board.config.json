@@ -1,0 +1,20 @@
+{
+  "version": "unity-board-v1",
+  "strictMoveValidation": true,
+  "startSector": 9,
+  "sectors": [
+    { "id": 0, "neighbors": [3, 4, 8], "label": "Айти", "nodeType": "IT" },
+    { "id": 1, "neighbors": [5, 7, 8], "label": "Бизнес", "nodeType": "Business" },
+    { "id": 2, "neighbors": [9, 10, 11], "label": "Волонтёрство", "nodeType": "Volounteer" },
+    { "id": 3, "neighbors": [0, 4, 10], "label": "Грант", "nodeType": "Grant" },
+    { "id": 4, "neighbors": [0, 3, 10], "label": "Деньги", "nodeType": "Money" },
+    { "id": 5, "neighbors": [1, 6, 7], "label": "Медиа", "nodeType": "Media" },
+    { "id": 6, "neighbors": [5, 9, 11], "label": "Наука", "nodeType": "Science" },
+    { "id": 7, "neighbors": [1, 5, 8], "label": "Путешествие", "nodeType": "Travel" },
+    { "id": 8, "neighbors": [0, 1, 7], "label": "Спорт", "nodeType": "Sport" },
+    { "id": 9, "neighbors": [2, 6, 11], "label": "Твой проект", "nodeType": "Project" },
+    { "id": 10, "neighbors": [2, 3, 4], "label": "Творчество", "nodeType": "Art" },
+    { "id": 11, "neighbors": [2, 6, 9], "label": "Туризм", "nodeType": "Tourism" }
+  ]
+}
+

@@ -58,7 +58,8 @@ public class CharacterSelectionUI : MonoBehaviour
     public IEnumerator ShowAndPickForPlayers(
         List<PlayerController> activePlayers,
         IReadOnlyList<CharacterData> availableCharacters,
-        System.Action<PlayerController, CharacterData> onPicked)
+        System.Action<PlayerController, CharacterData> onPicked,
+        System.Func<PlayerController, string> playerLabelResolver = null)
     {
         if (activePlayers == null || activePlayers.Count == 0 || availableCharacters == null || availableCharacters.Count == 0)
             yield break;
@@ -90,7 +91,12 @@ public class CharacterSelectionUI : MonoBehaviour
                 BuildCharacterCards(availableCharacters, selected => picked = selected);
 
                 if (titleText != null)
-                    titleText.text = $"Игрок \"{GetPlayerColorNameByIndex(playerIdx)}\", выберите персонажа";
+                {
+                    string resolvedLabel = playerLabelResolver?.Invoke(player);
+                    string fallbackLabel = GetPlayerColorNameByIndex(playerIdx);
+                    string label = string.IsNullOrWhiteSpace(resolvedLabel) ? fallbackLabel : resolvedLabel;
+                    titleText.text = $"Игрок \"{label}\", выберите персонажа";
+                }
 
                 yield return new WaitUntil(() => picked != null);
                 onPicked?.Invoke(player, picked);

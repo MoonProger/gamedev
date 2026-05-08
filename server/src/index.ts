@@ -8,6 +8,7 @@ import { roomsRoutes } from "./modules/rooms/rooms.routes";
 import { usersRoutes } from "./modules/users/users.routes";
 import { attachWs } from "./modules/ws/ws.server";
 import { statsRoutes } from "./modules/stats/stats.routes";
+import { gameRoutes } from "./modules/game/game.routes";
 
 const app = express();
 // CORS настройка
@@ -26,6 +27,7 @@ app.use("/rooms", roomsRoutes);
 app.use("/api/rooms", roomsRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/game", gameRoutes);
 
 const PORT = Number(process.env.PORT ?? 4000);
 

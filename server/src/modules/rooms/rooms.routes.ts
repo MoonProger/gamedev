@@ -15,6 +15,7 @@ import {
   leaveRoom,
   setReady,
 } from "./rooms.service";
+import { roomToDto } from "./rooms.dto";
 import { prisma } from "../../db/prisma";
 
 export const roomsRoutes = Router();
@@ -61,7 +62,7 @@ roomsRoutes.get("/:id", async (req, res) => {
   const roomId = getRoomId(req);
   const room = await getRoom(roomId);
   if (!room) return res.status(404).json({ error: "Room not found" });
-  res.json({ room });
+  res.json({ room: roomToDto(room) });
 });
 
 roomsRoutes.post("/", authRequired, async (req, res) => {
@@ -75,14 +76,14 @@ roomsRoutes.post("/", authRequired, async (req, res) => {
     parsed.data.password
   );
 
-  res.json({ room });
+  res.json({ room: roomToDto(room) });
 });
 
 roomsRoutes.post("/:id/join", authRequired, async (req, res) => {
   const roomId = getRoomId(req);
   try {
     const room = await joinRoom(roomId, req.auth!.userId);
-    res.json({ room });
+    res.json({ room: room ? roomToDto(room) : null });
   } catch (e: any) {
     if (e.message === "ROOM_NOT_FOUND") return res.status(404).json({ error: "Room not found" });
     if (e.message === "ROOM_FULL") return res.status(409).json({ error: "Room full" });
@@ -99,7 +100,7 @@ roomsRoutes.post("/:id/join-private", authRequired, async (req, res) => {
   const roomId = getRoomId(req);
   try {
     const room = await joinPrivateRoom(roomId, req.auth!.userId, parsed.data.password);
-    res.json({ room });
+    res.json({ room: room ? roomToDto(room) : null });
   } catch (e: any) {
     if (e.message === "ROOM_NOT_FOUND") return res.status(404).json({ error: "Room not found" });
     if (e.message === "ROOM_FULL") return res.status(409).json({ error: "Room full" });
@@ -113,7 +114,7 @@ roomsRoutes.post("/:id/join-private", authRequired, async (req, res) => {
 roomsRoutes.post("/:id/leave", authRequired, async (req, res) => {
   const roomId = getRoomId(req);
   const room = await leaveRoom(roomId, req.auth!.userId);
-  res.json({ room });
+  res.json({ room: room ? roomToDto(room) : null });
 });
 
 roomsRoutes.post("/:id/ready", authRequired, async (req, res) => {
@@ -123,7 +124,7 @@ roomsRoutes.post("/:id/ready", authRequired, async (req, res) => {
   const roomId = getRoomId(req);
   try {
     const room = await setReady(roomId, req.auth!.userId, parsed.data.ready);
-    res.json({ room });
+    res.json({ room: room ? roomToDto(room) : null });
   } catch {
     return res.status(409).json({ error: "Not in room" });
   }

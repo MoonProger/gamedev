@@ -39,23 +39,30 @@ const Rooms: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const loadRooms = useCallback(async () => {
+  const loadRooms = useCallback(async (silent: boolean = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await api.getRooms();
       setRooms(data.rooms || []);
       setError(null);
     } catch (err) {
-      setError('Не удалось загрузить комнаты');
+      if (!silent) setError('Не удалось загрузить комнаты');
       console.error('Ошибка загрузки комнат:', err);
-      showToast('Ошибка загрузки комнат', 'error');
+      if (!silent) showToast('Ошибка загрузки комнат', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [showToast]);
 
   useEffect(() => {
     loadRooms();
+  }, [loadRooms]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      loadRooms(true);
+    }, 5000);
+    return () => window.clearInterval(id);
   }, [loadRooms]);
 
   // Фильтрация комнат
@@ -327,7 +334,7 @@ const Rooms: React.FC = () => {
             <div className="settings-group">
               <label>Количество игроков</label>
               <div className="radio-group">
-                {[3, 4, 5].map(num => (
+                {[2, 3, 4].map(num => (
                   <label key={num} className="radio-label">
                     <input
                       type="radio"

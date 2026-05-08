@@ -1,5 +1,6 @@
 ﻿import bcrypt from "bcrypt";
 import { prisma } from "../../db/prisma";
+import { resetGame } from "../game/game.state";
 
 export async function createRoom(
   creatorId: string,
@@ -167,7 +168,7 @@ export async function joinRoom(roomId: string, userId: string) {
 
   const settings = safeJsonParse(room.settings, {});
   const count = await prisma.roomPlayer.count({ where: { roomId } });
-  const maxPlayers = settings?.maxPlayers ?? 5;
+  const maxPlayers = settings?.maxPlayers ?? 4;
   
   // Проверяем, есть ли игрок уже в комнате
   const existingPlayer = await prisma.roomPlayer.findUnique({
@@ -202,7 +203,7 @@ export async function joinPrivateRoom(roomId: string, userId: string, password: 
 
   const settings = safeJsonParse(room.settings, {});
   const count = await prisma.roomPlayer.count({ where: { roomId } });
-  const maxPlayers = settings?.maxPlayers ?? 5;
+  const maxPlayers = settings?.maxPlayers ?? 4;
   
   // Проверяем, есть ли игрок уже в комнате
   const existingPlayer = await prisma.roomPlayer.findUnique({
@@ -277,7 +278,18 @@ export async function openRoom(roomId: string, userId: string) {
     data: { status: "WAITING" }
   });
 }
-import { resetGame } from "../game/game.state";
+export async function deleteRoomBySystem(roomId: string) {
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    select: { id: true },
+  });
+  if (!room) return false;
+
+  await prisma.room.delete({
+    where: { id: roomId },
+  });
+  return true;
+}
 
 export async function resetGameState(roomId: string) {
   console.log(`Resetting game state for room ${roomId}`);

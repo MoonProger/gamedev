@@ -7,7 +7,29 @@ import ErrorMessage from '../components/ui/ErrorMessage';
 import { useToast } from '../context/ToastContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { Room } from '../types/room';
+import { WsServerToClient } from '../types/ws-protocol';
 import './RoomDetails.css';
+
+function normalizeRoom(raw: any): Room {
+  const players = Array.isArray(raw?.players)
+    ? raw.players.map((p: any) => ({
+        userId: p?.userId ?? '',
+        username:
+          typeof p?.username === 'string'
+            ? p.username
+            : typeof p?.user?.username === 'string'
+            ? p.user.username
+            : '',
+        isReady: Boolean(p?.isReady),
+        joinedAt: p?.joinedAt,
+      }))
+    : [];
+
+  return {
+    ...raw,
+    players,
+  } as Room;
+}
 
 function getUserIdFromToken(): string | null {
   const token = api.getToken();
@@ -37,7 +59,7 @@ const RoomDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isReadyLoading, setIsReadyLoading] = useState(false);
-  const [isStarting] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -56,16 +78,18 @@ const RoomDetails: React.FC = () => {
   
   const { showToast } = useToast();
 
-  const handleWebSocketMessage = useCallback((data: any) => {
+  const handleWebSocketMessage = useCallback((data: WsServerToClient) => {
     console.log('WS message:', data);
     
     switch (data.type) {
       case 'room.state':
-        setRoom(data.payload);
+        setRoom(normalizeRoom(data.payload));
         break;
       case 'game.started':
         showToast('Игра началась!', 'success');
-        navigate(`/game/${id}`);
+        navigate(`/game/${id}`, {
+          state: { roomPassword: roomPassword || undefined },
+        });
         break;
       case 'game.paused':
         showToast(`Игра на паузе: ${data.payload.reason}`, 'info');
@@ -74,21 +98,21 @@ const RoomDetails: React.FC = () => {
         showToast(data.payload.message, 'error');
         break;
     }
-  }, [navigate, showToast, id]);
+  }, [navigate, showToast, id, roomPassword]);
 
-  const loadRoom = async () => {
+  const loadRoom = async (silent: boolean = false) => {
     if (!id) return;
     
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await api.getRoom(id);
-      setRoom(data.room);
+      setRoom(normalizeRoom(data.room));
       setError(null);
     } catch (err) {
-      setError('Не удалось загрузить комнату');
+      if (!silent) setError('Не удалось загрузить комнату');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -96,14 +120,17 @@ const RoomDetails: React.FC = () => {
     loadRoom();
   }, [id]);
 
-  // Вычисляем, нужно ли пропускать автоматический join
+  useEffect(() => {
+    const pollId = window.setInterval(() => {
+      loadRoom(true);
+    }, 2000);
+    return () => window.clearInterval(pollId);
+  }, [id]);
+
+  // Всегда делаем room.join по WS, чтобы получать broadсast-события комнаты.
   const currentUserId = getUserIdFromToken();
   const isCreator = room?.creator?.id === currentUserId;
-  const isAlreadyInRoom = room?.players?.some(p => p.userId === currentUserId) ?? false;
-  const shouldSkipJoin = isCreator || isAlreadyInRoom;
-
-  // Передаём shouldSkipJoin в useWebSocket
-const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSocketMessage, shouldSkipJoin);
+const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSocketMessage);
   const handleReady = async () => {
     if (!room || !id) return;
     
@@ -138,6 +165,8 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
 
   const handleStartGame = async () => {
   if (!id) return;
+  if (isStarting) return;
+  setIsStarting(true);
   console.log('Starting game, waiting for WebSocket connection...');
   
   let attempts = 0;
@@ -149,16 +178,13 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
   if (!isConnected) {
     console.error('WebSocket not connected after 3 seconds');
     showToast('Ошибка подключения', 'error');
+    setIsStarting(false);
     return;
   }
-  
-  console.log('Sending room.join');
-  send('room.join', { roomId: id, password: roomPassword });
-  
-  setTimeout(() => {
-    console.log('Now sending game.start');
-    send('game.start', {});
-  }, 200);
+
+  console.log('Sending game.start');
+  send({ type: 'game.start', payload: {} });
+  setTimeout(() => setIsStarting(false), 1000);
 };
 
   const handleCloseRoom = async () => {
