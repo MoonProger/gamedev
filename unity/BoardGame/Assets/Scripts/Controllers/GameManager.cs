@@ -358,6 +358,7 @@ public class GameManager : MonoBehaviour
     private void InitializeGameFromReact()
     {
         isGameInitialized = false;
+        pendingGameStateJson = null;
         hasGameEnded = false;
         pendingVictoryPlayer = null;
         if (pendingVictoryRoutine != null)
@@ -384,7 +385,21 @@ public class GameManager : MonoBehaviour
 
         cachedTableManager?.InitializeTable();
 
+        SetGameplayChromeVisible(false);
+
         StartCoroutine(InitializePlayersRoutine());
+    }
+
+    /// <summary>Игровой HUD, кубик и зелёные карты — скрываем до конца подготовки (после выбора персонажа).</summary>
+    private void SetGameplayChromeVisible(bool visible)
+    {
+        uiManager?.SetGameplayHudVisible(visible);
+        if (dice != null)
+            dice.gameObject.SetActive(visible);
+        if (greenCardUI != null)
+            greenCardUI.gameObject.SetActive(visible);
+        if (utilityCard != null)
+            utilityCard.gameObject.SetActive(visible);
     }
 
     private IEnumerator InitializePlayersRoutine()
@@ -399,13 +414,20 @@ public class GameManager : MonoBehaviour
                 players[i].ApplyCharacter(pickedCharacter);
             else if (!serverAuthoritativeFlow)
                 players[i].RandomizeStats();
-            players[i].TeleportToNode(startNode);
-            players[i].transform.position = GetPlayerNodePosition(startNode, i);
+
+            BoardNode anchorNode = startNode;
+            if (serverAuthoritativeFlow && players[i].currentNode != null)
+                anchorNode = players[i].currentNode;
+
+            players[i].TeleportToNode(anchorNode);
+            players[i].transform.position = GetPlayerNodePosition(anchorNode, i);
             currentPlayerIndex = prev;
         }
 
         UpdatePlayersVisuals();
         ShowCurrentTurnInLog();
+        TryApplyPendingGameState();
+        SetGameplayChromeVisible(true);
         isGameInitialized = true;
         LogGame("Подготовка завершена. Игра готова к старту.");
     }
@@ -1714,7 +1736,6 @@ private void ApplyGameStatePayload(UnityGameStatePayload payload)
         return;
 
     hasGameEnded = !payload.started;
-    isGameInitialized = true;
 
     if (payload.currentTurnNumber > 0)
     {

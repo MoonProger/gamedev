@@ -13,6 +13,7 @@ public class BoardNode : MonoBehaviour
     public NodeType nodeStat = NodeType.None;
 
     [Header("Highlight Visual")]
+    public bool useInnerFill = false;
     public bool autoCreateHighlightSphere = true;
     public Transform highlightVisual;
     public Material highlightMaterial;
@@ -62,6 +63,8 @@ public class BoardNode : MonoBehaviour
         highlightActive = side;
         if (highlightVisual != null)
             highlightVisual.gameObject.SetActive(side);
+        if (highlightRenderer != null)
+            highlightRenderer.enabled = side && useInnerFill;
         if (outlineVisual != null)
             outlineVisual.gameObject.SetActive(side && useOutline);
         ApplyHighlightHoverState(false);
@@ -123,11 +126,12 @@ public class BoardNode : MonoBehaviour
 
         Material mat = highlightMaterial != null
             ? new Material(highlightMaterial)
-            : new Material(Shader.Find("Standard"));
+            : CreateRuntimeTransparentMaterial();
 
         ConfigureTransparentGlowMaterial(mat, highlightColor, highlightEmission);
         runtimeHighlightMaterial = mat;
         highlightRenderer.material = mat;
+        highlightRenderer.enabled = useInnerFill;
         baseHighlightScale = highlightVisual.localScale;
 
         EnsureOutlineVisual();
@@ -143,15 +147,17 @@ public class BoardNode : MonoBehaviour
             GameObject ringObject = new GameObject("MoveHighlightOutlineRing");
             ringObject.transform.SetParent(highlightVisual.parent, false);
             ringObject.transform.localPosition = highlightVisual.localPosition + Vector3.up * outlineYOffset;
-            ringObject.transform.localRotation = highlightVisual.localRotation;
+            // Лежит в плоскости клетки (XZ): LineRenderer с TransformZ рисует круг в локальной XY,
+            // поворачиваем на 90° вокруг X -> кольцо горизонтально, без billboard к камере (View давал искажение).
+            ringObject.transform.localRotation = highlightVisual.localRotation * Quaternion.Euler(90f, 0f, 0f);
 
             outlineLineRenderer = ringObject.AddComponent<LineRenderer>();
             outlineLineRenderer.useWorldSpace = false;
             outlineLineRenderer.loop = true;
-            outlineLineRenderer.alignment = LineAlignment.View;
+            outlineLineRenderer.alignment = LineAlignment.TransformZ;
             outlineLineRenderer.textureMode = LineTextureMode.Stretch;
-            outlineLineRenderer.numCornerVertices = 4;
-            outlineLineRenderer.numCapVertices = 4;
+            outlineLineRenderer.numCornerVertices = 8;
+            outlineLineRenderer.numCapVertices = 8;
             outlineLineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             outlineLineRenderer.receiveShadows = false;
             outlineLineRenderer.widthMultiplier = Mathf.Max(0.001f, outlineRingWidth);
@@ -163,16 +169,15 @@ public class BoardNode : MonoBehaviour
             {
                 float t = (float)i / segments;
                 float angle = t * Mathf.PI * 2f;
+                // Круг в локальной XY (см. TransformZ + поворот выше).
                 float x = Mathf.Cos(angle) * radius;
-                float z = Mathf.Sin(angle) * radius;
-                outlineLineRenderer.SetPosition(i, new Vector3(x, 0f, z));
+                float y = Mathf.Sin(angle) * radius;
+                outlineLineRenderer.SetPosition(i, new Vector3(x, y, 0f));
             }
 
             float outlineScale = Mathf.Max(1f, outlineScaleMultiplier);
-            ringObject.transform.localScale = new Vector3(
-                highlightVisual.localScale.x * outlineScale,
-                1f,
-                highlightVisual.localScale.z * outlineScale);
+            float uniform = Mathf.Max(highlightVisual.localScale.x, highlightVisual.localScale.z) * outlineScale;
+            ringObject.transform.localScale = new Vector3(uniform, uniform, uniform);
 
             outlineVisual = ringObject.transform;
         }
@@ -189,7 +194,7 @@ public class BoardNode : MonoBehaviour
 
         Material mat = outlineMaterial != null
             ? new Material(outlineMaterial)
-            : new Material(Shader.Find("Standard"));
+            : CreateRuntimeTransparentMaterial();
 
         ConfigureTransparentGlowMaterial(mat, outlineColor, outlineEmission);
         runtimeOutlineMaterial = mat;
@@ -204,12 +209,40 @@ public class BoardNode : MonoBehaviour
     {
         if (mat == null) return;
 
+        if (mat.HasProperty("_Color"))
+            mat.SetColor("_Color", color);
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", color);
         mat.color = color;
         if (mat.HasProperty("_EmissionColor"))
         {
             Color emissionColor = new Color(color.r, color.g, color.b) * emission;
             mat.EnableKeyword("_EMISSION");
             mat.SetColor("_EmissionColor", emissionColor);
+        }
+
+        // URP/HDRP style transparent setup (e.g. Lit shader).
+        if (mat.HasProperty("_Surface"))
+        {
+            mat.SetFloat("_Surface", 1f); // Transparent
+            if (mat.HasProperty("_Blend"))
+                mat.SetFloat("_Blend", 0f); // Alpha blend
+            if (mat.HasProperty("_AlphaClip"))
+                mat.SetFloat("_AlphaClip", 0f);
+            if (mat.HasProperty("_ZWrite"))
+                mat.SetFloat("_ZWrite", 0f);
+            if (mat.HasProperty("_SrcBlend"))
+                mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            if (mat.HasProperty("_DstBlend"))
+                mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            if (mat.HasProperty("_AlphaToMask"))
+                mat.SetFloat("_AlphaToMask", 0f);
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
 
         if (mat.HasProperty("_Mode"))
@@ -224,6 +257,20 @@ public class BoardNode : MonoBehaviour
             mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
             mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
+    }
+
+    private Material CreateRuntimeTransparentMaterial()
+    {
+        Shader shader =
+            Shader.Find("Universal Render Pipeline/Unlit")
+            ?? Shader.Find("Unlit/Transparent")
+            ?? Shader.Find("Sprites/Default")
+            ?? Shader.Find("Standard");
+
+        if (shader == null)
+            return new Material(Shader.Find("Standard"));
+
+        return new Material(shader);
     }
 
     private void ApplyHighlightHoverState(bool hovered)

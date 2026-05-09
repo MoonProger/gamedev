@@ -29,6 +29,10 @@ public class UIManager : MonoBehaviour
     [Header("Небольшой статус хода")]
     public TextMeshProUGUI currentTurnStatusText;
 
+    [Header("Gameplay HUD")]
+    /// <summary>Если задан — показывает/скрывает весь игровой интерфейс одним объектом (рекомендуется).</summary>
+    public GameObject gameplayHudRoot;
+
     [Header("Общий лог")]
     public GameObject logPanel;
     public GameObject logTextRoot;
@@ -130,6 +134,44 @@ public class UIManager : MonoBehaviour
     public void SetCurrentTurnNumber(int turnNumber)
     {
         currentLogTurn = Mathf.Max(1, turnNumber);
+    }
+
+    /// <summary>Скрывает/показывает игровой HUD (до выбора персонажа всё можно отключить; выбор персонажа — отдельный объект).</summary>
+    public void SetGameplayHudVisible(bool visible)
+    {
+        if (gameplayHudRoot != null)
+        {
+            gameplayHudRoot.SetActive(visible);
+            return;
+        }
+
+        void ToggleStatLabel(TextMeshProUGUI tmp)
+        {
+            if (tmp != null)
+                tmp.gameObject.SetActive(visible);
+        }
+
+        ToggleStatLabel(moneyText);
+        ToggleStatLabel(expText);
+        ToggleStatLabel(successText);
+        ToggleStatLabel(grantsText);
+        ToggleStatLabel(volunteerText);
+        ToggleStatLabel(scienceText);
+        ToggleStatLabel(artText);
+        ToggleStatLabel(mediaText);
+        ToggleStatLabel(businessText);
+        ToggleStatLabel(sportText);
+        ToggleStatLabel(tourismText);
+        ToggleStatLabel(itText);
+
+        if (logPanel != null)
+            logPanel.SetActive(visible);
+        if (cardVisual != null)
+            cardVisual.gameObject.SetActive(visible);
+
+        var logRoot = GetLogTextRoot();
+        if (!visible && logRoot != null)
+            logRoot.SetActive(false);
     }
 
     public void SetCurrentTurnStatus(string status)

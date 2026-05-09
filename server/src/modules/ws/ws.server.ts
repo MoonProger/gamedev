@@ -14,6 +14,7 @@ import {
   getRawRoom,
   resetGameState,
   deleteRoomBySystem,
+  finishRoomBySystem,
 } from "../rooms/rooms.service";
 import { loadGameState, saveGameState } from "../game/game.persistence";
 import { getOrCreateGame, setGame } from "../game/game.state";
@@ -35,6 +36,7 @@ const replacedSockets = new Set<WebSocket>();
 const roomLastActivityAt = new Map<string, number>();
 
 const ROOM_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+const IN_GAME_IDLE_FINISH_MS = 45 * 60 * 1000;
 const ROOM_CLEANUP_INTERVAL_MS = 60 * 1000;
 
 function safeSend(ws: WebSocket, msg: WsOut) {
@@ -157,10 +159,59 @@ async function areAllRoomPlayersOnline(roomId: string) {
   return room.players.every((player) => onlineUserIds.has(player.userId));
 }
 
+/** Pause/resume authoritative game based on who's actually connected (fixes duplicate socket + reconnect races). */
+async function syncLobbyPresenceForRoom(roomId: string, opts?: { pauseReason?: string }) {
+  touchRoom(roomId);
+
+  const room = await getRawRoom(roomId);
+  if (!room) return;
+
+  const persisted = await loadGameState(roomId);
+  if (!persisted?.started) {
+    await pushRoomState(roomId);
+    return;
+  }
+
+  let game = getOrCreateGame(roomId);
+  if (!game.started) {
+    setGame(roomId, persisted as any);
+    game = getOrCreateGame(roomId);
+  }
+
+  const allOnline = await areAllRoomPlayersOnline(roomId);
+  const shouldPause = !allOnline;
+
+  const wasPaused = Boolean(game.isPaused);
+  if (shouldPause !== wasPaused) {
+    game.isPaused = shouldPause;
+    await saveGameState(roomId, game as any);
+    if (shouldPause) {
+      broadcast(roomId, {
+        type: "game.paused",
+        payload: { reason: opts?.pauseReason ?? "Игрок отключился" },
+      } as any);
+    } else {
+      broadcast(roomId, {
+        type: "game.resumed",
+        payload: {},
+      } as any);
+    }
+  }
+
+  broadcast(roomId, {
+    type: "game.state",
+    payload: game,
+  } as any);
+
+  await pushRoomState(roomId);
+}
+
 async function handleRoomJoin(ws: WebSocket, meta: ClientMeta, msg: Extract<WsIn, { type: "room.join" }>) {
   const roomId = msg.payload.roomId;
   const password = msg.payload.password;
   const alreadyInSameRoom = meta.roomId === roomId && roomSockets.get(roomId)?.has(ws);
+  const roomBeforeJoin = await getRawRoom(roomId);
+  const hadMembershipBeforeJoin = Boolean(roomBeforeJoin?.players?.some((p) => p.userId === meta.userId));
 
   if (!alreadyInSameRoom) {
     try {
@@ -182,7 +233,7 @@ async function handleRoomJoin(ws: WebSocket, meta: ClientMeta, msg: Extract<WsIn
   evictDuplicateUserSockets(roomId, meta.userId, ws);
   touchRoom(roomId);
 
-  if (!alreadyInSameRoom) {
+  if (!alreadyInSameRoom && !hadMembershipBeforeJoin) {
     broadcast(roomId, {
       type: "room.player_joined",
       payload: { userId: meta.userId },
@@ -200,25 +251,9 @@ async function handleRoomJoin(ws: WebSocket, meta: ClientMeta, msg: Extract<WsIn
   };
 
   if (restored.started) {
-    const allOnline = await areAllRoomPlayersOnline(roomId);
-    const wasPaused = Boolean(restored.isPaused);
-    restored.isPaused = !allOnline;
-
     setGame(roomId, restored as any);
     await saveGameState(roomId, restored as any);
-
-    if (allOnline && wasPaused) {
-      broadcast(roomId, {
-        type: "game.resumed",
-        payload: {},
-      } as any);
-    }
-
-    broadcast(roomId, {
-      type: "game.state",
-      payload: restored,
-    } as any);
-
+    await syncLobbyPresenceForRoom(roomId);
     return;
   }
 
@@ -284,36 +319,14 @@ async function handleDisconnect(ws: WebSocket) {
     return;
   }
 
-  const game = getOrCreateGame(roomId);
-
-  if (game.started) {
-    game.isPaused = true;
-    try {
-      await saveGameState(roomId, game as any);
-    } catch (error: any) {
-      console.warn(`[ws:disconnect] failed to persist game state for room=${roomId}: ${error?.message ?? error}`);
-      return;
-    }
-
-    broadcast(roomId, {
-      type: "game.paused",
-      payload: { reason: `Player ${meta.userId} disconnected` },
-    } as any);
-
-    broadcast(roomId, {
-      type: "game.state",
-      payload: game,
-    } as any);
-  }
-
-  await pushRoomState(roomId);
+  await syncLobbyPresenceForRoom(roomId, {
+    pauseReason: `Игрок отключился`,
+  });
 }
 
 async function cleanupIdleRooms() {
   const now = Date.now();
   for (const [roomId, lastActivityAt] of roomLastActivityAt.entries()) {
-    if (now - lastActivityAt < ROOM_IDLE_TIMEOUT_MS) continue;
-
     const sockets = roomSockets.get(roomId);
     if (sockets && sockets.size > 0) continue;
 
@@ -322,6 +335,24 @@ async function cleanupIdleRooms() {
       roomLastActivityAt.delete(roomId);
       continue;
     }
+
+    const idleMs = now - lastActivityAt;
+    if (room.status === "IN_GAME") {
+      if (idleMs < IN_GAME_IDLE_FINISH_MS) continue;
+      try {
+        const finished = await finishRoomBySystem(roomId);
+        if (finished) {
+          console.log(`[ws:cleanup] auto-finished in-game room=${roomId} after idle timeout`);
+        }
+      } catch (error: any) {
+        console.error(`[ws:cleanup] failed to auto-finish room=${roomId}:`, error?.message ?? error);
+      } finally {
+        roomLastActivityAt.delete(roomId);
+      }
+      continue;
+    }
+
+    if (idleMs < ROOM_IDLE_TIMEOUT_MS) continue;
 
     try {
       await resetGameState(roomId);

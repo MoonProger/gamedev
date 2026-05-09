@@ -542,6 +542,11 @@ export async function handleGameMessage(ctx: {
       ensurePlayerState(game, p.userId);
     }
 
+    await prisma.room.update({
+      where: { id: roomId },
+      data: { status: "IN_GAME" },
+    }).catch(() => {});
+
     await saveGameState(roomId, game);
 
     broadcast(roomId, {

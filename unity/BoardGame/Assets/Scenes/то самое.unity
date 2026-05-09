@@ -3003,7 +3003,7 @@ Transform:
   m_GameObject: {fileID: 170611196}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.01, z: 0}
+  m_LocalPosition: {x: 0, y: -0.05, z: 0}
   m_LocalScale: {x: 70, y: 0.03, z: 31.63}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3432,6 +3432,7 @@ MonoBehaviour:
   tourismText: {fileID: 232897335}
   itText: {fileID: 1253823936}
   currentTurnStatusText: {fileID: 690365404}
+  gameplayHudRoot: {fileID: 0}
   logPanel: {fileID: 0}
   logTextRoot: {fileID: 636709178}
   logText: {fileID: 430618977}
@@ -9654,6 +9655,7 @@ MonoBehaviour:
   - {fileID: 1523124202}
   - {fileID: 1589523023}
   nodeStat: 1
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -9668,12 +9670,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9451673, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -14111,6 +14113,7 @@ MonoBehaviour:
   - {fileID: 2014260887}
   - {fileID: 909475688}
   nodeStat: 4
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -14125,12 +14128,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -14416,6 +14419,7 @@ MonoBehaviour:
   - {fileID: 1816691552}
   - {fileID: 908164819}
   nodeStat: 6
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -14430,12 +14434,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -19745,6 +19749,7 @@ MonoBehaviour:
   - {fileID: 2014260887}
   - {fileID: 908164819}
   nodeStat: 8
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -19759,12 +19764,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -19894,6 +19899,7 @@ MonoBehaviour:
   - {fileID: 1589523023}
   - {fileID: 1381107707}
   nodeStat: 2
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -19908,12 +19914,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -20324,7 +20330,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 709937133}
-  - {fileID: 1451401793}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!43 &1359579189
@@ -20972,6 +20977,7 @@ MonoBehaviour:
   - {fileID: 1306620655}
   - {fileID: 1310525199}
   nodeStat: 3
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -20986,12 +20992,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -22116,112 +22122,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1 &1451401789
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1451401793}
-  - component: {fileID: 1451401792}
-  - component: {fileID: 1451401791}
-  - component: {fileID: 1451401790}
-  m_Layer: 0
-  m_Name: "\u0414\u043E\u0441\u043A\u0430-\u0440\u0435\u0444\u0435\u0440\u0435\u043D\u0441"
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!64 &1451401790
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1451401789}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &1451401791
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1451401789}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: fe9b2f9d10fd20a4396ec61289a53f29, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &1451401792
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1451401789}
-  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &1451401793
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1451401789}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
-  m_LocalPosition: {x: 0, y: 0, z: -505}
-  m_LocalScale: {x: 27, y: 1, z: 14}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1356284207}
-  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!1 &1453801014
 GameObject:
   m_ObjectHideFlags: 0
@@ -23335,6 +23235,7 @@ MonoBehaviour:
   - {fileID: 1589523023}
   - {fileID: 1775953208}
   nodeStat: 0
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -23349,12 +23250,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -24235,6 +24136,7 @@ MonoBehaviour:
   - {fileID: 505559824}
   - {fileID: 1523124202}
   nodeStat: 9
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -24249,12 +24151,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -25840,6 +25742,7 @@ MonoBehaviour:
   - {fileID: 1775953208}
   - {fileID: 1816691552}
   nodeStat: 7
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -25854,12 +25757,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -26680,6 +26583,7 @@ MonoBehaviour:
   - {fileID: 1816691552}
   - {fileID: 1523124202}
   nodeStat: 5
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -26694,12 +26598,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -27266,6 +27170,7 @@ MonoBehaviour:
   - {fileID: 1706295862}
   - {fileID: 909475688}
   nodeStat: 10
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -27280,12 +27185,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12
@@ -29737,6 +29642,7 @@ MonoBehaviour:
   - {fileID: 908164819}
   - {fileID: 1306620655}
   nodeStat: 11
+  useInnerFill: 0
   autoCreateHighlightSphere: 1
   highlightVisual: {fileID: 0}
   highlightMaterial: {fileID: 0}
@@ -29751,12 +29657,12 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.95273125, b: 0, a: 0.19607843}
-  outlineEmission: 2.5
+  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineEmission: 1
   outlineScaleMultiplier: 1
-  outlineYOffset: 0.005
+  outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 1
+  outlineRingWidth: 0.02
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
   hoverScaleMultiplier: 1.12

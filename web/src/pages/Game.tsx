@@ -217,6 +217,12 @@ const Game: React.FC = () => {
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    return () => {
+      unityInitKeyRef.current = null;
+    };
+  }, []);
   const roomPassword =
     (location.state as { roomPassword?: string } | null)?.roomPassword ??
     (id ? localStorage.getItem(`room_${id}_password`) : null);
@@ -348,9 +354,6 @@ const Game: React.FC = () => {
             {
               const unityState = toUnityGameStatePayload(data.payload, playersRef.current);
               setGameState(unityState);
-              if (isLoadedRef.current) {
-                sendMessage('GameManager', 'UpdateGameState', JSON.stringify(unityState));
-              }
             }
             break;
           case 'room.state':
@@ -662,6 +665,15 @@ const Game: React.FC = () => {
     };
   }, [addEventListener, removeEventListener, sendWsMessage, showToast]);
 
+  useEffect(() => {
+    if (!isLoaded || !gameState) return;
+    try {
+      sendMessage('GameManager', 'UpdateGameState', JSON.stringify(gameState));
+    } catch (e) {
+      console.error('Ошибка UpdateGameState в Unity:', e);
+    }
+  }, [isLoaded, gameState, sendMessage]);
+
   // Когда Unity загрузился и есть игроки, отправляем данные
   useEffect(() => {
     if (isLoaded && players.length > 0 && id) {
@@ -688,19 +700,12 @@ const Game: React.FC = () => {
               sendMessage('GameManager', 'SetPlayerId', player.userId);
             }, index * 200);
           });
-          
-          // Если есть сохранённое состояние игры, отправляем его
-          if (gameState) {
-            setTimeout(() => {
-              sendMessage('GameManager', 'UpdateGameState', JSON.stringify(gameState));
-            }, players.length * 200 + 500);
-          }
         } catch (e) {
           console.error('Ошибка отправки в Unity:', e);
         }
       }, 1000);
     }
-  }, [id, isLoaded, players, sendMessage, gameState, localUserId]);
+  }, [id, isLoaded, players, sendMessage, localUserId]);
 
   // Выход из игры
   const handleExitGame = async () => {
