@@ -57,6 +57,8 @@ const SERVER_ERROR_RU: Record<string, string> = {
   GREEN_CHOICE_CARD_MISMATCH: 'Выбор сделан не для той зеленой карты',
   GAME_FINISH_PENDING_CARD_CLOSE: 'Сначала закройте победную карту',
   GREEN_CHOICE_REQUIRED: 'Сначала выберите цель по зеленой карте',
+  CARD_CLOSE_REQUIRED: 'Сначала закройте открытую карту',
+  CHARACTER_SELECTION_PENDING: 'Дождитесь окончания выбора персонажей',
   TARGET_PLAYER_NOT_IN_ROOM: 'Выбранный игрок не находится в комнате',
   NOT_YOUR_TURN: 'Сейчас не ваш ход',
   WRONG_PHASE: 'Сейчас это действие недоступно',
@@ -134,6 +136,21 @@ type UnityGameState = {
   players: UnityPlayerState[];
 };
 
+type TurnTimerState = {
+  running: boolean;
+  durationMs: number;
+  remainingMs: number;
+  endsAt: number;
+  activePlayerId: string | null;
+};
+
+function formatTimerSeconds(ms: number): string {
+  const clamped = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(clamped / 60);
+  const seconds = clamped % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 function toUnityGameStatePayload(raw: any, knownPlayers: Player[]): UnityGameState {
   const knownUserIds = knownPlayers.map((p) => p.userId);
   const idsFromPositions = Object.keys(raw?.positions ?? {});
@@ -206,6 +223,8 @@ const Game: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [gameState, setGameState] = useState<any>(null);
   const [localUserId, setLocalUserId] = useState<string | null>(null);
+  const [turnTimer, setTurnTimer] = useState<TurnTimerState | null>(null);
+  const [timerNowMs, setTimerNowMs] = useState(() => Date.now());
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [devTargetUserId, setDevTargetUserId] = useState<string>('');
   const [devDeltas, setDevDeltas] = useState<DevDeltaState>(INITIAL_DEV_DELTAS);
@@ -214,6 +233,7 @@ const Game: React.FC = () => {
   const playersRef = useRef<Player[]>([]);
   const isLoadedRef = useRef(false);
   const unityInitKeyRef = useRef<string | null>(null);
+  const fullscreenRootRef = useRef<HTMLDivElement>(null);
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const { showToast } = useToast();
@@ -262,6 +282,14 @@ const Game: React.FC = () => {
     const preferred = localUserId && players.some((p) => p.userId === localUserId) ? localUserId : players[0].userId;
     setDevTargetUserId(preferred);
   }, [players, localUserId, devTargetUserId]);
+
+  useEffect(() => {
+    if (!turnTimer?.running) return;
+    const id = window.setInterval(() => {
+      setTimerNowMs(Date.now());
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [turnTimer?.running, turnTimer?.endsAt]);
 
   const loadRoomData = async () => {
     try {
@@ -391,6 +419,17 @@ const Game: React.FC = () => {
             if (isLoadedRef.current) {
               sendMessage('GameManager', 'OnTurnChanged', data.payload.activePlayerId);
             }
+            break;
+          case 'game.turn_timer':
+            setTurnTimer({
+              running: Boolean(data.payload.running),
+              durationMs: Number(data.payload.durationMs ?? 0),
+              remainingMs: Number(data.payload.remainingMs ?? 0),
+              endsAt: Number(data.payload.endsAt ?? 0),
+              activePlayerId:
+                typeof data.payload.activePlayerId === 'string' ? data.payload.activePlayerId : null,
+            });
+            setTimerNowMs(Date.now());
             break;
           case 'game.token_moved':
             if (isLoadedRef.current) {
@@ -731,12 +770,13 @@ const Game: React.FC = () => {
 
   // Полноэкранный режим
   const toggleFullscreen = useCallback(() => {
-    if (!gameContainerRef.current) return;
+    const target = fullscreenRootRef.current;
+    if (!target) return;
 
     if (!isFullscreen) {
-      if (gameContainerRef.current.requestFullscreen) {
-        gameContainerRef.current.requestFullscreen();
-      }
+      target.requestFullscreen?.().catch((e) => {
+        console.error('Не удалось включить полноэкранный режим', e);
+      });
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen();
@@ -755,13 +795,28 @@ const Game: React.FC = () => {
 
   // Прогресс загрузки в процентах
   const loadingPercent = Math.round(loadingProgression * 100);
+  const timerDurationMs = Math.max(0, Number(turnTimer?.durationMs ?? 0));
+  const timerRemainingMs = turnTimer?.running
+    ? Math.max(0, (turnTimer?.endsAt ?? 0) - timerNowMs)
+    : Math.max(0, Number(turnTimer?.remainingMs ?? 0));
+  const timerProgress = timerDurationMs > 0 ? Math.min(1, timerRemainingMs / timerDurationMs) : 0;
+  const ringRadius = 34;
+  const ringLength = 2 * Math.PI * ringRadius;
+  const timerVisible = Boolean(
+    turnTimer &&
+      timerDurationMs > 0 &&
+      gameState?.started &&
+      !gameState?.isPaused &&
+      turnTimer.activePlayerId
+  );
+  const timerActivePlayerLabel = turnTimer?.activePlayerId ? getPlayerLabel(turnTimer.activePlayerId) : '';
 
   if (loading) {
     return <Loader text="Загрузка данных комнаты..." fullPage />;
   }
 
   return (
-    <div className="game-container">
+    <div className="game-container" ref={fullscreenRootRef}>
       <div className="game-header">
         <Button variant="outline" onClick={handleExitGame}>
           ← Выйти из игры
@@ -779,6 +834,29 @@ const Game: React.FC = () => {
       <div className="players-count-header">
         Игроков: {players.length}
       </div>
+
+      {timerVisible && (
+        <div className="turn-timer-card" aria-live="polite">
+          <div className="turn-timer-ring">
+            <svg viewBox="0 0 84 84" className="turn-timer-svg" role="img" aria-label="Таймер хода">
+              <circle className="turn-timer-track" cx="42" cy="42" r={ringRadius} />
+              <circle
+                className={`turn-timer-progress${timerRemainingMs <= 5000 ? ' danger' : ''}`}
+                cx="42"
+                cy="42"
+                r={ringRadius}
+                strokeDasharray={ringLength}
+                strokeDashoffset={ringLength * (1 - timerProgress)}
+              />
+            </svg>
+            <div className="turn-timer-time">{formatTimerSeconds(timerRemainingMs)}</div>
+          </div>
+          <div className="turn-timer-text">
+            <div className="turn-timer-title">Время хода</div>
+            <div className="turn-timer-player">{timerActivePlayerLabel}</div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
         <Button variant="outline" onClick={() => setShowDevPanel((v) => !v)}>
@@ -873,7 +951,7 @@ const Game: React.FC = () => {
           unityProvider={unityProvider} 
           style={{ 
             width: "100%", 
-            height: "600px", 
+            height: isFullscreen ? "calc(100vh - 230px)" : "600px",
             border: "2px solid #d1fae5", 
             borderRadius: "12px",
             display: isLoaded ? 'block' : 'none'

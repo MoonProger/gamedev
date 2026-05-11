@@ -9670,15 +9670,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &513647245
 GameObject:
   m_ObjectHideFlags: 0
@@ -14128,15 +14128,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &908778321
 GameObject:
   m_ObjectHideFlags: 0
@@ -14434,15 +14434,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &914647505
 GameObject:
   m_ObjectHideFlags: 0
@@ -19764,15 +19764,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &1310525194
 GameObject:
   m_ObjectHideFlags: 0
@@ -19914,15 +19914,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &1332493003
 GameObject:
   m_ObjectHideFlags: 0
@@ -20992,15 +20992,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &1382486197
 GameObject:
   m_ObjectHideFlags: 0
@@ -23250,15 +23250,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!136 &1523124203
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -24151,15 +24151,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &1592040912
 GameObject:
   m_ObjectHideFlags: 0
@@ -25757,15 +25757,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &1708045957
 GameObject:
   m_ObjectHideFlags: 0
@@ -26598,15 +26598,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &1789796733
 GameObject:
   m_ObjectHideFlags: 0
@@ -27185,15 +27185,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &1824364820
 GameObject:
   m_ObjectHideFlags: 0
@@ -29657,15 +29657,15 @@ MonoBehaviour:
   autoCreateOutlineSphere: 1
   outlineVisual: {fileID: 0}
   outlineMaterial: {fileID: 0}
-  outlineColor: {r: 1, g: 0.9301645, b: 0, a: 1}
+  outlineColor: {r: 1, g: 0.9320468, b: 0, a: 0.6313726}
   outlineEmission: 1
   outlineScaleMultiplier: 1
   outlineYOffset: 0.1
   outlineRingSegments: 48
-  outlineRingWidth: 0.02
+  outlineRingWidth: 0.04
   outlineHoverEmissionMultiplier: 1.7
   hoverEmissionMultiplier: 1.8
-  hoverScaleMultiplier: 1.12
+  hoverScaleMultiplier: 1.2
 --- !u!1 &2015055616 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3494842423371251762, guid: d1bac5103178d6743a93b86d11c753f9, type: 3}

@@ -101,6 +101,16 @@ export type WsOut =
   | { type: "game.finished"; payload: { winnerUserId: string; finalScores: JsonMap } }
   | { type: "game.token_moved"; payload: { playerId: string; pos: number; steps: number } }
   | { type: "game.turn_changed"; payload: { activePlayerId: string } }
+  | {
+      type: "game.turn_timer";
+      payload: {
+        running: boolean;
+        durationMs: number;
+        remainingMs: number;
+        endsAt: number;
+        activePlayerId: string | null;
+      };
+    }
   | { type: "game.state"; payload: JsonMap }
   | { type: "game.paused"; payload: { reason: string } }
   | { type: "game.resumed"; payload: {} }

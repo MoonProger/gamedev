@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "cards:export": "node scripts/export-unity-cards.js",
+    "characters:export": "node scripts/export-unity-characters.js",
     "prisma:init": "prisma init",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"

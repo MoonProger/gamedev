@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import jwt from "jsonwebtoken";
 
 import { WsIn, WsOut } from "./ws.types";
-import { handleGameMessage } from "../game/game.handlers";
+import { clearTurnTimerForRoom, handleGameMessage, syncTurnTimerForRoom } from "../game/game.handlers";
 import { roomToDto } from "../rooms/rooms.dto";
 import {
   joinRoom,
@@ -198,6 +198,8 @@ async function syncLobbyPresenceForRoom(roomId: string, opts?: { pauseReason?: s
     }
   }
 
+  await syncTurnTimerForRoom(roomId, broadcast);
+
   broadcast(roomId, {
     type: "game.state",
     payload: game,
@@ -285,6 +287,7 @@ async function handleRoomLeave(ws: WebSocket, meta: ClientMeta) {
 
   if (playersCount === 0) {
     console.log(`[ws:leave] no players left, reset game state, room=${roomId}`);
+    clearTurnTimerForRoom(roomId);
     await resetGameState(roomId);
   }
 
@@ -315,6 +318,7 @@ async function handleDisconnect(ws: WebSocket) {
 
   const room = await getRawRoom(roomId);
   if (!room) {
+    clearTurnTimerForRoom(roomId);
     roomLastActivityAt.delete(roomId);
     return;
   }
@@ -355,6 +359,7 @@ async function cleanupIdleRooms() {
     if (idleMs < ROOM_IDLE_TIMEOUT_MS) continue;
 
     try {
+      clearTurnTimerForRoom(roomId);
       await resetGameState(roomId);
       const deleted = await deleteRoomBySystem(roomId);
       if (deleted) {

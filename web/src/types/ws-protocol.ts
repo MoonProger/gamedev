@@ -85,6 +85,16 @@ export type WsServerToClient =
   | { type: 'game.card'; payload: JsonMap }
   | { type: 'game.project'; payload: JsonMap }
   | { type: 'game.turn_changed'; payload: { activePlayerId: string } }
+  | {
+      type: 'game.turn_timer';
+      payload: {
+        running: boolean;
+        durationMs: number;
+        remainingMs: number;
+        endsAt: number;
+        activePlayerId: string | null;
+      };
+    }
   | { type: 'game.finished'; payload: { winnerUserId: string; finalScores: JsonMap } }
   | { type: 'game.paused'; payload: { reason: string } }
   | { type: 'game.resumed'; payload: {} }

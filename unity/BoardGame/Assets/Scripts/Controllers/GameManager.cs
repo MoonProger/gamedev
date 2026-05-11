@@ -2007,7 +2007,7 @@ private IEnumerator ShowResolvedServerCardSequence(CardPlayedPayload payload, bo
     {
         if (isLocalOwner)
         {
-            yield return WaitForOwnerManualCloseAndBroadcast(firstVisual, payload.playerId, payload.cardId);
+            yield return WaitForOwnerManualCloseAndBroadcast(firstVisual, payload.playerId, payload.cardId, closeSignalKey);
         }
         else
         {
@@ -2087,7 +2087,7 @@ private IEnumerator ShowPendingGreenChoiceSequence(CardPlayedPayload payload)
     }
     EmitGreenChoiceIntent(payload.cardId, selectedPartnerId);
     if (cardVisual != null)
-        yield return WaitForOwnerManualCloseAndBroadcast(cardVisual, payload.playerId, payload.cardId);
+        yield return WaitForOwnerManualCloseAndBroadcast(cardVisual, payload.playerId, payload.cardId, BuildCardOwnerCloseKey(payload.playerId, payload.cardId));
 }
 
 private CardVisual ShowResolvedServerCardOnce(string deckKey, string cardId, int cardType, string title)
@@ -2337,14 +2337,21 @@ private IEnumerator WaitForCardDismissOrAutoHide(CardVisual visual, float second
     yield return WaitForCardHidden(visual, 5f);
 }
 
-private IEnumerator WaitForOwnerManualCloseAndBroadcast(CardVisual visual, string ownerPlayerId, string cardId)
+private IEnumerator WaitForOwnerManualCloseAndBroadcast(CardVisual visual, string ownerPlayerId, string cardId, string closeSignalKey)
 {
     if (visual == null)
         yield break;
 
     float timeout = 120f;
+    bool closedByServerSignal = false;
     while (timeout > 0f)
     {
+        if (!string.IsNullOrWhiteSpace(closeSignalKey) && ownerClosedCardSignals.Contains(closeSignalKey))
+        {
+            closedByServerSignal = true;
+            ownerClosedCardSignals.Remove(closeSignalKey);
+            break;
+        }
         if (!visual.IsShown && !visual.IsAnimating)
             break;
         timeout -= Time.deltaTime;
@@ -2354,7 +2361,10 @@ private IEnumerator WaitForOwnerManualCloseAndBroadcast(CardVisual visual, strin
     if (visual.IsShown)
         visual.Hide();
     yield return WaitForCardHidden(visual, 5f);
-    EmitCardClosedByOwner(ownerPlayerId, cardId);
+    if (!closedByServerSignal)
+        EmitCardClosedByOwner(ownerPlayerId, cardId);
+    if (!string.IsNullOrWhiteSpace(closeSignalKey))
+        ownerClosedCardSignals.Remove(closeSignalKey);
 }
 
 private IEnumerator WaitForOwnerCloseSignalThenAutoHide(CardVisual visual, string closeSignalKey, float autoHideDelaySeconds)

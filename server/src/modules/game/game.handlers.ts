@@ -1,13 +1,99 @@
 ﻿import { WsIn, WsOut } from "../ws/ws.types";
 import { prisma } from "../../db/prisma";
-import { getOrCreateGame } from "./game.state";
-import { saveGameState } from "./game.persistence";
+import { getOrCreateGame, setGame } from "./game.state";
+import { loadGameState, saveGameState } from "./game.persistence";
 import { finalizeGame } from "./game.results";
 import { getBoardSectorById, getBoardStartSector, isMoveReachable, isStrictBoardValidationEnabled } from "./game.board";
-import { drawRandomCard, mapNodeTypeToDeckKey, ServerCard } from "./game.cards";
+import { getCardDecks, mapNodeTypeToDeckKey, ServerCard } from "./game.cards";
+import { getCharacterTemplates } from "./game.characters";
 
 function randDice() {
   return 1 + Math.floor(Math.random() * 6);
+}
+
+type RoomTurnTimerState = {
+  timeout: NodeJS.Timeout;
+  signature: string;
+  durationMs: number;
+  endsAt: number;
+  activePlayerId: string;
+};
+type CharacterSelectionTimerState = {
+  timeout: NodeJS.Timeout;
+  deadlineAt: number;
+};
+
+const turnTimers = new Map<string, RoomTurnTimerState>();
+const characterSelectionTimers = new Map<string, CharacterSelectionTimerState>();
+const SURPRISE_CARD_TYPE = 0;
+const CHARACTER_SELECTION_TIMEOUT_MS = 120_000;
+
+function parseRoomSettings(raw: unknown): { timerSeconds?: number } {
+  if (!raw) return {};
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }
+  if (typeof raw === "object") return raw as { timerSeconds?: number };
+  return {};
+}
+
+function getTurnTimerDurationMs(room: any): number | null {
+  const settings = parseRoomSettings(room?.settings);
+  const seconds = Number(settings?.timerSeconds);
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
+  return Math.max(1, Math.trunc(seconds)) * 1000;
+}
+
+function buildTurnSignature(game: any): string {
+  return [
+    game?.started ? "1" : "0",
+    game?.isPaused ? "1" : "0",
+    String(game?.activePlayerId ?? ""),
+    String(game?.phase ?? ""),
+    String(game?.lastDice ?? ""),
+    String(Array.isArray(game?.history) ? game.history.length : 0),
+  ].join("|");
+}
+
+function clearTurnTimer(roomId: string) {
+  const existing = turnTimers.get(roomId);
+  if (!existing) return;
+  clearTimeout(existing.timeout);
+  turnTimers.delete(roomId);
+}
+
+function clearCharacterSelectionTimer(roomId: string) {
+  const existing = characterSelectionTimers.get(roomId);
+  if (!existing) return;
+  clearTimeout(existing.timeout);
+  characterSelectionTimers.delete(roomId);
+}
+
+export function clearTurnTimerForRoom(roomId: string) {
+  clearTurnTimer(roomId);
+  clearCharacterSelectionTimer(roomId);
+}
+
+function emitTurnTimerState(
+  roomId: string,
+  game: any,
+  broadcast: (roomId: string, msg: WsOut) => void,
+  timer: { running: boolean; durationMs: number; remainingMs: number; endsAt: number }
+) {
+  broadcast(roomId, {
+    type: "game.turn_timer",
+    payload: {
+      running: timer.running,
+      durationMs: Math.max(0, Math.trunc(timer.durationMs)),
+      remainingMs: Math.max(0, Math.trunc(timer.remainingMs)),
+      endsAt: Math.max(0, Math.trunc(timer.endsAt)),
+      activePlayerId: typeof game?.activePlayerId === "string" ? game.activePlayerId : null,
+    },
+  } as any);
 }
 
 function ensurePlayerState(game: any, userId: string) {
@@ -361,6 +447,12 @@ type PendingCardWin = {
   cardId: string;
 };
 
+type PendingCardClose = {
+  ownerUserId: string;
+  cardId: string;
+  nextActivePlayerId: string;
+};
+
 type PendingGreenChoice = {
   ownerUserId: string;
   cardId: string;
@@ -373,6 +465,145 @@ function getMetaDeckState(game: any): any {
   if (!game.deckState) game.deckState = {};
   if (!game.deckState.__meta) game.deckState.__meta = {};
   return game.deckState.__meta;
+}
+
+function hasCharacterSelection(game: any, userId: string): boolean {
+  const state = game?.deckState?.[userId];
+  return Boolean(state?.selectedCharacter?.characterId);
+}
+
+function isCharacterSelectionCompleted(game: any): boolean {
+  const meta = getMetaDeckState(game);
+  return Boolean(meta.characterSelectionCompleted);
+}
+
+function markCharacterSelectionCompleted(game: any) {
+  const meta = getMetaDeckState(game);
+  meta.characterSelectionCompleted = true;
+  delete meta.characterSelectionDeadlineAt;
+}
+
+function ensureCharacterSelectionInitialized(game: any) {
+  const meta = getMetaDeckState(game);
+  if (!meta.characterSelectionDeadlineAt) {
+    meta.characterSelectionDeadlineAt = Date.now() + CHARACTER_SELECTION_TIMEOUT_MS;
+  }
+  if (meta.characterSelectionCompleted === undefined) {
+    meta.characterSelectionCompleted = false;
+  }
+}
+
+function allPlayersSelected(game: any, roomPlayers: { userId: string }[]) {
+  return roomPlayers.every((p) => hasCharacterSelection(game, p.userId));
+}
+
+function generateFallbackCharacter(userId: string) {
+  const pick = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const templates = getCharacterTemplates();
+  const pickedTemplate =
+    templates.length > 0 ? templates[Math.floor(Math.random() * templates.length)] : null;
+  return {
+    characterId: pickedTemplate?.id || `auto_${pick(1000, 9999)}`,
+    selectedAt: new Date().toISOString(),
+    byUserId: "system_auto",
+    stats: {
+      money: pickedTemplate?.money ?? pick(1, 5),
+      experience: pickedTemplate?.experience ?? pick(0, 4),
+      success: pickedTemplate?.success ?? pick(0, 2),
+      volounteer: pickedTemplate?.volounteer ?? pick(0, 3),
+      science: pickedTemplate?.science ?? pick(0, 3),
+      art: pickedTemplate?.art ?? pick(0, 3),
+      media: pickedTemplate?.media ?? pick(0, 3),
+      business: pickedTemplate?.business ?? pick(0, 3),
+      sport: pickedTemplate?.sport ?? pick(0, 3),
+      tourism: pickedTemplate?.tourism ?? pick(0, 3),
+      it: pickedTemplate?.it ?? pick(0, 3),
+    },
+  };
+}
+
+function applyCharacterSelection(game: any, userId: string, selected: any, stats: any) {
+  ensurePlayerState(game, userId);
+  const deckState = getPlayerDeckState(game, userId);
+  const toInt = (value: unknown) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.trunc(n) : 0;
+  };
+  deckState.selectedCharacter = {
+    characterId:
+      typeof selected?.characterId === "string" && selected.characterId.trim().length > 0
+        ? selected.characterId
+        : "client_character",
+    selectedAt:
+      typeof selected?.selectedAt === "string" && selected.selectedAt.trim().length > 0
+        ? selected.selectedAt
+        : new Date().toISOString(),
+    byUserId:
+      typeof selected?.byUserId === "string" && selected.byUserId.trim().length > 0
+        ? selected.byUserId
+        : userId,
+  };
+  deckState.grants = 0;
+  deckState.completedProjects = {};
+  deckState.milestoneClaims = {};
+
+  game.money[userId] = clampByStat("money", toInt(stats.money));
+  game.experience[userId] = clampByStat("experience", toInt(stats.experience));
+  game.scores[userId]["success"] = clampByStat("success", toInt(stats.success));
+  game.scores[userId]["volounteer"] = clampByStat("volounteer", toInt(stats.volounteer));
+  game.scores[userId]["science"] = clampByStat("science", toInt(stats.science));
+  game.scores[userId]["art"] = clampByStat("art", toInt(stats.art));
+  game.scores[userId]["media"] = clampByStat("media", toInt(stats.media));
+  game.scores[userId]["business"] = clampByStat("business", toInt(stats.business));
+  game.scores[userId]["sport"] = clampByStat("sport", toInt(stats.sport));
+  game.scores[userId]["tourism"] = clampByStat("tourism", toInt(stats.tourism));
+  game.scores[userId]["it"] = clampByStat("it", toInt(stats.it));
+}
+
+function resetCardDrawMeta(game: any) {
+  const meta = getMetaDeckState(game);
+  delete meta.lastDrawnCardType;
+}
+
+function drawCardWithAntiSurpriseStreak(game: any, deckKey: string): ServerCard | null {
+  const deck = getCardDecks()[deckKey];
+  if (!deck || deck.length === 0) return null;
+
+  const meta = getMetaDeckState(game);
+  const previousType = Number(meta.lastDrawnCardType);
+  const banSurpriseNow = previousType === SURPRISE_CARD_TYPE;
+
+  const eligible = banSurpriseNow
+    ? deck.filter((card) => Number(card.cardType) !== SURPRISE_CARD_TYPE)
+    : deck;
+  const pool = eligible.length > 0 ? eligible : deck;
+
+  const selected = pool[Math.floor(Math.random() * pool.length)];
+  meta.lastDrawnCardType = Number(selected.cardType);
+  return selected;
+}
+
+function findAutoMoveTarget(fromSector: number, steps: number): number | undefined {
+  if (!isStrictBoardValidationEnabled()) return undefined;
+
+  const fromType = normalizeNodeType(getBoardSectorById(fromSector)?.nodeType);
+  if (fromType === "money") return fromSector;
+
+  const dfs = (current: number, stepsLeft: number, visited: Set<number>): number | null => {
+    if (stepsLeft === 0) return current;
+    const neighbors = [...(getBoardSectorById(current)?.neighbors ?? [])].sort((a, b) => a - b);
+    for (const next of neighbors) {
+      if (visited.has(next)) continue;
+      visited.add(next);
+      const candidate = dfs(next, stepsLeft - 1, visited);
+      visited.delete(next);
+      if (candidate !== null) return candidate;
+    }
+    return null;
+  };
+
+  const result = dfs(fromSector, steps, new Set<number>([fromSector]));
+  return result ?? undefined;
 }
 
 function getPendingCardWin(game: any): PendingCardWin | null {
@@ -397,6 +628,30 @@ function setPendingCardWin(game: any, pending: PendingCardWin) {
 function clearPendingCardWin(game: any) {
   const meta = getMetaDeckState(game);
   delete meta.pendingCardWin;
+}
+
+function getPendingCardClose(game: any): PendingCardClose | null {
+  const meta = getMetaDeckState(game);
+  const pending = meta.pendingCardClose;
+  if (!pending) return null;
+  if (
+    typeof pending.ownerUserId !== "string" ||
+    typeof pending.cardId !== "string" ||
+    typeof pending.nextActivePlayerId !== "string"
+  ) {
+    return null;
+  }
+  return pending as PendingCardClose;
+}
+
+function setPendingCardClose(game: any, pending: PendingCardClose) {
+  const meta = getMetaDeckState(game);
+  meta.pendingCardClose = pending;
+}
+
+function clearPendingCardClose(game: any) {
+  const meta = getMetaDeckState(game);
+  delete meta.pendingCardClose;
 }
 
 function getPendingGreenChoice(game: any): PendingGreenChoice | null {
@@ -439,7 +694,9 @@ async function finalizeAndBroadcastWin(
   game: any,
   broadcast: (roomId: string, msg: WsOut) => void
 ) {
+  clearCharacterSelectionTimer(roomId);
   clearPendingCardWin(game);
+  clearPendingCardClose(game);
   clearPendingGreenChoice(game);
   await finalizeGame(roomId, winnerUserId, game);
 
@@ -492,6 +749,299 @@ function normalizeNodeType(nodeType?: string): string {
   return typeof nodeType === "string" ? nodeType.trim().toLowerCase() : "";
 }
 
+async function resolveCharacterSelectionProgress(
+  roomId: string,
+  roomPlayers: { userId: string }[],
+  game: any,
+  broadcast: (roomId: string, msg: WsOut) => void
+) {
+  ensureCharacterSelectionInitialized(game);
+  if (isCharacterSelectionCompleted(game)) return;
+
+  if (allPlayersSelected(game, roomPlayers)) {
+    markCharacterSelectionCompleted(game);
+    await saveGameState(roomId, game);
+    broadcast(roomId, { type: "game.state", payload: game } as any);
+    return;
+  }
+
+  const deadlineAt = Number(getMetaDeckState(game).characterSelectionDeadlineAt ?? 0);
+  if (!Number.isFinite(deadlineAt) || Date.now() < deadlineAt) return;
+
+  for (const p of roomPlayers) {
+    if (hasCharacterSelection(game, p.userId)) continue;
+    const fallback = generateFallbackCharacter(p.userId);
+    applyCharacterSelection(game, p.userId, fallback, fallback.stats);
+    game.history.push({
+      type: "character_select_auto",
+      playerId: p.userId,
+      characterId: fallback.characterId,
+      at: fallback.selectedAt,
+    });
+  }
+
+  markCharacterSelectionCompleted(game);
+  await saveGameState(roomId, game);
+  broadcast(roomId, { type: "game.state", payload: game } as any);
+}
+
+function syncCharacterSelectionTimer(
+  room: any,
+  game: any,
+  broadcast: (roomId: string, msg: WsOut) => void
+) {
+  const roomId = String(room?.id ?? "");
+  if (!roomId || !game?.started || isCharacterSelectionCompleted(game)) {
+    clearCharacterSelectionTimer(roomId);
+    return;
+  }
+
+  ensureCharacterSelectionInitialized(game);
+  const deadlineAt = Number(getMetaDeckState(game).characterSelectionDeadlineAt ?? 0);
+  if (!Number.isFinite(deadlineAt) || deadlineAt <= 0) return;
+
+  const existing = characterSelectionTimers.get(roomId);
+  if (existing && existing.deadlineAt === deadlineAt) return;
+  clearCharacterSelectionTimer(roomId);
+
+  const delay = Math.max(0, deadlineAt - Date.now());
+  const timeout = setTimeout(async () => {
+    characterSelectionTimers.delete(roomId);
+    const liveRoom = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: { players: true },
+    });
+    if (!liveRoom || liveRoom.players.length === 0) {
+      clearTurnTimer(roomId);
+      return;
+    }
+    const liveGame = getOrCreateGame(roomId);
+    await resolveCharacterSelectionProgress(roomId, liveRoom.players, liveGame, broadcast);
+    await syncTurnTimerForRoomState(liveRoom, liveGame, broadcast);
+  }, delay);
+
+  characterSelectionTimers.set(roomId, { timeout, deadlineAt });
+}
+
+async function runAutoTurnAction(ctx: {
+  roomId: string;
+  userId: string;
+  broadcast: (roomId: string, msg: WsOut) => void;
+}) {
+  const { roomId, userId, broadcast } = ctx;
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { players: true },
+  });
+  if (!room || room.players.length === 0 || !room.players.some((p) => p.userId === userId)) {
+    clearTurnTimer(roomId);
+    return;
+  }
+
+  const game = getOrCreateGame(roomId);
+  if (!game.started || game.isPaused || game.activePlayerId !== userId) return;
+
+  const pendingCardWin = getPendingCardWin(game);
+  if (pendingCardWin && pendingCardWin.ownerUserId === userId) {
+    await handleGameMessage({
+      roomId,
+      userId,
+      msg: {
+        type: "game.card_closed",
+        payload: { playerId: pendingCardWin.ownerUserId, cardId: pendingCardWin.cardId },
+      },
+      broadcast,
+      reply: () => {},
+    });
+    return;
+  }
+
+  const pendingCardClose = getPendingCardClose(game);
+  if (pendingCardClose && pendingCardClose.ownerUserId === userId) {
+    await handleGameMessage({
+      roomId,
+      userId,
+      msg: {
+        type: "game.card_closed",
+        payload: { playerId: pendingCardClose.ownerUserId, cardId: pendingCardClose.cardId },
+      },
+      broadcast,
+      reply: () => {},
+    });
+    return;
+  }
+
+  const pendingGreenChoice = getPendingGreenChoice(game);
+  if (pendingGreenChoice && pendingGreenChoice.ownerUserId === userId) {
+    const choices = Array.isArray(pendingGreenChoice.candidateUserIds)
+      ? pendingGreenChoice.candidateUserIds
+      : [];
+    const candidate = choices.length > 0 ? choices[Math.floor(Math.random() * choices.length)] : userId;
+    const partnerUserId = candidate && candidate !== userId ? candidate : undefined;
+    await handleGameMessage({
+      roomId,
+      userId,
+      msg: {
+        type: "game.green_choice",
+        payload: { cardId: pendingGreenChoice.cardId, partnerUserId },
+      },
+      broadcast,
+      reply: () => {},
+    });
+    return;
+  }
+
+  if (game.phase === "WAITING_ROLL") {
+    await handleGameMessage({
+      roomId,
+      userId,
+      msg: { type: "game.roll_dice", payload: {} },
+      broadcast,
+      reply: () => {},
+    });
+    return;
+  }
+
+  if (game.phase === "WAITING_MOVE") {
+    const steps = Number(game.lastDice ?? 0);
+    if (!Number.isFinite(steps) || steps < 1) return;
+    const fromSector = Number(game.positions[userId] ?? getBoardStartSector());
+    const toSector = findAutoMoveTarget(fromSector, steps);
+    await handleGameMessage({
+      roomId,
+      userId,
+      msg: {
+        type: "game.move",
+        payload: toSector === undefined ? { steps } : { steps, toSector },
+      },
+      broadcast,
+      reply: () => {},
+    });
+    return;
+  }
+
+  if (game.phase === "WAITING_ACTION") {
+    const currentSector = Number(game.positions[userId] ?? getBoardStartSector());
+    const currentType = normalizeNodeType(getBoardSectorById(currentSector)?.nodeType);
+    const autoMsg: WsIn =
+      currentType === "project"
+        ? { type: "game.project", payload: {} }
+        : { type: "game.card", payload: {} };
+    await handleGameMessage({
+      roomId,
+      userId,
+      msg: autoMsg,
+      broadcast,
+      reply: () => {},
+    });
+  }
+}
+
+async function syncTurnTimerForRoomState(
+  room: any,
+  game: any,
+  broadcast: (roomId: string, msg: WsOut) => void
+) {
+  const roomId = String(room?.id ?? "");
+  if (!roomId) return;
+
+  syncCharacterSelectionTimer(room, game, broadcast);
+  const durationMs = getTurnTimerDurationMs(room);
+  if (
+    !durationMs ||
+    !game?.started ||
+    game?.isPaused ||
+    !game?.activePlayerId ||
+    !isCharacterSelectionCompleted(game)
+  ) {
+    const prev = turnTimers.get(roomId);
+    clearTurnTimer(roomId);
+    emitTurnTimerState(roomId, game, broadcast, {
+      running: false,
+      durationMs: durationMs ?? prev?.durationMs ?? 0,
+      remainingMs: 0,
+      endsAt: 0,
+    });
+    return;
+  }
+
+  const signature = buildTurnSignature(game);
+  const existing = turnTimers.get(roomId);
+  if (existing && existing.signature === signature && existing.durationMs === durationMs) {
+    emitTurnTimerState(roomId, game, broadcast, {
+      running: true,
+      durationMs,
+      remainingMs: Math.max(0, existing.endsAt - Date.now()),
+      endsAt: existing.endsAt,
+    });
+    return;
+  }
+
+  clearTurnTimer(roomId);
+  const activePlayerId = String(game.activePlayerId);
+  const now = Date.now();
+  let remainingMs = durationMs;
+  if (existing) {
+    const prevRemainingMs = Math.max(0, existing.endsAt - now);
+    if (existing.activePlayerId === activePlayerId) {
+      remainingMs = prevRemainingMs + 5000;
+    }
+  }
+  const endsAt = now + remainingMs;
+
+  const timeout = setTimeout(async () => {
+    const armed = turnTimers.get(roomId);
+    if (!armed || armed.signature !== signature) return;
+    armed.endsAt = Date.now();
+
+    const current = getOrCreateGame(roomId);
+    if (
+      !current.started ||
+      current.isPaused ||
+      current.activePlayerId !== activePlayerId ||
+      buildTurnSignature(current) !== signature
+    ) {
+      return;
+    }
+
+    await runAutoTurnAction({ roomId, userId: activePlayerId, broadcast });
+  }, remainingMs);
+
+  turnTimers.set(roomId, { timeout, signature, durationMs, endsAt, activePlayerId });
+  emitTurnTimerState(roomId, game, broadcast, {
+    running: true,
+    durationMs,
+    remainingMs,
+    endsAt,
+  });
+}
+
+export async function syncTurnTimerForRoom(
+  roomId: string,
+  broadcast: (roomId: string, msg: WsOut) => void
+) {
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { players: true },
+  });
+
+  if (!room) {
+    clearTurnTimerForRoom(roomId);
+    return;
+  }
+
+  let game = getOrCreateGame(roomId);
+  if (!game.started) {
+    const persisted = await loadGameState(roomId);
+    if (persisted?.started) {
+      setGame(roomId, persisted as any);
+      game = getOrCreateGame(roomId);
+    }
+  }
+
+  await syncTurnTimerForRoomState(room, game, broadcast);
+}
+
 export async function handleGameMessage(ctx: {
   roomId: string;
   userId: string;
@@ -515,8 +1065,9 @@ export async function handleGameMessage(ctx: {
   }
 
   const game = getOrCreateGame(roomId);
-
+  try {
   if (msg.type === "game.start") {
+    clearCharacterSelectionTimer(roomId);
     if (game.started) {
       sendError("GAME_ALREADY_STARTED");
       return;
@@ -536,7 +1087,10 @@ export async function handleGameMessage(ctx: {
     game.lastDice = null;
     game.phase = "WAITING_ROLL";
     clearPendingCardWin(game);
+    clearPendingCardClose(game);
     clearPendingGreenChoice(game);
+    resetCardDrawMeta(game);
+    ensureCharacterSelectionInitialized(game);
 
     for (const p of players) {
       ensurePlayerState(game, p.userId);
@@ -568,13 +1122,9 @@ export async function handleGameMessage(ctx: {
     return;
   }
 
+  await resolveCharacterSelectionProgress(roomId, room.players, game, broadcast);
+
   if (msg.type === "game.character_select") {
-    ensurePlayerState(game, userId);
-    const toInt = (value: unknown) => {
-      const n = Number(value);
-      return Number.isFinite(n) ? Math.trunc(n) : 0;
-    };
-    const stats = msg.payload.stats ?? {};
     const selected = {
       characterId:
         typeof msg.payload.characterId === "string" && msg.payload.characterId.trim().length > 0
@@ -583,23 +1133,7 @@ export async function handleGameMessage(ctx: {
       selectedAt: new Date().toISOString(),
       byUserId: userId,
     };
-    const deckState = getPlayerDeckState(game, userId);
-    deckState.selectedCharacter = selected;
-    deckState.grants = 0;
-    deckState.completedProjects = {};
-    deckState.milestoneClaims = {};
-
-    game.money[userId] = clampByStat("money", toInt(stats.money));
-    game.experience[userId] = clampByStat("experience", toInt(stats.experience));
-    game.scores[userId]["success"] = clampByStat("success", toInt(stats.success));
-    game.scores[userId]["volounteer"] = clampByStat("volounteer", toInt(stats.volounteer));
-    game.scores[userId]["science"] = clampByStat("science", toInt(stats.science));
-    game.scores[userId]["art"] = clampByStat("art", toInt(stats.art));
-    game.scores[userId]["media"] = clampByStat("media", toInt(stats.media));
-    game.scores[userId]["business"] = clampByStat("business", toInt(stats.business));
-    game.scores[userId]["sport"] = clampByStat("sport", toInt(stats.sport));
-    game.scores[userId]["tourism"] = clampByStat("tourism", toInt(stats.tourism));
-    game.scores[userId]["it"] = clampByStat("it", toInt(stats.it));
+    applyCharacterSelection(game, userId, selected, msg.payload.stats ?? {});
 
     game.history.push({
       type: "character_select",
@@ -609,12 +1143,14 @@ export async function handleGameMessage(ctx: {
     });
 
     await saveGameState(roomId, game);
+    await resolveCharacterSelectionProgress(roomId, room.players, game, broadcast);
     broadcast(roomId, { type: "game.state", payload: game } as any);
     return;
   }
 
   if (msg.type === "game.card_closed") {
-    const pending = getPendingCardWin(game);
+    const pendingWin = getPendingCardWin(game);
+    const pendingClose = getPendingCardClose(game);
     broadcast(roomId, {
       type: "game.card_closed",
       payload: {
@@ -623,19 +1159,44 @@ export async function handleGameMessage(ctx: {
       },
     } as any);
 
-    if (!pending) {
+    if (pendingWin) {
+      if (
+        msg.payload.playerId !== pendingWin.ownerUserId ||
+        msg.payload.cardId !== pendingWin.cardId ||
+        userId !== pendingWin.ownerUserId
+      ) {
+        sendError("INVALID_CARD_CLOSE_EVENT");
+        return;
+      }
+
+      await finalizeAndBroadcastWin(roomId, pendingWin.winnerUserId, game, broadcast);
+      return;
+    }
+
+    if (!pendingClose) {
       return;
     }
     if (
-      msg.payload.playerId !== pending.ownerUserId ||
-      msg.payload.cardId !== pending.cardId ||
-      userId !== pending.ownerUserId
+      msg.payload.playerId !== pendingClose.ownerUserId ||
+      msg.payload.cardId !== pendingClose.cardId ||
+      userId !== pendingClose.ownerUserId
     ) {
       sendError("INVALID_CARD_CLOSE_EVENT");
       return;
     }
 
-    await finalizeAndBroadcastWin(roomId, pending.winnerUserId, game, broadcast);
+    clearPendingCardClose(game);
+    const next = pendingClose.nextActivePlayerId;
+    game.activePlayerId = next;
+    game.lastDice = null;
+    game.phase = "WAITING_ROLL";
+
+    await saveGameState(roomId, game);
+    broadcast(roomId, {
+      type: "game.turn_changed",
+      payload: { activePlayerId: next },
+    } as any);
+    broadcast(roomId, { type: "game.state", payload: game } as any);
     return;
   }
 
@@ -713,9 +1274,11 @@ export async function handleGameMessage(ctx: {
     }
 
     const next = nextTurn(room.players, userId);
-    game.activePlayerId = next;
-    game.lastDice = null;
-    game.phase = "WAITING_ROLL";
+    setPendingCardClose(game, {
+      ownerUserId: userId,
+      cardId: pendingGreen.card.id,
+      nextActivePlayerId: next,
+    });
 
     await saveGameState(roomId, game);
     broadcast(roomId, {
@@ -737,10 +1300,6 @@ export async function handleGameMessage(ctx: {
         playerState: buildPlayerStateSnapshot(game, userId),
       },
     } as any);
-    broadcast(roomId, {
-      type: "game.turn_changed",
-      payload: { activePlayerId: next },
-    } as any);
     broadcast(roomId, { type: "game.state", payload: game } as any);
     return;
   }
@@ -751,9 +1310,20 @@ export async function handleGameMessage(ctx: {
     return;
   }
 
+  const pendingCardClose = getPendingCardClose(game);
+  if (pendingCardClose) {
+    sendError("CARD_CLOSE_REQUIRED");
+    return;
+  }
+
   const pendingGreenChoice = getPendingGreenChoice(game);
   if (pendingGreenChoice) {
     sendError("GREEN_CHOICE_REQUIRED");
+    return;
+  }
+
+  if (!isCharacterSelectionCompleted(game)) {
+    sendError("CHARACTER_SELECTION_PENDING");
     return;
   }
 
@@ -1057,7 +1627,7 @@ export async function handleGameMessage(ctx: {
       return;
     }
 
-    const card = drawRandomCard(deckKey);
+    const card = drawCardWithAntiSurpriseStreak(game, deckKey);
     if (!card) {
       sendError("CARD_DECK_EMPTY");
       return;
@@ -1186,7 +1756,7 @@ export async function handleGameMessage(ctx: {
     // Resolve a single extra draw to stay deterministic on server.
     const hasChainDraw = card.effects.some((e) => e.effect === 4);
     if (hasChainDraw) {
-      const bonus = drawRandomCard(deckKey);
+      const bonus = drawCardWithAntiSurpriseStreak(game, deckKey);
       if (bonus) {
         const bonusResult = applyCardAndCollectDeltas(game, room.players, userId, bonus, deckKey);
         for (const [pid, deltas] of bonusResult.deltasByUser.entries()) {
@@ -1249,9 +1819,11 @@ export async function handleGameMessage(ctx: {
     }
 
     const next = nextTurn(room.players, userId);
-    game.activePlayerId = next;
-    game.lastDice = null;
-    game.phase = "WAITING_ROLL";
+    setPendingCardClose(game, {
+      ownerUserId: userId,
+      cardId: card.id,
+      nextActivePlayerId: next,
+    });
 
     await saveGameState(roomId, game);
 
@@ -1273,11 +1845,6 @@ export async function handleGameMessage(ctx: {
         experience: game.experience[userId],
         playerState: buildPlayerStateSnapshot(game, userId),
       },
-    } as any);
-
-    broadcast(roomId, {
-      type: "game.turn_changed",
-      payload: { activePlayerId: next },
     } as any);
 
     broadcast(roomId, { type: "game.state", payload: game } as any);
@@ -1396,5 +1963,8 @@ export async function handleGameMessage(ctx: {
 
     broadcast(roomId, { type: "game.state", payload: game } as any);
     return;
+  }
+  } finally {
+    await syncTurnTimerForRoomState(room, game, broadcast);
   }
 }
