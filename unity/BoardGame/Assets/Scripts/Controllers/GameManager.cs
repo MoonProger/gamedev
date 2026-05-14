@@ -334,6 +334,19 @@ public class GameManager : MonoBehaviour
 
     public void SetPlayerCount(int count)
     {
+    if (count <= 0)
+    {
+        LogGame("Игнор SetPlayerCount: некорректное количество игроков.");
+        return;
+    }
+
+    // Защита от повторного bootstrap с фронта: не сбрасываем уже собранный состав.
+    if (expectedPlayerCount == count && playerNames.Count == count && playerIds.Count >= count)
+    {
+        LogGame($"SetPlayerCount({count}) пропущен: состав игроков уже собран.");
+        return;
+    }
+
         expectedPlayerCount = count;
         playerNames.Clear();
         playerIds.Clear();
@@ -342,6 +355,11 @@ public class GameManager : MonoBehaviour
 
     public void SetPlayerName(string name)
     {
+    if (expectedPlayerCount <= 0)
+        return;
+    if (playerNames.Count >= expectedPlayerCount)
+        return;
+
         playerNames.Add(name);
         LogGame($"Получено имя игрока: {name}.");
         if (playerNames.Count == expectedPlayerCount)
@@ -350,6 +368,15 @@ public class GameManager : MonoBehaviour
 
     public void SetPlayerId(string id)
     {
+    if (expectedPlayerCount <= 0)
+        return;
+    if (string.IsNullOrWhiteSpace(id))
+        return;
+    if (playerIds.Contains(id))
+        return;
+    if (playerIds.Count >= expectedPlayerCount)
+        return;
+
         playerIds.Add(id);
         LogGame($"Получен ID игрока: {id}.");
         TryApplyPendingGameState();
@@ -358,7 +385,6 @@ public class GameManager : MonoBehaviour
     private void InitializeGameFromReact()
     {
         isGameInitialized = false;
-        pendingGameStateJson = null;
         hasGameEnded = false;
         pendingVictoryPlayer = null;
         if (pendingVictoryRoutine != null)
@@ -462,7 +488,7 @@ public class GameManager : MonoBehaviour
             }
 
             PlayerController localPlayer = players[localIdx];
-            float waitPersistedChoiceSeconds = 1.5f;
+            float waitPersistedChoiceSeconds = persistedCharacterIdByUserId.Count > 0 ? 8f : 2.5f;
             while (waitPersistedChoiceSeconds > 0f)
             {
                 TryApplyPendingGameState();
@@ -482,6 +508,14 @@ public class GameManager : MonoBehaviour
                     LogGame($"Восстановлен выбранный персонаж '{persistedCharacter.displayName}' из серверного состояния.");
                     yield break;
                 }
+            }
+
+            // Если сервер уже прислал выборы персонажей (например, при повторном входе),
+            // но локальный id еще не сматчился — не форсим повторный выбор в UI.
+            if (persistedCharacterIdByUserId.Count > 0)
+            {
+                LogGame("Выбор персонажа пропущен: серверное состояние уже содержит выборы (rejoin).");
+                yield break;
             }
 
             var localOnly = new List<PlayerController> { localPlayer };
@@ -2041,7 +2075,7 @@ private IEnumerator ShowPendingGreenChoiceSequence(CardPlayedPayload payload)
     CardVisual cardVisual = ShowResolvedServerCardOnce(payload.deckKey, payload.cardId, payload.cardType, "КАРТА");
     bool isLocalOwner = !string.IsNullOrWhiteSpace(localUserId) && payload.playerId == localUserId;
     if (cardVisual != null)
-        cardVisual.SetLocked(!isLocalOwner);
+        cardVisual.SetLocked(true);
 
     if (!isLocalOwner)
     {
@@ -2086,6 +2120,8 @@ private IEnumerator ShowPendingGreenChoiceSequence(CardPlayedPayload payload)
             selectedPartnerId = mappedUserId;
     }
     EmitGreenChoiceIntent(payload.cardId, selectedPartnerId);
+    if (cardVisual != null)
+        cardVisual.SetLocked(false);
     if (cardVisual != null)
         yield return WaitForOwnerManualCloseAndBroadcast(cardVisual, payload.playerId, payload.cardId, BuildCardOwnerCloseKey(payload.playerId, payload.cardId));
 }

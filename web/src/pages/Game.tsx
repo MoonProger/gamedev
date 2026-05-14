@@ -85,9 +85,144 @@ const SAD_SOUND_ERROR_CODES = new Set([
   'TRAVEL_NOT_ENOUGH_MONEY',
 ]);
 
+const SECTOR_NAME_BY_ID: Record<number, string> = {
+  0: 'Айти',
+  1: 'Бизнес',
+  2: 'Волонтерство',
+  3: 'Грант',
+  4: 'Деньги',
+  5: 'Медиа',
+  6: 'Наука',
+  7: 'Путешествие',
+  8: 'Спорт',
+  9: 'Твой проект',
+  10: 'Творчество',
+  11: 'Туризм',
+};
+
+const DECK_NAME_RU: Record<string, string> = {
+  science: 'Наука',
+  business: 'Бизнес',
+  volounteer: 'Волонтерство',
+  art: 'Творчество',
+  media: 'Медиа',
+  sport: 'Спорт',
+  tourism: 'Туризм',
+  it: 'Айти',
+  travel: 'Путешествие',
+  grant_success: 'Грант',
+};
+
+const PROJECT_NAME_RU: Record<string, string> = {
+  science: 'Наука',
+  business: 'Бизнес',
+  volounteer: 'Волонтерство',
+  art: 'Творчество',
+  media: 'Медиа',
+  sport: 'Спорт',
+  tourism: 'Туризм',
+  it: 'Айти',
+};
+
+const STAT_NAME_RU: Record<string, string> = {
+  money: 'деньги',
+  experience: 'опыт',
+  success: 'успех',
+  volounteer: 'волонтерство',
+  science: 'наука',
+  art: 'творчество',
+  media: 'медиа',
+  business: 'бизнес',
+  sport: 'спорт',
+  tourism: 'туризм',
+  it: 'айти',
+  grants: 'гранты',
+};
+
+type PlayerSnapshot = {
+  money: number;
+  experience: number;
+  success: number;
+  volounteer: number;
+  science: number;
+  art: number;
+  media: number;
+  business: number;
+  sport: number;
+  tourism: number;
+  it: number;
+  grants: number;
+};
+
 function translateServerError(message: string): string {
   const key = String(message ?? '');
   return SERVER_ERROR_RU[key] ?? key;
+}
+
+function formatSigned(n: number): string {
+  return `${n > 0 ? '+' : ''}${n}`;
+}
+
+function formatSectorName(id: unknown): string {
+  const n = Number(id);
+  if (!Number.isInteger(n)) return 'неизвестная ячейка';
+  return SECTOR_NAME_BY_ID[n] ?? `ячейка ${n}`;
+}
+
+function formatDeckName(deckKey: unknown): string {
+  const key = String(deckKey ?? '').toLowerCase();
+  return DECK_NAME_RU[key] ?? (key ? key : 'неизвестная колода');
+}
+
+function formatProjectName(projectId: unknown): string {
+  const key = String(projectId ?? '').toLowerCase();
+  return PROJECT_NAME_RU[key] ?? (key ? key : 'неизвестный проект');
+}
+
+function formatDeltaList(deltas: any[]): string {
+  if (!Array.isArray(deltas) || deltas.length === 0) return 'без изменения характеристик';
+  const chunks = deltas
+    .map((d) => {
+      const stat = String(d?.stat ?? '');
+      const delta = Number(d?.delta ?? 0);
+      if (!stat || !Number.isFinite(delta) || delta === 0) return '';
+      return `${formatSigned(delta)} ${STAT_NAME_RU[stat] ?? stat}`;
+    })
+    .filter(Boolean);
+  return chunks.length ? chunks.join(', ') : 'без изменения характеристик';
+}
+
+function formatCardChecks(checks: any): string {
+  if (!checks || typeof checks !== 'object') return '';
+  const parts: string[] = [];
+  if (checks.blueDiceSum != null) {
+    const exp = Number(checks.blueExperience ?? 0);
+    const dice = Number(checks.blueDiceSum ?? 0);
+    const ok = Boolean(checks.blueSuccess);
+    parts.push(`Синяя проверка: опыт ${exp} против суммы кубиков ${dice} (${ok ? 'успех' : 'неудача'}).`);
+  }
+  if (checks.redRequiredLevel != null) {
+    const level = Number(checks.redSphereLevel ?? 0);
+    const need = Number(checks.redRequiredLevel ?? 5);
+    const ok = Boolean(checks.redSuccess);
+    parts.push(`Красная проверка: уровень сферы ${level} из ${need} (${ok ? 'условие выполнено' : 'условие не выполнено'}).`);
+  }
+  if (checks.greenMode) {
+    const mode = String(checks.greenMode);
+    if (mode === 'coop') {
+      parts.push('Зеленая карта: выбран кооперативный эффект (участники делят эффект).');
+    } else if (mode === 'solo') {
+      parts.push('Зеленая карта: кооперация не выбрана, применен одиночный эффект.');
+    } else if (mode === 'pending') {
+      parts.push('Зеленая карта: ожидается выбор цели для применения эффекта.');
+    }
+  }
+  if (checks.grantDiceSum != null) {
+    const dice = Number(checks.grantDiceSum ?? 0);
+    const ok = Boolean(checks.grantSuccess);
+    parts.push(`Проверка гранта: сумма кубиков ${dice} (${ok ? 'успех, грант получен' : 'неудача, грант не получен'}).`);
+  }
+  return parts.join(' ');
 }
 
 function normalizeRoomPlayers(rawRoom: any): Player[] {
@@ -144,11 +279,162 @@ type TurnTimerState = {
   activePlayerId: string | null;
 };
 
+type FrontLogEntry = {
+  id: string;
+  text: string;
+  kind: 'info' | 'success' | 'warn' | 'error';
+  at: string;
+  turn: number;
+  actorColor?: 'red' | 'blue' | 'green' | 'yellow';
+  actorTitle?: string;
+};
+
+type ParsedHistoryEntry = {
+  text: string;
+  actorId?: string;
+  kind: FrontLogEntry['kind'];
+  closesTurn: boolean;
+};
+
 function formatTimerSeconds(ms: number): string {
   const clamped = Math.max(0, Math.ceil(ms / 1000));
   const minutes = Math.floor(clamped / 60);
   const seconds = clamped % 60;
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatHistoryEntry(entry: any): ParsedHistoryEntry | null {
+  const type = String(entry?.type ?? '');
+  const player = String(entry?.playerId ?? '');
+  const common = { actorId: player || undefined, kind: 'info' as const };
+  switch (type) {
+    case 'character_select':
+      return { ...common, text: 'выбрал персонажа.', closesTurn: false };
+    case 'character_select_auto':
+      return { ...common, text: 'получил персонажа автоматически по таймеру.', closesTurn: false };
+    case 'roll_dice':
+      return { ...common, text: `бросил кубик: ${Number(entry?.dice ?? 0)}.`, closesTurn: false };
+    case 'move':
+      return {
+        ...common,
+        text: `переместился: ${formatSectorName(entry?.fromSector)} -> ${formatSectorName(entry?.toSector)}.`,
+        closesTurn: false,
+      };
+    case 'travel_paid':
+      return {
+        ...common,
+        text: `оплатил путешествие: ${formatSigned(Number(entry?.amount ?? 0))} деньги.`,
+        closesTurn: false,
+      };
+    case 'card':
+      {
+        const checksText = formatCardChecks(entry?.checks);
+        const chained = Array.isArray(entry?.chainedCards) ? entry.chainedCards : [];
+        const chainedText =
+          chained.length > 0
+            ? ` Дополнительно сработали связанные карточки: ${chained
+                .map((c: any) => `${formatDeckName(c?.deckKey)} (${formatDeltaList(c?.deltas ?? [])})`)
+                .join('; ')}.`
+            : '';
+      return {
+        ...common,
+        text: `сыграл карту из колоды "${formatDeckName(entry?.deckKey)}": ${formatDeltaList(entry?.deltas)}. ${
+          checksText || 'Проверок не было, применены базовые эффекты карты.'
+        }${chainedText}`,
+        closesTurn: true,
+      };
+      }
+    case 'card_green_pending':
+      return {
+        ...common,
+        text: `вытянул зеленую карту из колоды "${formatDeckName(entry?.deckKey)}": нужно выбрать цель эффекта.`,
+        closesTurn: false,
+      };
+    case 'project':
+      return {
+        ...common,
+        text: `завершил проект "${formatProjectName(entry?.projectId)}" (${entry?.payment === 'grant' ? 'оплата грантом' : 'оплата деньгами'}), награда: ${formatSigned(Number(entry?.successPoints ?? 0))} успех.`,
+        closesTurn: true,
+      };
+    case 'grant_unavailable':
+    case 'project_unavailable':
+    case 'project_no_resources':
+    case 'travel_unavailable':
+      return {
+        ...common,
+        text: `действие недоступно: ${translateServerError(String(entry?.reason ?? type))}.`,
+        closesTurn: true,
+        kind: 'warn',
+      };
+    case 'money_reward':
+      return {
+        ...common,
+        text: `получил награду за ячейку "${formatSectorName(entry?.sector)}": ${formatSigned(Number(entry?.amount ?? 0))} деньги.`,
+        closesTurn: false,
+      };
+    case 'empty_action':
+      return {
+        ...common,
+        text: `завершил ход без дополнительного действия на ячейке "${formatSectorName(entry?.sector)}".`,
+        closesTurn: true,
+      };
+    case 'dev_adjust_stats':
+      return {
+        actorId: String(entry?.by ?? '') || undefined,
+        text: `изменил параметры игрока: ${formatDeltaList(
+          Object.entries(entry?.deltas ?? {}).map(([stat, delta]) => ({ stat, delta }))
+        )}.`,
+        kind: 'warn',
+        closesTurn: false,
+      };
+    default:
+      return null;
+  }
+}
+
+function getPlayerColorInfo(userId: string | undefined, players: Player[]) {
+  if (!userId) return null;
+  const idx = players.findIndex((p) => p.userId === userId);
+  if (idx < 0) return null;
+  if (idx === 0) return { key: 'red' as const, title: 'Красный' };
+  if (idx === 1) return { key: 'blue' as const, title: 'Синий' };
+  if (idx === 2) return { key: 'green' as const, title: 'Зеленый' };
+  if (idx === 3) return { key: 'yellow' as const, title: 'Желтый' };
+  return null;
+}
+
+function buildSnapshotByUser(raw: any): Record<string, PlayerSnapshot> {
+  const scores = raw?.scores ?? {};
+  const money = raw?.money ?? {};
+  const experience = raw?.experience ?? {};
+  const deckState = raw?.deckState ?? {};
+  const ids = Array.from(
+    new Set([
+      ...Object.keys(scores),
+      ...Object.keys(money),
+      ...Object.keys(experience),
+      ...Object.keys(deckState),
+    ])
+  );
+  const snapshot: Record<string, PlayerSnapshot> = {};
+  for (const userId of ids) {
+    const s = scores?.[userId] ?? {};
+    snapshot[userId] = {
+      money: Number(money?.[userId] ?? 0),
+      experience: Number(experience?.[userId] ?? 0),
+      success: Number(s.success ?? 0),
+      volounteer: Number(s.volounteer ?? 0),
+      science: Number(s.science ?? 0),
+      art: Number(s.art ?? 0),
+      media: Number(s.media ?? 0),
+      business: Number(s.business ?? 0),
+      sport: Number(s.sport ?? 0),
+      tourism: Number(s.tourism ?? 0),
+      it: Number(s.it ?? 0),
+      grants: Number(deckState?.[userId]?.grants ?? 0),
+    };
+  }
+  return snapshot;
 }
 
 function toUnityGameStatePayload(raw: any, knownPlayers: Player[]): UnityGameState {
@@ -225,6 +511,10 @@ const Game: React.FC = () => {
   const [localUserId, setLocalUserId] = useState<string | null>(null);
   const [turnTimer, setTurnTimer] = useState<TurnTimerState | null>(null);
   const [timerNowMs, setTimerNowMs] = useState(() => Date.now());
+  const [frontLog, setFrontLog] = useState<FrontLogEntry[]>([]);
+  const [isLogOpen, setIsLogOpen] = useState(false);
+  const [logPos, setLogPos] = useState({ x: 20, y: 170 });
+  const [logPanelSize, setLogPanelSize] = useState({ width: 520, height: 340 });
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [devTargetUserId, setDevTargetUserId] = useState<string>('');
   const [devDeltas, setDevDeltas] = useState<DevDeltaState>(INITIAL_DEV_DELTAS);
@@ -233,14 +523,25 @@ const Game: React.FC = () => {
   const playersRef = useRef<Player[]>([]);
   const isLoadedRef = useRef(false);
   const unityInitKeyRef = useRef<string | null>(null);
+  const unityBootstrapTimeoutsRef = useRef<number[]>([]);
   const fullscreenRootRef = useRef<HTMLDivElement>(null);
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const historyCursorRef = useRef(0);
+  const historyTurnRef = useRef(1);
+  const prevSnapshotRef = useRef<Record<string, PlayerSnapshot> | null>(null);
+  const prevActivePlayerRef = useRef<string | null>(null);
+  const draggingLogRef = useRef(false);
+  const resizingLogRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const resizeStartRef = useRef({ x: 0, y: 0, width: 520, height: 340 });
   const { showToast } = useToast();
 
   useEffect(() => {
     return () => {
       unityInitKeyRef.current = null;
+      unityBootstrapTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      unityBootstrapTimeoutsRef.current = [];
     };
   }, []);
   const roomPassword =
@@ -261,6 +562,42 @@ const Game: React.FC = () => {
     frameworkUrl: "/Build/Build.framework.js.gz",
     codeUrl: "/Build/Build.wasm.gz",
   });
+
+  useEffect(() => {
+    setFrontLog([]);
+    historyCursorRef.current = 0;
+    historyTurnRef.current = 1;
+    prevSnapshotRef.current = null;
+    prevActivePlayerRef.current = null;
+    setTurnTimer(null);
+    setTimerNowMs(Date.now());
+    setIsLogOpen(false);
+    setLogPos({ x: 20, y: 170 });
+    setLogPanelSize({ width: 520, height: 340 });
+  }, [id]);
+
+  const appendFrontLogEntries = useCallback((entries: Array<Omit<FrontLogEntry, 'id' | 'at'>>) => {
+    const normalized = entries.filter((entry) => entry.text && entry.text.trim().length > 0);
+    if (!normalized.length) return;
+    setFrontLog((prev) => {
+      const now = Date.now();
+      const nextItems = normalized.map((entry, index) => ({
+        id: `${now}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+        text: entry.text,
+        kind: entry.kind,
+        turn: Math.max(1, entry.turn),
+        actorColor: entry.actorColor,
+        actorTitle: entry.actorTitle,
+        at: new Date().toISOString(),
+      }));
+      const next = [...prev, ...nextItems];
+      return next.length > 250 ? next.slice(next.length - 250) : next;
+    });
+  }, []);
+
+  const pushFrontLog = useCallback((entry: Omit<FrontLogEntry, 'id' | 'at'>) => {
+    appendFrontLogEntries([entry]);
+  }, [appendFrontLogEntries]);
 
   useEffect(() => {
     if (id) {
@@ -290,6 +627,38 @@ const Game: React.FC = () => {
     }, 100);
     return () => window.clearInterval(id);
   }, [turnTimer?.running, turnTimer?.endsAt]);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (draggingLogRef.current) {
+        const dx = e.clientX - dragStartRef.current.x;
+        const dy = e.clientY - dragStartRef.current.y;
+        setLogPos((prev) => ({
+          x: Math.max(8, prev.x + dx),
+          y: Math.max(8, prev.y + dy),
+        }));
+        dragStartRef.current = { x: e.clientX, y: e.clientY };
+      }
+      if (resizingLogRef.current) {
+        const dx = e.clientX - resizeStartRef.current.x;
+        const dy = e.clientY - resizeStartRef.current.y;
+        setLogPanelSize({
+          width: Math.min(window.innerWidth - 12, Math.max(340, resizeStartRef.current.width + dx)),
+          height: Math.min(window.innerHeight - 12, Math.max(220, resizeStartRef.current.height + dy)),
+        });
+      }
+    };
+    const onUp = () => {
+      draggingLogRef.current = false;
+      resizingLogRef.current = false;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   const loadRoomData = async () => {
     try {
@@ -339,7 +708,7 @@ const Game: React.FC = () => {
       },
     });
     showToast(
-      `Dev: ${devAdjustMode === 'set' ? 'установлены значения' : 'применены изменения'} для ${getPlayerLabel(devTargetUserId)}`,
+      `${devAdjustMode === 'set' ? 'Установлены значения' : 'Применены изменения'} для ${getPlayerLabel(devTargetUserId)}`,
       'success'
     );
     setDevDeltas({ ...INITIAL_DEV_DELTAS });
@@ -369,7 +738,6 @@ const Game: React.FC = () => {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as WsServerToClient;
-        console.log('Game WS message:', data);
 
         switch (data.type) {
           case 'connected':
@@ -380,7 +748,92 @@ const Game: React.FC = () => {
             break;
           case 'game.state':
             {
-              const unityState = toUnityGameStatePayload(data.payload, playersRef.current);
+              const rawState = data.payload as any;
+              const historyItems = Array.isArray(rawState?.history) ? rawState.history : [];
+              const batch: Array<Omit<FrontLogEntry, 'id' | 'at'>> = [];
+              if (historyItems.length < historyCursorRef.current) {
+                historyCursorRef.current = 0;
+                historyTurnRef.current = 1;
+              }
+              if (historyItems.length > historyCursorRef.current) {
+                let nextTurn = historyTurnRef.current;
+                for (let i = historyCursorRef.current; i < historyItems.length; i++) {
+                  const rawEntry = historyItems[i];
+                  const parsed = formatHistoryEntry(rawEntry);
+                  if (parsed) {
+                    const color = getPlayerColorInfo(parsed.actorId, playersRef.current);
+                    batch.push({
+                      text: parsed.text,
+                      kind: parsed.kind,
+                      turn: nextTurn,
+                      actorColor: color?.key,
+                      actorTitle: color?.title,
+                    });
+                    if (parsed.closesTurn) nextTurn += 1;
+                  }
+                  if (
+                    String(rawEntry?.type ?? '') === 'card' &&
+                    String(rawEntry?.checks?.greenMode ?? '') === 'coop' &&
+                    typeof rawEntry?.partnerUserId === 'string'
+                  ) {
+                    const partnerColor = getPlayerColorInfo(rawEntry.partnerUserId, playersRef.current);
+                    batch.push({
+                      text: `По зеленой карте партнер: ${partnerColor?.title ?? 'Игрок'}. Получено: ${formatDeltaList(
+                        Array.isArray(rawEntry?.partnerDeltas) ? rawEntry.partnerDeltas : []
+                      )}.`,
+                      kind: 'info',
+                      turn: nextTurn > 1 ? nextTurn - 1 : nextTurn,
+                      actorColor: partnerColor?.key,
+                      actorTitle: partnerColor?.title,
+                    });
+                  }
+                }
+                historyCursorRef.current = historyItems.length;
+                historyTurnRef.current = nextTurn;
+              }
+
+              const currentSnapshot = buildSnapshotByUser(rawState);
+              const prevSnapshot = prevSnapshotRef.current;
+              const prevActivePlayerId = prevActivePlayerRef.current;
+              const currentActivePlayerId =
+                typeof rawState?.activePlayerId === 'string' ? rawState.activePlayerId : null;
+
+              if (prevSnapshot && prevActivePlayerId && currentActivePlayerId && prevActivePlayerId !== currentActivePlayerId) {
+                const summaryByPlayer: string[] = [];
+                const allUserIds = Array.from(
+                  new Set([...Object.keys(prevSnapshot), ...Object.keys(currentSnapshot)])
+                );
+                for (const userId of allUserIds) {
+                  const before = prevSnapshot[userId];
+                  const after = currentSnapshot[userId];
+                  if (!before || !after) continue;
+                  const deltas: string[] = [];
+                  (Object.keys(before) as Array<keyof PlayerSnapshot>).forEach((stat) => {
+                    const delta = Number(after[stat] ?? 0) - Number(before[stat] ?? 0);
+                    if (!Number.isFinite(delta) || delta === 0) return;
+                    deltas.push(`${formatSigned(delta)} ${STAT_NAME_RU[stat]}`);
+                  });
+                  if (deltas.length === 0) continue;
+                  const info = getPlayerColorInfo(userId, playersRef.current);
+                  summaryByPlayer.push(`${info?.title ?? 'Игрок'}: ${deltas.join(', ')}`);
+                }
+                if (summaryByPlayer.length > 0) {
+                  batch.push({
+                    text: `Итоги хода: ${summaryByPlayer.join(' | ')}`,
+                    kind: 'success',
+                    turn: Math.max(1, historyTurnRef.current - 1),
+                  });
+                }
+              }
+
+              prevSnapshotRef.current = currentSnapshot;
+              prevActivePlayerRef.current = currentActivePlayerId;
+
+              if (batch.length > 0) {
+                appendFrontLogEntries(batch);
+              }
+
+              const unityState = toUnityGameStatePayload(rawState, playersRef.current);
               setGameState(unityState);
             }
             break;
@@ -389,6 +842,7 @@ const Game: React.FC = () => {
             break;
           case 'game.started':
             showToast('Игра началась!', 'success');
+            pushFrontLog({ text: 'Игра началась.', kind: 'success', turn: historyTurnRef.current });
             break;
           case 'game.dice_rolled':
             if (isLoadedRef.current) {
@@ -438,6 +892,7 @@ const Game: React.FC = () => {
             break;
           case 'game.finished':
             showToast('Игра завершена', 'success');
+            pushFrontLog({ text: 'Игра завершена.', kind: 'success', turn: historyTurnRef.current });
             if (isLoadedRef.current) {
               sendMessage('GameManager', 'OnGameFinished', JSON.stringify(data.payload));
             }
@@ -445,6 +900,11 @@ const Game: React.FC = () => {
           case 'game.paused':
             if (!isPausedRef.current) {
               showToast(`Игра на паузе: ${data.payload.reason}`, 'info');
+              pushFrontLog({
+                text: `Пауза: ${data.payload.reason}`,
+                kind: 'warn',
+                turn: historyTurnRef.current,
+              });
             }
             isPausedRef.current = true;
             if (isLoadedRef.current) {
@@ -454,6 +914,7 @@ const Game: React.FC = () => {
           case 'game.resumed':
             if (isPausedRef.current) {
               showToast('Игра возобновлена', 'success');
+              pushFrontLog({ text: 'Игра возобновлена.', kind: 'success', turn: historyTurnRef.current });
             }
             isPausedRef.current = false;
             if (isLoadedRef.current) {
@@ -465,6 +926,7 @@ const Game: React.FC = () => {
               const code = String(data.payload?.message ?? '');
               const localizedMessage = translateServerError(code);
               showToast(localizedMessage, 'error');
+              pushFrontLog({ text: localizedMessage, kind: 'error', turn: historyTurnRef.current });
               if (isLoadedRef.current) {
                 sendMessage(
                   'GameManager',
@@ -504,7 +966,7 @@ const Game: React.FC = () => {
         wsRef.current = null;
       }
     };
-  }, [id, roomPassword, sendMessage, showToast]);
+  }, [appendFrontLogEntries, id, roomPassword, pushFrontLog, sendMessage, showToast]);
 
   // Каркас bridge Unity -> WebSocket intents.
   // Unity может вызывать эти события через JS bridge:
@@ -713,37 +1175,47 @@ const Game: React.FC = () => {
     }
   }, [isLoaded, gameState, sendMessage]);
 
-  // Когда Unity загрузился и есть игроки, отправляем данные
   useEffect(() => {
-    if (isLoaded && players.length > 0 && id) {
-      const initKey = `${id}:${players.map((p) => p.userId).join(',')}`;
-      if (unityInitKeyRef.current === initKey) {
-        return;
-      }
-      unityInitKeyRef.current = initKey;
-      console.log('Unity готов, отправляем данные игроков');
-      
-      setTimeout(() => {
-        try {
-          sendMessage('GameManager', 'SetPlayerCount', players.length);
-          if (localUserId) {
-            sendMessage('GameManager', 'SetLocalUserId', localUserId);
-          }
-          
-          players.forEach((player, index) => {
-            setTimeout(() => {
-              const safeName = typeof player.username === 'string' && player.username.trim().length > 0
-                ? player.username
-                : `Player ${index + 1}`;
-              sendMessage('GameManager', 'SetPlayerName', safeName);
-              sendMessage('GameManager', 'SetPlayerId', player.userId);
-            }, index * 200);
-          });
-        } catch (e) {
-          console.error('Ошибка отправки в Unity:', e);
-        }
-      }, 1000);
+    if (!isLoaded || !localUserId) return;
+    try {
+      sendMessage('GameManager', 'SetLocalUserId', localUserId);
+    } catch (e) {
+      console.error('Ошибка SetLocalUserId в Unity:', e);
     }
+  }, [isLoaded, localUserId, sendMessage]);
+
+  // Когда Unity загрузился и есть игроки, отправляем bootstrap один раз.
+  useEffect(() => {
+    if (!isLoaded || players.length === 0 || !id) return;
+
+    const initKey = `${id}:${players.map((p) => p.userId).join(',')}:${localUserId ?? ''}`;
+    if (unityInitKeyRef.current === initKey) {
+      return;
+    }
+    unityInitKeyRef.current = initKey;
+
+    unityBootstrapTimeoutsRef.current.forEach((tid) => window.clearTimeout(tid));
+    unityBootstrapTimeoutsRef.current = [];
+    try {
+      sendMessage('GameManager', 'SetPlayerCount', players.length);
+      if (localUserId) {
+        sendMessage('GameManager', 'SetLocalUserId', localUserId);
+      }
+      players.forEach((player, index) => {
+        const safeName = typeof player.username === 'string' && player.username.trim().length > 0
+          ? player.username
+          : `Игрок ${index + 1}`;
+        sendMessage('GameManager', 'SetPlayerName', safeName);
+        sendMessage('GameManager', 'SetPlayerId', player.userId);
+      });
+    } catch (e) {
+      console.error('Ошибка bootstrap в Unity:', e);
+    }
+
+    return () => {
+      unityBootstrapTimeoutsRef.current.forEach((tid) => window.clearTimeout(tid));
+      unityBootstrapTimeoutsRef.current = [];
+    };
   }, [id, isLoaded, players, sendMessage, localUserId]);
 
   // Выход из игры
@@ -806,10 +1278,15 @@ const Game: React.FC = () => {
     turnTimer &&
       timerDurationMs > 0 &&
       gameState?.started &&
-      !gameState?.isPaused &&
-      turnTimer.activePlayerId
+      !gameState?.isPaused
   );
-  const timerActivePlayerLabel = turnTimer?.activePlayerId ? getPlayerLabel(turnTimer.activePlayerId) : '';
+  const timerIsCharacterSelection =
+    timerVisible &&
+    Array.isArray(gameState?.players) &&
+    gameState.players.some((p: any) => !p?.selectedCharacterId);
+  const timerTitle = timerIsCharacterSelection ? 'Выбор персонажа' : 'Время хода';
+  const timerActivePlayerLabel =
+    turnTimer?.activePlayerId && !timerIsCharacterSelection ? getPlayerLabel(turnTimer.activePlayerId) : 'Общий таймер';
 
   if (loading) {
     return <Loader text="Загрузка данных комнаты..." fullPage />;
@@ -852,21 +1329,27 @@ const Game: React.FC = () => {
             <div className="turn-timer-time">{formatTimerSeconds(timerRemainingMs)}</div>
           </div>
           <div className="turn-timer-text">
-            <div className="turn-timer-title">Время хода</div>
+            <div className="turn-timer-title">{timerTitle}</div>
             <div className="turn-timer-player">{timerActivePlayerLabel}</div>
           </div>
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
-        <Button variant="outline" onClick={() => setShowDevPanel((v) => !v)}>
-          {showDevPanel ? 'Скрыть Dev панель' : 'Показать Dev панель'}
-        </Button>
-      </div>
+      {!isFullscreen && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+          <Button variant="outline" onClick={() => setShowDevPanel((v) => !v)}>
+            {showDevPanel ? 'Скрыть панель отладки' : 'Показать панель отладки'}
+          </Button>
+        </div>
+      )}
 
-      {showDevPanel && (
+      <button className="front-log-fab" onClick={() => setIsLogOpen((v) => !v)}>
+        {isLogOpen ? 'Скрыть журнал' : 'Журнал'}
+      </button>
+
+      {showDevPanel && !isFullscreen && (
         <div style={{ marginBottom: '1rem', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 8, background: '#f9fafb' }}>
-          <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Dev панель: изменение статов через сервер</div>
+          <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Панель отладки: изменение параметров через сервер</div>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
             <label>
               Режим:
@@ -901,7 +1384,7 @@ const Game: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(120px, 1fr))', gap: '0.5rem' }}>
               {Object.keys(INITIAL_DEV_DELTAS).map((key) => (
                 <label key={key} style={{ display: 'grid', gap: 4 }}>
-                  <span>{key}</span>
+                  <span>{STAT_NAME_RU[key] ?? key}</span>
                   <input
                     type="number"
                     value={(devDeltas as any)[key]}
@@ -920,6 +1403,59 @@ const Game: React.FC = () => {
               <Button variant="outline" onClick={() => setDevDeltas({ ...INITIAL_DEV_DELTAS })}>Сбросить</Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {isLogOpen && (
+        <div
+          className="front-log-panel floating"
+          style={{ left: logPos.x, top: logPos.y, width: logPanelSize.width, height: logPanelSize.height }}
+        >
+          <div
+            className="front-log-header draggable"
+            onMouseDown={(e) => {
+              draggingLogRef.current = true;
+              dragStartRef.current = { x: e.clientX, y: e.clientY };
+            }}
+          >
+            <span>Журнал игры</span>
+            <div className="front-log-actions" onMouseDown={(e) => e.stopPropagation()}>
+              <Button variant="outline" onClick={() => setFrontLog([])}>Очистить</Button>
+              <Button variant="outline" onClick={() => setIsLogOpen(false)}>Закрыть</Button>
+            </div>
+          </div>
+          <div className="front-log-list">
+            {frontLog.length === 0 ? (
+              <div className="front-log-empty">Пока нет событий</div>
+            ) : (
+              frontLog.map((entry) => (
+                <div key={entry.id} className={`front-log-item ${entry.kind}`}>
+                  <span className="front-log-time">
+                    {new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                  <span className="front-log-turn">Ход {entry.turn}</span>
+                  <span className={`front-log-actor ${entry.actorColor ? `color-${entry.actorColor}` : ''}`}>
+                    {entry.actorTitle ? `${entry.actorTitle}:` : 'Система:'}
+                  </span>
+                  <span>{entry.text}</span>
+                </div>
+              ))
+            )}
+          </div>
+          <div
+            className="front-log-resizer"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              resizingLogRef.current = true;
+              resizeStartRef.current = {
+                x: e.clientX,
+                y: e.clientY,
+                width: logPanelSize.width,
+                height: logPanelSize.height,
+              };
+            }}
+          />
         </div>
       )}
 
@@ -951,9 +1487,9 @@ const Game: React.FC = () => {
           unityProvider={unityProvider} 
           style={{ 
             width: "100%", 
-            height: isFullscreen ? "calc(100vh - 230px)" : "600px",
-            border: "2px solid #d1fae5", 
-            borderRadius: "12px",
+            height: isFullscreen ? "100%" : "600px",
+            border: isFullscreen ? "none" : "2px solid #d1fae5",
+            borderRadius: isFullscreen ? "0" : "12px",
             display: isLoaded ? 'block' : 'none'
           }} 
         />

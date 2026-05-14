@@ -38,6 +38,7 @@ public class UIManager : MonoBehaviour
     public GameObject logTextRoot;
     public TextMeshProUGUI logText;
     public ScrollRect logScrollRect;
+    public bool showInUnityLogUi = false;
     public bool autoScrollToLatest = true;
     public bool autoScrollOnlyWhenNearBottom = true;
     [Range(0f, 1f)] public float autoScrollBottomThreshold = 0.08f;
@@ -74,6 +75,8 @@ public class UIManager : MonoBehaviour
         // Панель можно оставить активной (например, чтобы кнопка всегда была видна),
         // скрываем только область текста лога.
         SetLogTextVisible(false);
+        if (!showInUnityLogUi && logPanel != null)
+            logPanel.SetActive(false);
         if (logText != null)
         {
             logText.alignment = TextAlignmentOptions.BottomLeft;
@@ -119,6 +122,8 @@ public class UIManager : MonoBehaviour
 
     public void AddLog(string message)
     {
+        if (!showInUnityLogUi)
+            return;
         if (string.IsNullOrWhiteSpace(message))
             return;
 
@@ -183,6 +188,8 @@ public class UIManager : MonoBehaviour
 
     public void ToggleLogPanel()
     {
+        if (!showInUnityLogUi)
+            return;
         bool makeVisible = !(GetLogTextRoot()?.activeSelf ?? false);
         SetLogTextVisible(makeVisible);
         if (makeVisible)
@@ -191,12 +198,16 @@ public class UIManager : MonoBehaviour
 
     public void OpenLogPanel()
     {
+        if (!showInUnityLogUi)
+            return;
         SetLogTextVisible(true);
         RefreshLogView();
     }
 
     public void CloseLogPanel()
     {
+        if (!showInUnityLogUi)
+            return;
         SetLogTextVisible(false);
     }
 

@@ -17,6 +17,7 @@ type RoomTurnTimerState = {
   durationMs: number;
   endsAt: number;
   activePlayerId: string;
+  mode: "turn" | "card";
 };
 type CharacterSelectionTimerState = {
   timeout: NodeJS.Timeout;
@@ -26,7 +27,7 @@ type CharacterSelectionTimerState = {
 const turnTimers = new Map<string, RoomTurnTimerState>();
 const characterSelectionTimers = new Map<string, CharacterSelectionTimerState>();
 const SURPRISE_CARD_TYPE = 0;
-const CHARACTER_SELECTION_TIMEOUT_MS = 120_000;
+const CHARACTER_SELECTION_TIMEOUT_MS = 90_000;
 
 function parseRoomSettings(raw: unknown): { timerSeconds?: number } {
   if (!raw) return {};
@@ -41,11 +42,12 @@ function parseRoomSettings(raw: unknown): { timerSeconds?: number } {
   return {};
 }
 
-function getTurnTimerDurationMs(room: any): number | null {
-  const settings = parseRoomSettings(room?.settings);
-  const seconds = Number(settings?.timerSeconds);
-  if (!Number.isFinite(seconds) || seconds <= 0) return null;
-  return Math.max(1, Math.trunc(seconds)) * 1000;
+function getTurnTimerDurationMs(_room: any, game: any): number | null {
+  if (!game?.started) return null;
+  if (getPendingCardWin(game) || getPendingCardClose(game) || getPendingGreenChoice(game)) {
+    return 60_000;
+  }
+  return 30_000;
 }
 
 function buildTurnSignature(game: any): string {
@@ -379,7 +381,10 @@ function applyCardAndCollectDeltas(
     checks: {
       blueDiceSum: card.cardType === 2 ? dice2d6 : null,
       blueSuccess: card.cardType === 2 ? blueSuccess : null,
+      blueExperience: card.cardType === 2 ? Number(game.experience[userId] ?? 0) : null,
       redSuccess: card.cardType === 3 ? redSuccess : null,
+      redSphereLevel: card.cardType === 3 ? Number(currentSphereLevel ?? 0) : null,
+      redRequiredLevel: card.cardType === 3 ? 5 : null,
       greenMode: greenResolution?.mode ?? null,
       greenPartnerId: greenResolution?.partnerId ?? null,
     },
@@ -800,6 +805,13 @@ function syncCharacterSelectionTimer(
   const deadlineAt = Number(getMetaDeckState(game).characterSelectionDeadlineAt ?? 0);
   if (!Number.isFinite(deadlineAt) || deadlineAt <= 0) return;
 
+  emitTurnTimerState(roomId, game, broadcast, {
+    running: true,
+    durationMs: CHARACTER_SELECTION_TIMEOUT_MS,
+    remainingMs: Math.max(0, deadlineAt - Date.now()),
+    endsAt: deadlineAt,
+  });
+
   const existing = characterSelectionTimers.get(roomId);
   if (existing && existing.deadlineAt === deadlineAt) return;
   clearCharacterSelectionTimer(roomId);
@@ -946,7 +958,9 @@ async function syncTurnTimerForRoomState(
   if (!roomId) return;
 
   syncCharacterSelectionTimer(room, game, broadcast);
-  const durationMs = getTurnTimerDurationMs(room);
+  const durationMs = getTurnTimerDurationMs(room, game);
+  const mode: "turn" | "card" =
+    getPendingCardWin(game) || getPendingCardClose(game) || getPendingGreenChoice(game) ? "card" : "turn";
   if (
     !durationMs ||
     !game?.started ||
@@ -984,7 +998,14 @@ async function syncTurnTimerForRoomState(
   if (existing) {
     const prevRemainingMs = Math.max(0, existing.endsAt - now);
     if (existing.activePlayerId === activePlayerId) {
-      remainingMs = prevRemainingMs + 5000;
+      if (existing.mode === mode) {
+        remainingMs = prevRemainingMs + 5000;
+      } else if (mode === "card") {
+        // После открытия карточки даем полноценное окно на чтение.
+        remainingMs = durationMs;
+      } else {
+        remainingMs = prevRemainingMs + 5000;
+      }
     }
   }
   const endsAt = now + remainingMs;
@@ -1007,7 +1028,7 @@ async function syncTurnTimerForRoomState(
     await runAutoTurnAction({ roomId, userId: activePlayerId, broadcast });
   }, remainingMs);
 
-  turnTimers.set(roomId, { timeout, signature, durationMs, endsAt, activePlayerId });
+  turnTimers.set(roomId, { timeout, signature, durationMs, endsAt, activePlayerId, mode });
   emitTurnTimerState(roomId, game, broadcast, {
     running: true,
     durationMs,
@@ -1125,6 +1146,13 @@ export async function handleGameMessage(ctx: {
   await resolveCharacterSelectionProgress(roomId, room.players, game, broadcast);
 
   if (msg.type === "game.character_select") {
+    // При реинекте посреди матча не позволяем повторно затирать статы/персонажа.
+    if (hasCharacterSelection(game, userId)) {
+      await saveGameState(roomId, game);
+      broadcast(roomId, { type: "game.state", payload: game } as any);
+      return;
+    }
+
     const selected = {
       characterId:
         typeof msg.payload.characterId === "string" && msg.payload.characterId.trim().length > 0
@@ -1151,6 +1179,18 @@ export async function handleGameMessage(ctx: {
   if (msg.type === "game.card_closed") {
     const pendingWin = getPendingCardWin(game);
     const pendingClose = getPendingCardClose(game);
+    const pendingGreen = getPendingGreenChoice(game);
+
+    if (
+      pendingGreen &&
+      userId === pendingGreen.ownerUserId &&
+      msg.payload.playerId === pendingGreen.ownerUserId &&
+      msg.payload.cardId === pendingGreen.cardId
+    ) {
+      sendError("GREEN_CHOICE_REQUIRED");
+      return;
+    }
+
     broadcast(roomId, {
       type: "game.card_closed",
       payload: {
@@ -1230,6 +1270,10 @@ export async function handleGameMessage(ctx: {
     const affectedPlayerIds = Array.from(primaryResult.deltasByUser.keys());
     if (!affectedPlayerIds.includes(userId)) affectedPlayerIds.push(userId);
     const playerDeckState = getPlayerDeckState(game, userId);
+    const partnerDeltas =
+      typeof partnerUserId === "string" && partnerUserId.length > 0
+        ? primaryResult.deltasByUser.get(partnerUserId) ?? []
+        : [];
 
     game.history.push({
       type: "card",
@@ -1237,6 +1281,9 @@ export async function handleGameMessage(ctx: {
       resolvedCardId: pendingGreen.card.id,
       deckKey: pendingGreen.deckKey,
       deltas: primaryResult.deltas,
+      checks: primaryResult.checks,
+      partnerUserId: partnerUserId ?? null,
+      partnerDeltas,
       affectedPlayers: affectedPlayerIds,
       chainedCards: [],
       grants: playerDeckState.grants,
@@ -1665,6 +1712,7 @@ export async function handleGameMessage(ctx: {
 
     if (card.cardType === 4) {
       const candidateUserIds = getGreenChoiceCandidates(game, room.players, userId, card, deckKey);
+      const autoResolveGreen = candidateUserIds.length <= 1;
       setPendingGreenChoice(game, {
         ownerUserId: userId,
         cardId: card.id,
@@ -1672,6 +1720,25 @@ export async function handleGameMessage(ctx: {
         card,
         candidateUserIds,
       });
+
+      if (autoResolveGreen) {
+        await saveGameState(roomId, game);
+        await handleGameMessage({
+          roomId,
+          userId,
+          msg: {
+            type: "game.green_choice",
+            payload: { cardId: card.id },
+          },
+          broadcast,
+          reply: (message) => {
+            if (message.type === "error") {
+              sendError(String((message as { payload?: { message?: string } }).payload?.message ?? "GREEN_CHOICE_REQUIRED"));
+            }
+          },
+        });
+        return;
+      }
 
       game.history.push({
         type: "card_green_pending",
@@ -1782,6 +1849,7 @@ export async function handleGameMessage(ctx: {
       resolvedCardId: card.id,
       deckKey,
       deltas: primaryResult.deltas,
+      checks: primaryResult.checks,
       affectedPlayers: affectedPlayerIds,
       chainedCards,
       grants: playerDeckState.grants,
