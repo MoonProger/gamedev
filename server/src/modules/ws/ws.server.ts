@@ -1,9 +1,8 @@
 ﻿import { Server as HttpServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import jwt from "jsonwebtoken";
-
 import { WsIn, WsOut } from "./ws.types";
-import { clearTurnTimerForRoom, handleGameMessage, syncTurnTimerForRoom } from "../game/game.handlers";
+import { clearTurnTimerForRoom, handleGameMessage, runAutoTurnAction, syncTurnTimerForRoom } from "../game/game.handlers";
 import { roomToDto } from "../rooms/rooms.dto";
 import {
   joinRoom,
@@ -141,7 +140,6 @@ function getOnlineUserIds(roomId: string) {
 
   for (const ws of set) {
     const meta = clients.get(ws);
-
     if (meta?.userId && ws.readyState === ws.OPEN) {
       userIds.add(meta.userId);
     }
@@ -156,7 +154,12 @@ async function areAllRoomPlayersOnline(roomId: string) {
 
   const onlineUserIds = getOnlineUserIds(roomId);
 
-  return room.players.every((player) => onlineUserIds.has(player.userId));
+  // Проверяем только реальных игроков (не ботов)
+  const realPlayers = room.players.filter(player => !player.userId.startsWith("bot_"));
+  
+  if (realPlayers.length === 0) return true;
+  
+  return realPlayers.every(player => onlineUserIds.has(player.userId));
 }
 
 /** Pause/resume authoritative game based on who's actually connected (fixes duplicate socket + reconnect races). */
@@ -165,6 +168,15 @@ async function syncLobbyPresenceForRoom(roomId: string, opts?: { pauseReason?: s
 
   const room = await getRawRoom(roomId);
   if (!room) return;
+
+  // Если в комнате нет реальных игроков (только боты) — не паузим
+  const hasRealPlayers = room.players.some(player => !player.userId.startsWith("bot_"));
+  if (!hasRealPlayers) {
+    console.log(`[ws:sync] room=${roomId} has no real players, skip pause check`);
+    return;
+  }
+
+  
 
   const persisted = await loadGameState(roomId);
   if (!persisted?.started) {
@@ -206,6 +218,15 @@ async function syncLobbyPresenceForRoom(roomId: string, opts?: { pauseReason?: s
   } as any);
 
   await pushRoomState(roomId);
+
+  if (game.started && !game.isPaused && game.activePlayerId && game.activePlayerId.startsWith("bot_")) {
+    console.log(`[ws:sync] Bot ${game.activePlayerId} turn, triggering auto action`);
+    setTimeout(() => {
+  if (game.activePlayerId) {
+    runAutoTurnAction({ roomId, userId: game.activePlayerId, broadcast });
+      }
+    }, 500);
+  }
 }
 
 async function handleRoomJoin(ws: WebSocket, meta: ClientMeta, msg: Extract<WsIn, { type: "room.join" }>) {

@@ -17,9 +17,13 @@ export async function createRoom(
   password?: string
 ) {
   const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
-  await removeUserFromOtherRooms(creatorId);
+  
+  const fillWithBots = settings?.fillWithBots === true;
+  const maxPlayers = settings?.maxPlayers ?? 4;
+  
+  console.log('Creating room with settings:', { fillWithBots, maxPlayers, settings });
 
-  return prisma.room.create({
+  const room = await prisma.room.create({
     data: {
       title,
       creatorId,
@@ -33,7 +37,29 @@ export async function createRoom(
       creator: { select: { id: true, username: true } },
     },
   });
+
+  // Автоматически добавляем ботов, если включено 
+  if (fillWithBots) {
+    const currentCount = 1;
+    console.log(`Adding bots: current=${currentCount}, max=${maxPlayers}`);
+    
+    for (let i = currentCount; i < maxPlayers; i++) {
+      try {
+        await addBot(room.id, creatorId, `AI Bot ${i + 1}`);
+        console.log(`Added bot ${i + 1}`);
+      } catch (botError) {
+        console.error(`Failed to add bot ${i + 1}:`, botError);
+      }
+    }
+    
+    const updatedRoom = await getRoom(room.id);
+    return updatedRoom;
+  }
+
+  return room;
 }
+
+
 
 export async function listRooms() {
   const rooms = await prisma.room.findMany({
@@ -151,6 +177,15 @@ export async function getRoom(roomId: string) {
 
   if (!room) return null;
 
+  // Добавляем флаг isBot к каждому игроку
+  const playersWithBotFlag = room.players.map((p) => ({
+    userId: p.userId,
+    username: p.user?.username || (p.userId.startsWith("bot_") ? "AI Bot" : "Unknown"),
+    isReady: p.isReady,
+    isBot: p.userId.startsWith("bot_") || false, // определяем бота по userId
+    joinedAt: p.joinedAt,
+  }));
+
   return {
     ...room,
     settings: safeJsonParse(room.settings, {}),
@@ -237,6 +272,10 @@ export async function leaveRoom(roomId: string, userId: string) {
 }
 
 export async function setReady(roomId: string, userId: string, ready: boolean) {
+  // Боты всегда готовы
+  if (userId.startsWith("bot_")) {
+    return getRoom(roomId);
+  }
   await prisma.roomPlayer.update({
     where: { roomId_userId: { roomId, userId } },
     data: { isReady: ready },
@@ -319,26 +358,80 @@ export async function finishRoomBySystem(roomId: string) {
   return true;
 }
 
+// Боты
+
+export async function addBot(roomId: string, creatorId: string, botName?: string) {
+  const room = await prisma.room.findUnique({ where: { id: roomId } });
+  if (!room) throw new Error("ROOM_NOT_FOUND");
+  if (room.creatorId !== creatorId) throw new Error("NOT_AUTHORIZED");
+  
+  const settings = safeJsonParse(room.settings, {});
+  const count = await prisma.roomPlayer.count({ where: { roomId } });
+  const maxPlayers = settings?.maxPlayers ?? 4;
+  if (count >= maxPlayers) throw new Error("ROOM_FULL");
+
+  const botId = `bot_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  const botUsername = botName || `AI Bot ${Math.floor(Math.random() * 1000)}`;
+  
+  // создаем
+  await prisma.user.upsert({
+    where: { id: botId },
+    create: {
+      id: botId,
+      email: `${botId}@ai.bot`,
+      username: botUsername,
+      passwordHash: "bot_account_no_login",
+      avatar: null,
+      createdAt: new Date(),
+    },
+    update: {},
+  });
+  
+  // добавляем в комнату
+  await prisma.roomPlayer.create({
+    data: {
+      roomId,
+      userId: botId,
+      isReady: true, 
+      joinedAt: new Date(),
+    },
+  });
+  
+  return getRoom(roomId);
+}
+
+export async function removeBot(roomId: string, creatorId: string, botUserId: string) {
+  const room = await prisma.room.findUnique({ where: { id: roomId } });
+  if (!room) throw new Error("ROOM_NOT_FOUND");
+  if (room.creatorId !== creatorId) throw new Error("NOT_AUTHORIZED");
+  
+  // Удаляем бота из комнаты
+  await prisma.roomPlayer.deleteMany({
+    where: { roomId, userId: botUserId }
+  });
+  
+  return getRoom(roomId);
+}
+
 export async function resetGameState(roomId: string) {
   console.log(`Resetting game state for room ${roomId}`);
-  
-  // Очищаем in-memory состояние игры
   resetGame(roomId);
   
-  // Удаляем сохранённое состояние из БД
   await prisma.gameState.delete({
     where: { roomId }
   }).catch(() => {});
   
-  // Сбрасываем статус комнаты на WAITING
   await prisma.room.update({
     where: { id: roomId },
     data: { status: "WAITING" }
   }).catch(() => {});
   
-  // Сбрасываем готовность всех игроков
+  // Сбрасываем готовность только у реальных игроков, боты остаются готовыми
   await prisma.roomPlayer.updateMany({
-    where: { roomId },
+    where: { 
+      roomId,
+      userId: { not: { contains: "bot_" } }
+    },
     data: { isReady: false }
   }).catch(() => {});
 }

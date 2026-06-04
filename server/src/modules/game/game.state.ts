@@ -12,6 +12,7 @@ export type GameState = {
   history: any[];
   lastDice: number | null;
   phase: Phase;
+  characterSelectionRequired?: boolean;
 };
 
 const games = new Map<string, GameState>();

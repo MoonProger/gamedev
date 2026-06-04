@@ -21,6 +21,7 @@ function normalizeRoom(raw: any): Room {
             ? p.user.username
             : '',
         isReady: Boolean(p?.isReady),
+        isBot: p?.isBot ?? p?.userId?.startsWith?.('bot_') ?? false,
         joinedAt: p?.joinedAt,
       }))
     : [];
@@ -63,6 +64,7 @@ const RoomDetails: React.FC = () => {
   const [isClosing, setIsClosing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [addingBot, setAddingBot] = useState(false);
   
   const [roomPassword] = useState<string | null>(() => {
     if (initialPassword && id) {
@@ -127,10 +129,39 @@ const RoomDetails: React.FC = () => {
     return () => window.clearInterval(pollId);
   }, [id]);
 
-  // Всегда делаем room.join по WS, чтобы получать broadсast-события комнаты.
   const currentUserId = getUserIdFromToken();
   const isCreator = room?.creator?.id === currentUserId;
-const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSocketMessage);
+  const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSocketMessage);
+
+  // ============= БОТЫ =============
+  
+  const handleAddBot = async () => {
+    if (!id || !isCreator) return;
+    setAddingBot(true);
+    try {
+      await api.addBot(id);
+      showToast('Бот добавлен в комнату', 'success');
+      await loadRoom();
+    } catch (err) {
+      showToast('Не удалось добавить бота', 'error');
+    } finally {
+      setAddingBot(false);
+    }
+  };
+
+  const handleRemoveBot = async (botUserId: string) => {
+    if (!id || !isCreator) return;
+    try {
+      await api.removeBot(id, botUserId);
+      showToast('Бот удалён', 'success');
+      await loadRoom();
+    } catch (err) {
+      showToast('Не удалось удалить бота', 'error');
+    }
+  };
+
+  // ============= ОСТАЛЬНЫЕ ОБРАБОТЧИКИ =============
+
   const handleReady = async () => {
     if (!room || !id) return;
     
@@ -167,24 +198,20 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
   if (!id) return;
   if (isStarting) return;
   setIsStarting(true);
-  console.log('Starting game, waiting for WebSocket connection...');
   
-  let attempts = 0;
-  while (!isConnected && attempts < 30) {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    attempts++;
-  }
+  console.log('Starting game, navigating to game page...');
   
-  if (!isConnected) {
-    console.error('WebSocket not connected after 3 seconds');
-    showToast('Ошибка подключения', 'error');
-    setIsStarting(false);
-    return;
-  }
-
-  console.log('Sending game.start');
-  send({ type: 'game.start', payload: {} });
-  setTimeout(() => setIsStarting(false), 1000);
+  navigate(`/game/${id}`, {
+    state: { roomPassword: roomPassword || undefined }
+  });
+  
+  // Даём время на переход и подключение WebSocket на странице игры
+  setTimeout(() => {
+    console.log('Sending game.start to server');
+    send({ type: 'game.start', payload: {} });
+  }, 500);
+  
+  setTimeout(() => setIsStarting(false), 2000);
 };
 
   const handleCloseRoom = async () => {
@@ -233,8 +260,10 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
   };
 
   const currentPlayer = room?.players?.find(p => p.userId === currentUserId);
-  const allReady = (room?.players?.length ?? 0) >= 2 && room?.players?.every(p => p.isReady);
+  //const realPlayersCount = room?.players?.filter(p => !p.isBot)?.length ?? 0;
+  const allReady = room?.players?.every(p => p.isReady || p.isBot);
   const maxPlayers = room?.settings?.maxPlayers ?? 4;
+  const isRoomFull = (room?.players?.length ?? 0) >= maxPlayers;
 
   if (loading) {
     return <Loader text="Загрузка комнаты..." fullPage />;
@@ -295,11 +324,14 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
             {room.players?.map(player => (
               <div key={player.userId} className="player-item">
                 <div className="player-info">
-                  <span className="player-name">{player.username || 'Без имени'}</span>
-                  {player.userId === room.creator?.id && (
+                  <span className="player-name">
+                    {player.username || 'Без имени'}
+                    {player.isBot && <span className="bot-badge"> 🤖 Бот</span>}
+                  </span>
+                  {player.userId === room.creator?.id && !player.isBot && (
                     <span className="player-creator">Создатель</span>
                   )}
-                  {player.userId === currentUserId && (
+                  {player.userId === currentUserId && !player.isBot && (
                     <span className="player-you">(Вы)</span>
                   )}
                 </div>
@@ -310,6 +342,16 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
                     <span className="ready-status not-ready">Не готов</span>
                   )}
                 </div>
+                {isCreator && player.isBot && (
+                  <Button 
+                    variant="outline" 
+                    size="small" 
+                    onClick={() => handleRemoveBot(player.userId)}
+                    style={{ marginLeft: '0.5rem', padding: '2px 8px' }}
+                  >
+                    Удалить
+                  </Button>
+                )}
               </div>
             ))}
             {Array.from({ length: maxPlayers - (room.players?.length ?? 0) }).map((_, i) => (
@@ -326,7 +368,7 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
         </div>
 
         <div className="room-actions">
-          {room.status === 'WAITING' && currentPlayer && (
+          {room.status === 'WAITING' && currentPlayer && !currentPlayer.isBot && (
             <Button
               variant={currentPlayer.isReady ? 'outline' : 'primary'}
               onClick={handleReady}
@@ -356,39 +398,52 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
             Покинуть комнату
           </Button>
 
-          {isCreator && (
-            <div className="creator-actions" style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-              {room.status === 'WAITING' && (
-                <Button
-                  variant="outline"
-                  onClick={handleCloseRoom}
-                  disabled={isClosing}
-                  isLoading={isClosing}
-                  style={{ borderColor: '#f59e0b', color: '#f59e0b' }}
-                >
-                  Закрыть комнату
-                </Button>
-              )}
-              {room.status === 'CLOSED' && (
-                <Button
-                  variant="outline"
-                  onClick={handleOpenRoom}
-                  disabled={isClosing}
-                  isLoading={isClosing}
-                  style={{ borderColor: '#10b981', color: '#10b981' }}
-                >
-                  Открыть комнату
-                </Button>
-              )}
+          <div className="right-actions" style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+            {isCreator && room.status === 'WAITING' && (
               <Button
-                variant="danger"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={isDeleting}
+                variant="outline"
+                onClick={handleAddBot}
+                disabled={addingBot || isRoomFull}
+                isLoading={addingBot}
               >
-                Удалить комнату
+                🤖 Добавить бота
               </Button>
-            </div>
-          )}
+            )}
+
+            {isCreator && (
+              <div className="creator-actions" style={{ display: 'flex', gap: '0.5rem' }}>
+                {room.status === 'WAITING' && (
+                  <Button
+                    variant="outline"
+                    onClick={handleCloseRoom}
+                    disabled={isClosing}
+                    isLoading={isClosing}
+                    style={{ borderColor: '#f59e0b', color: '#f59e0b' }}
+                  >
+                    Закрыть комнату
+                  </Button>
+                )}
+                {room.status === 'CLOSED' && (
+                  <Button
+                    variant="outline"
+                    onClick={handleOpenRoom}
+                    disabled={isClosing}
+                    isLoading={isClosing}
+                    style={{ borderColor: '#10b981', color: '#10b981' }}
+                  >
+                    Открыть комнату
+                  </Button>
+                )}
+                <Button
+                  variant="danger"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isDeleting}
+                >
+                  Удалить комнату
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       

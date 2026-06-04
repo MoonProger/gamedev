@@ -4,6 +4,7 @@ export interface RoomPlayer {
   userId: string;
   username: string;
   isReady: boolean;
+  isBot?: boolean;
   joinedAt?: string;
 }
 
