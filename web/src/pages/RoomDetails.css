@@ -278,12 +278,3 @@
     transform: translateX(0);
   }
 }
-
-.bot-badge {
-  margin-left: 0.5rem;
-  font-size: 0.8rem;
-  background: #e0e7ff;
-  color: #4338ca;
-  padding: 2px 6px;
-  border-radius: 12px;
-}

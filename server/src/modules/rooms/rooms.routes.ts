@@ -14,8 +14,6 @@ import {
   joinPrivateRoom,
   leaveRoom,
   setReady,
-  addBot,
-  removeBot,
 } from "./rooms.service";
 import { roomToDto } from "./rooms.dto";
 import { prisma } from "../../db/prisma";
@@ -178,8 +176,7 @@ roomsRoutes.post("/:id/close", authRequired, async (req, res) => {
       data: { status: "CLOSED" }
     });
     
-    const fullRoom = await getRoom(roomId);
-    res.json({ room: fullRoom ? roomToDto(fullRoom) : null });
+    res.json({ room: updated });
   } catch (error) {
     res.status(500).json({ error: "Failed to close room" });
   }
@@ -205,40 +202,8 @@ roomsRoutes.post("/:id/open", authRequired, async (req, res) => {
       data: { status: "WAITING" }
     });
     
-    const fullRoom = await getRoom(roomId);
-    res.json({ room: fullRoom ? roomToDto(fullRoom) : null });
+    res.json({ room: updated });
   } catch (error) {
     res.status(500).json({ error: "Failed to open room" });
-  }
-});
-
-// боты
-
-roomsRoutes.post("/:id/bots/add", authRequired, async (req, res) => {
-  const roomId = getRoomId(req);
-  const { botName } = req.body;
-  try {
-    const room = await addBot(roomId, req.auth!.userId, botName || "AI Bot");
-    res.json({ room: room ? roomToDto(room) : null });
-  } catch (e: any) {
-    console.error("Add bot error:", e.message);
-    if (e.message === "ROOM_NOT_FOUND") return res.status(404).json({ error: "Room not found" });
-    if (e.message === "NOT_AUTHORIZED") return res.status(403).json({ error: "Only creator can add bots" });
-    if (e.message === "ROOM_FULL") return res.status(409).json({ error: "Room full" });
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
-roomsRoutes.delete("/:id/bots/:botUserId", authRequired, async (req, res) => {
-  const roomId = getRoomId(req);
-  const { botUserId } = req.params;
-  try {
-    const room = await removeBot(roomId, req.auth!.userId, botUserId);
-    res.json({ room: room ? roomToDto(room) : null });
-  } catch (e: any) {
-    console.error("Remove bot error:", e.message);
-    if (e.message === "ROOM_NOT_FOUND") return res.status(404).json({ error: "Room not found" });
-    if (e.message === "NOT_AUTHORIZED") return res.status(403).json({ error: "Only creator can remove bots" });
-    return res.status(500).json({ error: "Server error" });
   }
 });

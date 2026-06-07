@@ -175,22 +175,7 @@ class ApiClient {
     });
   }
 
-  // ============= AI БОТЫ =============
-  
-  async addBot(roomId: string, botName?: string) {
-    return this.request(`/rooms/${roomId}/bots/add`, {
-      method: 'POST',
-      body: JSON.stringify({ botName }),
-    });
-  }
-
-  async removeBot(roomId: string, botUserId: string) {
-    return this.request(`/rooms/${roomId}/bots/${botUserId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // WebSocket connection (ТОЛЬКО ОДИН РАЗ!)
+  // WebSocket 
   connectWebSocket(onMessage: (data: any) => void): WebSocket {
     const token = this.getToken();
     console.log('Connecting WebSocket with token:', token);

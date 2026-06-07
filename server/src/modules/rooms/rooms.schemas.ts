@@ -7,7 +7,6 @@ export const CreateRoomSchema = z.object({
     .object({
       maxPlayers: z.number().int().min(2).max(4).default(4),
       timerSeconds: z.number().int().min(10).max(300).optional(),
-      fillWithBots: z.boolean().optional().default(false),
     })
     .passthrough()
     .default({ maxPlayers: 4 }),
