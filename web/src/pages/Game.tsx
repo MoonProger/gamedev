@@ -439,11 +439,16 @@ function buildSnapshotByUser(raw: any): Record<string, PlayerSnapshot> {
   return snapshot;
 }
 
-function toUnityGameStatePayload(raw: any, knownPlayers: Player[]): UnityGameState {
+function toUnityGameStatePayload(raw: any, knownPlayers: Player[], localUserId?: string | null): UnityGameState {
   const knownUserIds = knownPlayers.map((p) => p.userId);
+  const knownPlayerById = new Map(knownPlayers.map((p) => [p.userId, p]));
   const idsFromPositions = Object.keys(raw?.positions ?? {});
   const idsFromScores = Object.keys(raw?.scores ?? {});
   const allIds = Array.from(new Set([...knownUserIds, ...idsFromPositions, ...idsFromScores]));
+
+  const phase = typeof raw?.phase === 'string' ? raw.phase : 'WAITING_ROLL';
+  const characterSelectionCompleted = Boolean(raw?.deckState?.__meta?.characterSelectionCompleted);
+  const isCharacterSelection = phase === 'CHARACTER_SELECTION' || !characterSelectionCompleted;
 
   const players: UnityPlayerState[] = allIds.map((userId) => {
     const scores = raw?.scores?.[userId] ?? {};
@@ -455,9 +460,11 @@ function toUnityGameStatePayload(raw: any, knownPlayers: Player[]): UnityGameSta
       position: Number(raw?.positions?.[userId] ?? 0),
       grants: Number(deckState.grants ?? 0),
       selectedCharacterId:
-        typeof deckState?.selectedCharacter?.characterId === 'string'
-          ? deckState.selectedCharacter.characterId
-          : undefined,
+          isCharacterSelection && userId !== localUserId
+            ? undefined
+            : typeof deckState?.selectedCharacter?.characterId === 'string'
+            ? deckState.selectedCharacter.characterId
+            : undefined,
       completedProjects,
       playerState: {
         money: Number(raw?.money?.[userId] ?? 0),
@@ -494,7 +501,7 @@ function toUnityGameStatePayload(raw: any, knownPlayers: Player[]): UnityGameSta
     started: Boolean(raw?.started),
     isPaused: Boolean(raw?.isPaused),
     activePlayerId: typeof raw?.activePlayerId === 'string' ? raw.activePlayerId : '',
-    phase: typeof raw?.phase === 'string' ? raw.phase : 'WAITING_ROLL',
+    phase,
     hasLastDice,
     lastDice: hasLastDice ? Number(lastDiceRaw) : 0,
     currentTurnNumber: Math.max(1, finishedTurns + 1),
@@ -511,6 +518,7 @@ const Game: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [gameState, setGameState] = useState<any>(null);
   const [localUserId, setLocalUserId] = useState<string | null>(null);
+  const localUserIdRef = useRef<string | null>(null);
   const [turnTimer, setTurnTimer] = useState<TurnTimerState | null>(null);
   const [timerNowMs, setTimerNowMs] = useState(() => Date.now());
   const [frontLog, setFrontLog] = useState<FrontLogEntry[]>([]);
@@ -769,6 +777,7 @@ const Game: React.FC = () => {
 
         switch (data.type) {
           case 'connected':
+            localUserIdRef.current = data.payload.userId;
             setLocalUserId(data.payload.userId);
             if (isLoadedRef.current) {
               sendMessage('GameManager', 'SetLocalUserId', data.payload.userId);
@@ -861,7 +870,7 @@ const Game: React.FC = () => {
                 appendFrontLogEntries(batch);
               }
 
-              const unityState = toUnityGameStatePayload(rawState, playersRef.current);
+              const unityState = toUnityGameStatePayload(rawState, playersRef.current, localUserIdRef.current);
               setGameState(unityState);
             }
             break;

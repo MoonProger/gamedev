@@ -504,6 +504,10 @@ function markCharacterSelectionCompleted(game: any) {
   const meta = getMetaDeckState(game);
   meta.characterSelectionCompleted = true;
   delete meta.characterSelectionDeadlineAt;
+
+  if (game.phase === "CHARACTER_SELECTION") {
+    game.phase = "WAITING_ROLL";
+  }
 }
 
 function ensureCharacterSelectionInitialized(game: any) {
@@ -1168,7 +1172,7 @@ export async function handleGameMessage(ctx: {
     game.isPaused = false;
     game.activePlayerId = players[0].userId;
     game.lastDice = null;
-    game.phase = "WAITING_ROLL";
+    game.phase = "CHARACTER_SELECTION";
     clearPendingCardWin(game);
     clearPendingCardClose(game);
     clearPendingGreenChoice(game);
