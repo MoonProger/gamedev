@@ -168,6 +168,18 @@ class ApiClient {
     });
   }
 
+   async addBot(roomId: string) {
+    return this.request(`/rooms/${roomId}/bots`, {
+      method: 'POST',
+    });
+  }
+
+  async removeBot(roomId: string, botId: string) {
+    return this.request(`/rooms/${roomId}/bots/${botId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async startGame(roomId: string) {
     console.log('Старт игры в комнате:', roomId);
     return this.request(`/rooms/${roomId}/start`, {

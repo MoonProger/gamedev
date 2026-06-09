@@ -12,6 +12,7 @@ interface Player {
   userId: string;
   username: string;
   isReady: boolean;
+  isBot?: boolean;
 }
 
 type DevDeltaState = {
@@ -236,6 +237,7 @@ function normalizeRoomPlayers(rawRoom: any): Player[] {
         ? p.user.username
         : '',
     isReady: Boolean(p?.isReady),
+    isBot: Boolean(p?.isBot ?? p?.user?.isBot ?? false),
   }));
 }
 
@@ -670,6 +672,32 @@ const Game: React.FC = () => {
       showToast('Не удалось загрузить данные комнаты', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddBot = async () => {
+    if (!id) return;
+
+    try {
+      const data = await api.addBot(id);
+      setPlayers(normalizeRoomPlayers(data.room));
+      showToast('Бот добавлен в комнату', 'success');
+    } catch (err: any) {
+      console.error('Ошибка добавления бота:', err);
+      showToast(err.message || 'Не удалось добавить бота', 'error');
+    }
+  };
+
+  const handleRemoveBot = async (botId: string) => {
+    if (!id) return;
+
+    try {
+      const data = await api.removeBot(id, botId);
+      setPlayers(normalizeRoomPlayers(data.room));
+      showToast('Бот удалён из комнаты', 'success');
+    } catch (err: any) {
+      console.error('Ошибка удаления бота:', err);
+      showToast(err.message || 'Не удалось удалить бота', 'error');
     }
   };
 
@@ -1311,6 +1339,26 @@ const Game: React.FC = () => {
       <div className="players-count-header">
         Игроков: {players.length}
       </div>
+
+      {!gameState?.started && !isFullscreen && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <Button variant="primary" onClick={handleAddBot}>
+            + Добавить бота
+          </Button>
+
+          {players
+            .filter((player) => player.isBot)
+            .map((bot) => (
+              <Button
+                key={bot.userId}
+                variant="outline"
+                onClick={() => handleRemoveBot(bot.userId)}
+              >
+                Удалить {bot.username || 'бота'}
+              </Button>
+            ))}
+        </div>
+      )}
 
       {timerVisible && (
         <div className="turn-timer-card" aria-live="polite">
