@@ -13,6 +13,7 @@ model User {
   username     String
   passwordHash String
   avatar       String?
+  isBot        Boolean      @default(false)
   createdAt    DateTime     @default(now())
 
   roomsCreated Room[]       @relation("creator")

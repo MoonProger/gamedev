@@ -14,6 +14,8 @@ import {
   joinPrivateRoom,
   leaveRoom,
   setReady,
+  addBotToRoom,
+  removeBotFromRoom,
 } from "./rooms.service";
 import { roomToDto } from "./rooms.dto";
 import { prisma } from "../../db/prisma";
@@ -127,6 +129,61 @@ roomsRoutes.post("/:id/ready", authRequired, async (req, res) => {
     res.json({ room: room ? roomToDto(room) : null });
   } catch {
     return res.status(409).json({ error: "Not in room" });
+  }
+});
+
+roomsRoutes.post("/:id/bots", authRequired, async (req, res) => {
+  const roomId = getRoomId(req);
+
+  try {
+    const room = await addBotToRoom(roomId, req.auth!.userId);
+    res.json({ room: room ? roomToDto(room) : null });
+  } catch (e: any) {
+    if (e.message === "ROOM_NOT_FOUND") {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    if (e.message === "NOT_AUTHORIZED") {
+      return res.status(403).json({ error: "Only creator can add bots" });
+    }
+
+    if (e.message === "ROOM_NOT_JOINABLE") {
+      return res.status(409).json({ error: "Room not joinable" });
+    }
+
+    if (e.message === "ROOM_FULL") {
+      return res.status(409).json({ error: "Room full" });
+    }
+
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+roomsRoutes.delete("/:id/bots/:botId", authRequired, async (req, res) => {
+  const roomId = getRoomId(req);
+  const botId = req.params.botId;
+
+  try {
+    const room = await removeBotFromRoom(roomId, botId, req.auth!.userId);
+    res.json({ room: room ? roomToDto(room) : null });
+  } catch (e: any) {
+    if (e.message === "ROOM_NOT_FOUND") {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    if (e.message === "NOT_AUTHORIZED") {
+      return res.status(403).json({ error: "Only creator can remove bots" });
+    }
+
+    if (e.message === "ROOM_NOT_WAITING") {
+      return res.status(409).json({ error: "Bot can be removed only before game start" });
+    }
+
+    if (e.message === "BOT_NOT_FOUND") {
+      return res.status(404).json({ error: "Bot not found" });
+    }
+
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
