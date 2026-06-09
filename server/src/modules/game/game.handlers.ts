@@ -28,6 +28,24 @@ const turnTimers = new Map<string, RoomTurnTimerState>();
 const characterSelectionTimers = new Map<string, CharacterSelectionTimerState>();
 const SURPRISE_CARD_TYPE = 0;
 const CHARACTER_SELECTION_TIMEOUT_MS = 90_000;
+const BOT_ACTION_DELAY_MS = 700;
+
+const roomPlayersWithBotInclude = {
+  players: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          isBot: true,
+        },
+      },
+    },
+  },
+} as const;
+
+function isRoomPlayerBot(player: any): boolean {
+  return Boolean(player?.user?.isBot ?? player?.isBot ?? false);
+}
 
 function parseRoomSettings(raw: unknown): { timerSeconds?: number } {
   if (!raw) return {};
@@ -486,6 +504,10 @@ function markCharacterSelectionCompleted(game: any) {
   const meta = getMetaDeckState(game);
   meta.characterSelectionCompleted = true;
   delete meta.characterSelectionDeadlineAt;
+
+  if (game.phase === "CHARACTER_SELECTION") {
+    game.phase = "WAITING_ROLL";
+  }
 }
 
 function ensureCharacterSelectionInitialized(game: any) {
@@ -563,6 +585,29 @@ function applyCharacterSelection(game: any, userId: string, selected: any, stats
   game.scores[userId]["sport"] = clampByStat("sport", toInt(stats.sport));
   game.scores[userId]["tourism"] = clampByStat("tourism", toInt(stats.tourism));
   game.scores[userId]["it"] = clampByStat("it", toInt(stats.it));
+}
+
+function autoSelectCharactersForBots(game: any, roomPlayers: any[]): boolean {
+  let changed = false;
+
+  for (const player of roomPlayers) {
+    if (!isRoomPlayerBot(player)) continue;
+    if (hasCharacterSelection(game, player.userId)) continue;
+
+    const fallback = generateFallbackCharacter(player.userId);
+    applyCharacterSelection(game, player.userId, fallback, fallback.stats);
+
+    game.history.push({
+      type: "character_select_bot",
+      playerId: player.userId,
+      characterId: fallback.characterId,
+      at: fallback.selectedAt,
+    });
+
+    changed = true;
+  }
+
+  return changed;
 }
 
 function resetCardDrawMeta(game: any) {
@@ -756,18 +801,25 @@ function normalizeNodeType(nodeType?: string): string {
 
 async function resolveCharacterSelectionProgress(
   roomId: string,
-  roomPlayers: { userId: string }[],
+  roomPlayers: any[],
   game: any,
   broadcast: (roomId: string, msg: WsOut) => void
 ) {
   ensureCharacterSelectionInitialized(game);
   if (isCharacterSelectionCompleted(game)) return;
 
+  const botsChanged = autoSelectCharactersForBots(game, roomPlayers);
+
   if (allPlayersSelected(game, roomPlayers)) {
     markCharacterSelectionCompleted(game);
     await saveGameState(roomId, game);
     broadcast(roomId, { type: "game.state", payload: game } as any);
     return;
+  }
+
+  if (botsChanged) {
+    await saveGameState(roomId, game);
+    broadcast(roomId, { type: "game.state", payload: game } as any);
   }
 
   const deadlineAt = Number(getMetaDeckState(game).characterSelectionDeadlineAt ?? 0);
@@ -821,7 +873,7 @@ function syncCharacterSelectionTimer(
     characterSelectionTimers.delete(roomId);
     const liveRoom = await prisma.room.findUnique({
       where: { id: roomId },
-      include: { players: true },
+      include: roomPlayersWithBotInclude,
     });
     if (!liveRoom || liveRoom.players.length === 0) {
       clearTurnTimer(roomId);
@@ -843,7 +895,7 @@ async function runAutoTurnAction(ctx: {
   const { roomId, userId, broadcast } = ctx;
   const room = await prisma.room.findUnique({
     where: { id: roomId },
-    include: { players: true },
+    include: roomPlayersWithBotInclude,
   });
   if (!room || room.players.length === 0 || !room.players.some((p) => p.userId === userId)) {
     clearTurnTimer(roomId);
@@ -979,12 +1031,19 @@ async function syncTurnTimerForRoomState(
     return;
   }
 
+  const activePlayerId = String(game.activePlayerId);
+  const activePlayer = Array.isArray(room?.players)
+    ? room.players.find((p: any) => p.userId === activePlayerId)
+    : null;
+  const activePlayerIsBot = isRoomPlayerBot(activePlayer);
+  const effectiveDurationMs = activePlayerIsBot ? BOT_ACTION_DELAY_MS : durationMs;
+
   const signature = buildTurnSignature(game);
   const existing = turnTimers.get(roomId);
-  if (existing && existing.signature === signature && existing.durationMs === durationMs) {
+  if (existing && existing.signature === signature && existing.durationMs === effectiveDurationMs) {
     emitTurnTimerState(roomId, game, broadcast, {
       running: true,
-      durationMs,
+      durationMs: effectiveDurationMs,
       remainingMs: Math.max(0, existing.endsAt - Date.now()),
       endsAt: existing.endsAt,
     });
@@ -992,9 +1051,8 @@ async function syncTurnTimerForRoomState(
   }
 
   clearTurnTimer(roomId);
-  const activePlayerId = String(game.activePlayerId);
   const now = Date.now();
-  let remainingMs = durationMs;
+  let remainingMs = effectiveDurationMs;
   if (existing) {
     const prevRemainingMs = Math.max(0, existing.endsAt - now);
     if (existing.activePlayerId === activePlayerId) {
@@ -1002,7 +1060,7 @@ async function syncTurnTimerForRoomState(
         remainingMs = prevRemainingMs + 5000;
       } else if (mode === "card") {
         // После открытия карточки даем полноценное окно на чтение.
-        remainingMs = durationMs;
+        remainingMs = effectiveDurationMs;
       } else {
         remainingMs = prevRemainingMs + 5000;
       }
@@ -1028,13 +1086,21 @@ async function syncTurnTimerForRoomState(
     await runAutoTurnAction({ roomId, userId: activePlayerId, broadcast });
   }, remainingMs);
 
-  turnTimers.set(roomId, { timeout, signature, durationMs, endsAt, activePlayerId, mode });
-  emitTurnTimerState(roomId, game, broadcast, {
-    running: true,
-    durationMs,
-    remainingMs,
-    endsAt,
-  });
+  turnTimers.set(roomId, {
+      timeout,
+      signature,
+      durationMs: effectiveDurationMs,
+      endsAt,
+      activePlayerId,
+      mode,
+    });
+
+    emitTurnTimerState(roomId, game, broadcast, {
+      running: true,
+      durationMs: effectiveDurationMs,
+      remainingMs,
+      endsAt,
+    });
 }
 
 export async function syncTurnTimerForRoom(
@@ -1043,7 +1109,7 @@ export async function syncTurnTimerForRoom(
 ) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
-    include: { players: true },
+    include: roomPlayersWithBotInclude,
   });
 
   if (!room) {
@@ -1077,7 +1143,7 @@ export async function handleGameMessage(ctx: {
 
   const room = await prisma.room.findUnique({
     where: { id: roomId },
-    include: { players: true },
+    include: roomPlayersWithBotInclude,
   });
 
   if (!room) {
@@ -1106,7 +1172,7 @@ export async function handleGameMessage(ctx: {
     game.isPaused = false;
     game.activePlayerId = players[0].userId;
     game.lastDice = null;
-    game.phase = "WAITING_ROLL";
+    game.phase = "CHARACTER_SELECTION";
     clearPendingCardWin(game);
     clearPendingCardClose(game);
     clearPendingGreenChoice(game);
@@ -1116,6 +1182,9 @@ export async function handleGameMessage(ctx: {
     for (const p of players) {
       ensurePlayerState(game, p.userId);
     }
+
+    autoSelectCharactersForBots(game, players);
+    await resolveCharacterSelectionProgress(roomId, players, game, broadcast);
 
     await prisma.room.update({
       where: { id: roomId },

@@ -10,6 +10,26 @@ async function removeUserFromOtherRooms(userId: string, keepRoomId?: string) {
   await prisma.roomPlayer.deleteMany({ where });
 }
 
+const roomInclude = {
+  players: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          isBot: true,
+        },
+      },
+    },
+  },
+  creator: {
+    select: {
+      id: true,
+      username: true,
+    },
+  },
+} as const;
+
 export async function createRoom(
   creatorId: string,
   title: string,
@@ -28,10 +48,7 @@ export async function createRoom(
       password: hashedPassword,
       players: { create: { userId: creatorId } },
     },
-    include: {
-      players: { include: { user: { select: { id: true, username: true } } } },
-      creator: { select: { id: true, username: true } },
-    },
+    include: roomInclude,
   });
 }
 
@@ -39,10 +56,7 @@ export async function listRooms() {
   const rooms = await prisma.room.findMany({
     where: { status: { in: ["WAITING", "IN_GAME"] } },
     orderBy: { createdAt: "desc" },
-    include: {
-      players: { include: { user: { select: { id: true, username: true } } } },
-      creator: { select: { id: true, username: true } },
-    },
+    include: roomInclude,
   });
 
   return rooms.map((room) => ({
@@ -92,24 +106,7 @@ export async function listRoomsPaginated(params: {
       orderBy: {
         createdAt: "desc",
       },
-      include: {
-        players: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-              },
-            },
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
-      },
+      include: roomInclude,
     }),
     prisma.room.count({ where }),
   ]);
@@ -127,6 +124,7 @@ export async function listRoomsPaginated(params: {
       players: room.players.map((player) => ({
         userId: player.userId,
         username: player.user?.username ?? null,
+        isBot: player.user?.isBot ?? false,
         isReady: player.isReady,
         joinedAt: player.joinedAt,
       })),
@@ -143,10 +141,7 @@ export async function listRoomsPaginated(params: {
 export async function getRoom(roomId: string) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
-    include: {
-      players: { include: { user: { select: { id: true, username: true } } } },
-      creator: { select: { id: true, username: true } },
-    },
+    include: roomInclude,
   });
 
   if (!room) return null;
@@ -161,10 +156,7 @@ export async function getRoom(roomId: string) {
 export async function getRawRoom(roomId: string) {
   return prisma.room.findUnique({
     where: { id: roomId },
-    include: {
-      players: { include: { user: { select: { id: true, username: true } } } },
-      creator: { select: { id: true, username: true } },
-    },
+    include: roomInclude,
   });
 }
 
@@ -241,6 +233,85 @@ export async function setReady(roomId: string, userId: string, ready: boolean) {
     where: { roomId_userId: { roomId, userId } },
     data: { isReady: ready },
   });
+  return getRoom(roomId);
+}
+
+export async function addBotToRoom(roomId: string, requesterUserId: string) {
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: roomInclude,
+  });
+
+  if (!room) throw new Error("ROOM_NOT_FOUND");
+  if (room.creatorId !== requesterUserId) throw new Error("NOT_AUTHORIZED");
+  if (room.status !== "WAITING") throw new Error("ROOM_NOT_JOINABLE");
+
+  const settings = safeJsonParse(room.settings, {});
+  const maxPlayers = settings?.maxPlayers ?? 4;
+
+  if (room.players.length >= maxPlayers) {
+    throw new Error("ROOM_FULL");
+  }
+
+  const existingBotsCount = room.players.filter((p) => p.user?.isBot).length;
+  const botNumber = existingBotsCount + 1;
+
+  const bot = await prisma.user.create({
+    data: {
+      email: `bot_${roomId}_${Date.now()}_${Math.floor(Math.random() * 10000)}@bot.local`,
+      username: `Bot ${botNumber}`,
+      passwordHash: "BOT",
+      isBot: true,
+    },
+  });
+
+  await prisma.roomPlayer.create({
+    data: {
+      roomId,
+      userId: bot.id,
+      isReady: true,
+    },
+  });
+
+  return getRoom(roomId);
+}
+
+export async function removeBotFromRoom(
+  roomId: string,
+  botUserId: string,
+  requesterUserId: string
+) {
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+  });
+
+  if (!room) throw new Error("ROOM_NOT_FOUND");
+  if (room.creatorId !== requesterUserId) throw new Error("NOT_AUTHORIZED");
+  if (room.status !== "WAITING") throw new Error("ROOM_NOT_WAITING");
+
+  const bot = await prisma.user.findUnique({
+    where: { id: botUserId },
+    select: {
+      id: true,
+      isBot: true,
+    },
+  });
+
+  if (!bot || !bot.isBot) {
+    throw new Error("BOT_NOT_FOUND");
+  }
+
+  await prisma.roomPlayer.deleteMany({
+    where: {
+      roomId,
+      userId: botUserId,
+    },
+  });
+
+  await prisma.user.delete({
+    where: { id: botUserId },
+  });
+
   return getRoom(roomId);
 }
 

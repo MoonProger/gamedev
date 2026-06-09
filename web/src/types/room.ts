@@ -5,6 +5,7 @@ export interface RoomPlayer {
   username: string;
   isReady: boolean;
   joinedAt?: string;
+  isBot?: boolean;
 }
 
 export interface Room {

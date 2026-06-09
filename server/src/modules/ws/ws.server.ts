@@ -38,6 +38,7 @@ const roomLastActivityAt = new Map<string, number>();
 const ROOM_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 const IN_GAME_IDLE_FINISH_MS = 45 * 60 * 1000;
 const ROOM_CLEANUP_INTERVAL_MS = 60 * 1000;
+const RECONNECT_GRACE_MS = 15_000;
 
 function safeSend(ws: WebSocket, msg: WsOut) {
   if (ws.readyState === ws.OPEN) {
@@ -156,7 +157,10 @@ async function areAllRoomPlayersOnline(roomId: string) {
 
   const onlineUserIds = getOnlineUserIds(roomId);
 
-  return room.players.every((player) => onlineUserIds.has(player.userId));
+  return room.players.every((player: any) => {
+    if (player.user?.isBot) return true;
+    return onlineUserIds.has(player.userId);
+  });
 }
 
 /** Pause/resume authoritative game based on who's actually connected (fixes duplicate socket + reconnect races). */
@@ -215,7 +219,7 @@ async function handleRoomJoin(ws: WebSocket, meta: ClientMeta, msg: Extract<WsIn
   const roomBeforeJoin = await getRawRoom(roomId);
   const hadMembershipBeforeJoin = Boolean(roomBeforeJoin?.players?.some((p) => p.userId === meta.userId));
 
-  if (!alreadyInSameRoom) {
+  if (!alreadyInSameRoom && !hadMembershipBeforeJoin) {
     try {
       if (password) {
         await joinPrivateRoom(roomId, meta.userId, password);
@@ -483,7 +487,7 @@ export function attachWs(server: HttpServer) {
         } catch (error: any) {
           console.error("[ws:disconnect] failed:", error?.message ?? error);
         }
-      }, 4000);
+      }, RECONNECT_GRACE_MS);
       disconnectTimers.set(ws, timer);
     });
 

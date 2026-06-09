@@ -21,6 +21,7 @@ function normalizeRoom(raw: any): Room {
             ? p.user.username
             : '',
         isReady: Boolean(p?.isReady),
+        isBot: Boolean(p?.isBot ?? p?.user?.isBot ?? false),
         joinedAt: p?.joinedAt,
       }))
     : [];
@@ -62,6 +63,7 @@ const RoomDetails: React.FC = () => {
   const [isStarting, setIsStarting] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isBotLoading, setIsBotLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const [roomPassword] = useState<string | null>(() => {
@@ -162,6 +164,38 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
       setIsLeaving(false);
     }
   };
+
+  const handleAddBot = async () => {
+      if (!id) return;
+
+      try {
+        setIsBotLoading(true);
+        const data = await api.addBot(id);
+        setRoom(normalizeRoom(data.room));
+        showToast('Бот добавлен в комнату', 'success');
+      } catch (err: any) {
+        console.error('Ошибка добавления бота:', err);
+        showToast(err.message || 'Не удалось добавить бота', 'error');
+      } finally {
+        setIsBotLoading(false);
+      }
+    };
+
+    const handleRemoveBot = async (botId: string) => {
+      if (!id) return;
+
+      try {
+        setIsBotLoading(true);
+        const data = await api.removeBot(id, botId);
+        setRoom(normalizeRoom(data.room));
+        showToast('Бот удалён из комнаты', 'success');
+      } catch (err: any) {
+        console.error('Ошибка удаления бота:', err);
+        showToast(err.message || 'Не удалось удалить бота', 'error');
+      } finally {
+        setIsBotLoading(false);
+      }
+    };
 
   const handleStartGame = async () => {
   if (!id) return;
@@ -296,6 +330,9 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
               <div key={player.userId} className="player-item">
                 <div className="player-info">
                   <span className="player-name">{player.username || 'Без имени'}</span>
+                  {player.isBot && (
+                    <span className="player-creator">Бот</span>
+                  )}
                   {player.userId === room.creator?.id && (
                     <span className="player-creator">Создатель</span>
                   )}
@@ -308,6 +345,17 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
                     <span className="ready-status ready">Готов</span>
                   ) : (
                     <span className="ready-status not-ready">Не готов</span>
+                  )}
+
+                  {isCreator && player.isBot && room.status === 'WAITING' && (
+                    <Button
+                      variant="outline"
+                      onClick={() => handleRemoveBot(player.userId)}
+                      disabled={isBotLoading}
+                      style={{ marginLeft: '0.75rem', padding: '0.35rem 0.75rem' }}
+                    >
+                      Удалить
+                    </Button>
                   )}
                 </div>
               </div>
@@ -326,6 +374,17 @@ const { send, isConnected } = useWebSocket(id || null, roomPassword, handleWebSo
         </div>
 
         <div className="room-actions">
+          {isCreator && room.status === 'WAITING' && (room.players?.length ?? 0) < maxPlayers && (
+            <Button
+              variant="outline"
+              onClick={handleAddBot}
+              disabled={isBotLoading}
+              isLoading={isBotLoading}
+            >
+              + Добавить бота
+            </Button>
+          )}
+
           {room.status === 'WAITING' && currentPlayer && (
             <Button
               variant={currentPlayer.isReady ? 'outline' : 'primary'}
